@@ -36,12 +36,12 @@
 #PBS -W group_list=v45
 #PBS -q normal
 #PBS -l walltime=4:00:00
-#PBS -l vmem=64GB
+#PBS -l mem=64GB
 #PBS -l ncpus=128
 #PBS -l software=vampir
 #PBS -l other=rms
+#PBS -l wd
 #PBS -N cnyf2-sw1
-#PBS -wd
 
 date
 set -e
@@ -268,7 +268,7 @@ cat > calendar.in << EOF
 ${inidate} ${date} ${nyear} ${nmonth} ${nday} ${caltype}
 EOF
 
-$AusCOMHOME/bin/calendar.VAYU < calendar.in > calendar.out 
+$AusCOMHOME/bin/calendar.exe < calendar.in > calendar.out 
 
 prevdate=`cat calendar.out | cut -c '2-9'`
 enddate=`cat calendar.out | cut -c '11-18'`
@@ -388,7 +388,7 @@ if [ $jobnum = 1 ]; then	#initial run
     if [[ $DEBUG = "yes" ]]; then
         cp -f $bindir/oasis3_$chan.VAYU_debug   		$oa3_exe
     else   
-        cp -f $bindir/oasis3_$chan.VAYU   		$oa3_exe
+        cp -f $bindir/oasis3_$chan.exe   		$oa3_exe
     fi
     if [[ $DEBUG = "yes" ]]; then
         cp -f $bindir/mom4_MPI1.debug.20110907.VAYU 	$ocn_exe
@@ -1076,8 +1076,7 @@ cd $ocnrundir/$MOM4_hist
 sdir=$ocnrundir/$MOM4_hist 
 tdir=${histdir}/ocn
 tool=${bindir}/do_mppncombine.ksh
-#archjob=`qsub $tool -v sdir=$sdir,tdir=$tdir,idate=${enddate}`
-archjob=$(qsub ${tool} -v bdir=${bindir},sdir=${sdir},tdir=${tdir},idate=${enddate})
+${tool} -v bdir=${bindir},sdir=${sdir},tdir=${tdir},idate=${enddate}
 
 #
 ## 5.4 Output files of the ice (cice)
@@ -1147,7 +1146,7 @@ if [[ $nextdate -gt $finaldate ]]; then
   echo "Experiment over"
   echo "`date` :  Experiment over" >> ${expid}.log
 else
-  next_jobid=`qsub -W depend=after:${archjob} run_auscom.VAYU`
+  next_jobid=`qsub run_auscom.VAYU`
   echo "`date` :  New run is submitted."
 fi
 
