@@ -17,7 +17,7 @@
 #
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 # Platform and its architecture ($HOST = xe)
-set platform = vayu.nci.org.au  # A unique identifier for your platform, 
+set platform = nci.org.au  # A unique identifier for your platform, 
 				# This corresponds to the mkmf templates in $root/bin.
 
 # Use MPI? (1 if yesI, 0 otherwise)
@@ -85,14 +85,17 @@ set code_dir      = $root/src			# source code directory
 set executable    = $cwd/build_${CHAN}/$exe	# executable created after compilation
 set pathnames     = $executable:h/path_names	# path to file containing list of source paths
 set mppnccombine  = $bindir/mppnccombine.VAYU	# path to executable mppnccombine
-set mkmfTemplate  = $root/bin/mkmf.template.vayu.nci.org.au
+set mkmfTemplate  = $root/bin/mkmf.template.nci.org.au
 set mkmf          = $root/bin/mkmf		# path to executable mkmf
 set cppDefs       = ( "-Duse_netCDF" )		# list of cpp #defines to be passed to the source files
 if ($MPI) set cppDefs  = ( "-Duse_netCDF -Duse_netCDF3 -Duse_libMPI -DAusCOM -DOASIS3" )
 
-# Users must ensure the correct environment file exists for their platform.
-#
-source $AusCOMHOME/bin/environs.$platform  # environment variables and loadable modules
+source /etc/profile.d/nf_csh_modules
+module purge
+module load intel-cc
+module load intel-fc
+module load netcdf
+module load openmpi
 
 # setup directory structure
 if ( ! -d $executable:h )    mkdir -p $executable:h
@@ -272,7 +275,7 @@ set makeFile      = MakeSolo
   cd $executable:h
   $mkmf -f -m $makeFile -a $code_dir -t $mkmfTemplate -p $executable:t -c "$cppDefs" $srcList $pathnames $root/include $code_dir/shared/include $code_dir/shared/mpp/include /usr/local/include
 
-  make -f $makeFile
+  make -j 8 -f $makeFile
 
 # put the produced executable into the ~/AusCOM/bin/ 
   mv $executable $bindir

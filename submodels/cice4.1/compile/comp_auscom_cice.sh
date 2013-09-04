@@ -15,27 +15,21 @@ endif
 ### Change these to your own site and user directory! 
 ### You will need to create a Makefile Macro in bld
 ### Platform and its architecture ($HOST = xe)
-setenv SITE vayu.nci.org.au
+setenv SITE nci.org.au
 setenv ARCH `uname -s`
-setenv ARCH vayu.nci.org.au
-#echo ARCH: $ARCH
+setenv ARCH nci.org.au
 
 # Set AusCOM home:
 setenv AusCOMHOME $cwd:h:h:h
 
-set platform = vayu.nci.org.au
-#----------------------------------------------------------------------
-#
-# Users must ensure the correct environment file exists for their platform.
-#
-if( $platform == "vayu.nci.org.au" ) then
-source ${AusCOMHOME}/bin/environs.$platform  # environment variables and loadable modules
-else
-   echo Wrong machine! Please use proper script for platform $platform
-   exit
-endif
+set platform = nci.org.au
 
-#which ifort
+source /etc/profile.d/nf_csh_modules
+module purge
+module load intel-cc
+module load intel-fc
+module load netcdf
+module load openmpi
 
 #----------------------------------------------------------------------
 

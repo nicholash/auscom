@@ -28,16 +28,13 @@ LD         := $(FC)
 LDFLAGS    := $(FFLAGS) -v
 
    CPPDEFS :=  $(CPPDEFS) -DNXGLOB=$(NXGLOB) -DNYGLOB=$(NYGLOB)
-   #SLIBS   :=  $(SLIBS) $(OMPI_F90LIBS)
    SLIBS   :=  $(SLIBS) #$(OMPI_F90LIBS)
 
-   #INCLDIR := $(INCLDIR) -I$(NETCDF_ROOT)/include
-   #SLIBS   := $(SLIBS) #-L$(NETCDF_ROOT)/lib -lnetcdf
-   INCLDIR := $(INCLDIR) -I$(NETCDF_ROOT)/include/Intel
-   SLIBS   := $(SLIBS) -L$(NETCDF_ROOT)/lib/Intel -lnetcdf
+   INCLDIR := $(INCLDIR) -I$(NETCDF_ROOT)/include
+   SLIBS   := $(SLIBS) -L$(NETCDF_ROOT)/lib -lnetcdf -lnetcdff
 
    INCLDIR := $(INCLDIR) $(CPL_INCS)
    SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lpsmile.${CHAN} 
-   SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lmpp_io -L$(NETCDF_ROOT)/lib/Intel -lnetcdf
+   SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lmpp_io -L$(NETCDF_ROOT)/lib -lnetcdf -lnetcdff
    #SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lmpp_io
    #B: as for cice4, netcdf lib MUST be put behind the other libs...

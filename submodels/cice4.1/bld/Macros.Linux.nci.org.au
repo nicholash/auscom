@@ -52,8 +52,7 @@ endif
 ifeq ($(NETCDF), yes)
    CPPDEFS :=  $(CPPDEFS) -Dncdf
    INCLDIR := $(INCLDIR) -I$(NETCDF_ROOT)/include
-   #SLIBS   := $(SLIBS) -L$(NETCDF_ROOT)/lib -lnetcdf
-   SLIBS   := $(SLIBS) -L$(NETCDF_ROOT)/lib/Intel -lnetcdf
+   SLIBS   := $(SLIBS) -L$(NETCDF_ROOT)/lib -lnetcdf -lnetcdff
 endif
 
 ifeq ($(USE_ESMF), yes)
@@ -71,14 +70,8 @@ ifeq ($(AusCOM), yes)
 #   SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lclim.MPI2
 #   SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lfscint
    SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lmpp_io
-#B: for coupled AusCOM, mpi lib is ALWAYS required:
-#   SLIBS   := $(SLIBS) -L$(CPLLIBDIR) $(OMPI_F90LIBS)
    SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lmpi
-#B: and, somehow the netcdf lib must be put behind the psmile lib:
-#   SLIBS   := $(SLIBS) -lnetcdf
-   #SLIBS   := $(SLIBS) -L$(NETCDF_ROOT)/lib -lnetcdf
-   SLIBS   := $(SLIBS) -L$(NETCDF_ROOT)/lib/Intel -lnetcdf
-#   SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lscrip
+   SLIBS   := $(SLIBS) -L$(NETCDF_ROOT)/lib -lnetcdf -lnetcdff
 endif
 
 ifeq ($(ACCESS), yes)

@@ -1,19 +1,16 @@
 # template for the Intel fortran compiler
 # typical use with mkmf
 # mkmf -t template.ifc -c"-Duse_libMPI -Duse_netCDF" path_names /usr/local/include
-##NETCDF = /opt/netcdf/3.6.2/Intel-9.1
+#
 NETCDF = $(NETCDF_ROOT)
 CPPFLAGS = -DLARGE_FILES
 FFLAGS_BASE = -V -what -fno-alias -stack_temps -safe_cray_ptr -ftz -i_dynamic -assume byterecl -i4 -r8 -Wp,-w
 FFLAGS_REPRO = -fltconsistency
 FFLAGS_DEBUG = -check -warn -warn noerrors -debug variable_locations -inline_debug_info -traceback
-#FFLAGS = $(FFLAGS_BASE) -O2 -nowarn -fpp -I$(NETCDF)/include/Intel
-FC = /apps/openmpi/1.4.3/bin/mpif90 
-CC = /apps/openmpi/1.4.3/bin/mpicc
-#FC = mpif90
-#CC = mpicc
+FC = mpif90 
+CC = mpicc
 
-CFLAGS = -V -O2 -w -D__IFC -I$(NETCDF)/include/Intel
+CFLAGS = -V -O2 -w -D__IFC -I$(NETCDF)/include
 LD = $(FC)
 
 #mom4_solo#LDFLAGS        = -L$(NETCDF)/lib/Intel -lnetcdf -lmpi -lsma 
@@ -25,8 +22,8 @@ CPLLIBS   = -L$(CPLLIBDIR) -lpsmile.${CHAN} -L$(CPLLIBDIR) -lmpp_io
 CPLINCDIR = ${AusCOMHOME}/submodels/oasis3/prism/Linux/build/lib
 CPLINCS   = -I$(CPLINCDIR)/psmile.${CHAN}
 
-LDFLAGS        = -L$(NETCDF)/lib/Intel -lnetcdf -lmpi -lsma $(CPLLIBS)
-FFLAGS = $(FFLAGS_BASE) -O2 -no-vec -nowarn -fpp -I$(NETCDF)/include/Intel $(CPLINCS)
+LDFLAGS        = -L$(NETCDF)/lib -lnetcdf -lnetcdff $(CPLLIBS)
+FFLAGS = $(FFLAGS_BASE) -O2 -no-vec -nowarn -fpp -I$(NETCDF)/include $(CPLINCS)
 #FFLAGS = $(FFLAGS_BASE) -O0 -g -no-vec -nowarn -fpp -I$(NETCDF)/include/Intel $(CPLINCS)
 
 

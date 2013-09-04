@@ -8,7 +8,7 @@ setenv AusCOMHOME $cwd:h:h:h
 
 ### Platform and its architecture ($HOST = d2 or tx701 (mawson) )
 # setenv SITE ${HOST}.nci.org.au
-setenv SITE vayu1.nci.org.au
+setenv SITE nci.org.au
 setenv ARCH `uname -s`
 setenv ARCH $ARCH.$SITE
 echo ARCH: $ARCH
@@ -17,9 +17,14 @@ echo ARCH: $ARCH
 setenv CHAN MPI1
 
 # Users must ensure the correct environment file exists for their platform.
-set platform = vayu.nci.org.au
-#source ${AusCOMHOME}/bin/environs.$platform.1.3.3  # environment variables and loadable modules
-source ${AusCOMHOME}/bin/environs.$platform  # environment variables and loadable modules
+set platform = nci.org.au
+
+source /etc/profile.d/nf_csh_modules
+module purge
+module load intel-cc
+module load intel-fc
+module load netcdf
+module load openmpi
 
 #endif
 #-------------------------------------------------------------------------------
