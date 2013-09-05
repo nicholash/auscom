@@ -23,8 +23,8 @@ CPLINCDIR = ${AusCOMHOME}/submodels/oasis3/prism/Linux/build/lib
 CPLINCS   = -I$(CPLINCDIR)/psmile.${CHAN}
 
 LDFLAGS        = -L$(NETCDF)/lib -lnetcdf -lnetcdff $(CPLLIBS)
-FFLAGS = $(FFLAGS_BASE) -O2 -no-vec -nowarn -fpp -I$(NETCDF)/include $(CPLINCS)
-#FFLAGS = $(FFLAGS_BASE) -O0 -g -no-vec -nowarn -fpp -I$(NETCDF)/include/Intel $(CPLINCS)
+#FFLAGS = $(FFLAGS_BASE) -O2 -no-vec -nowarn -fpp -I$(NETCDF)/include $(CPLINCS)
+FFLAGS = $(FFLAGS_BASE) -O0 -g -debug all -traceback -no-vec -nowarn -fpp -I$(NETCDF)/include $(CPLINCS)
 
 
 #---------------------------------------------------------------------------

@@ -385,6 +385,10 @@ use ocean_types_mod,          only: ice_ocean_boundary_type, ocean_density_type
 use ocean_types_mod,          only: ocean_public_type
 use ocean_workspace_mod,      only: wrk1_2d, wrk2_2d, wrk3_2d
   
+#ifdef AusCOM
+use auscom_ice_parameters_mod, only: wfi_factor, wfo_adj
+#endif
+
 implicit none
 
 private
@@ -472,6 +476,10 @@ integer :: id_pme_net        =-1
 integer :: id_ice_mask       =-1
 integer :: id_open_ocean_mask=-1
 integer :: id_restore_mask   =-1
+#ifdef AusCOM
+integer :: id_wfimelt        =-1
+integer :: id_wfiform        =-1
+#endif
 
 ! ids for scalar fields 
 
@@ -493,12 +501,14 @@ integer :: id_total_ocean_pme_restore=-1
 integer :: id_total_ocean_pme_correct=-1
 integer :: id_total_ocean_pme_net    =-1
 integer :: id_total_ocean_pme_river  =-1
-
 integer :: id_total_ocean_fprec   =-1
 integer :: id_total_ocean_lprec   =-1
 integer :: id_total_ocean_calving =-1
 integer :: id_total_ocean_runoff  =-1
-
+#ifdef AusCOM
+integer :: id_total_ocean_wfimelt =-1
+integer :: id_total_ocean_wfiform =-1
+#endif
 
 #include <ocean_memory.h>
 
@@ -1572,6 +1582,18 @@ subroutine ocean_sbc_init(Grid, Domain, Time, T_prog, T_diag, Velocity, &
        '(kg/m^3)*(m/sec)', missing_value=missing_value,range=(/-1.e-1,1.e-1/),&
        standard_name='rainfall_flux')   
 
+#ifdef AusCOM
+ id_wfimelt = register_diag_field('ocean_model','wfimelt', Grd%tracer_axes(1:2),  &
+       Time%model_time, 'water into ocean due to ice melt (>0 enters ocean)',         &
+       '(kg/m^3)*(m/sec)', missing_value=missing_value,range=(/-1.e-1,1.e-1/),&
+       standard_name='icemelt_flux')
+
+ id_wfiform = register_diag_field('ocean_model','wfiform', Grd%tracer_axes(1:2),  &
+       Time%model_time, 'water out of ocean due to ice form (>0 enters ocean)',         &
+       '(kg/m^3)*(m/sec)', missing_value=missing_value,range=(/-1.e-1,1.e-1/),&
+       standard_name='iceform_flux')
+#endif
+
  id_swflx = register_diag_field('ocean_model','swflx', Grd%tracer_axes(1:2),   &
        Time%model_time, 'shortwave flux into ocean (>0 heats ocean)', 'W/m^2', &
        missing_value=missing_value,range=(/-1.e4,1.e4/),                     &
@@ -1645,6 +1667,15 @@ subroutine ocean_sbc_init(Grid, Domain, Time, T_prog, T_diag, Velocity, &
  id_total_ocean_lprec = register_diag_field('ocean_model','total_ocean_lprec',  &
        Time%model_time, 'total liquid precip into ocean (>0 enters ocean)',     &
        'kg/sec/1e15', missing_value=missing_value,range=(/-1.e10,1.e10/))   
+
+#ifdef AusCOM
+ id_total_ocean_wfimelt = register_diag_field('ocean_model','total_ocean_wfimelt',  &
+       Time%model_time, 'total icemelt into ocean (>0 enters ocean)',     &
+       'kg/sec/1e15', missing_value=missing_value,range=(/-1.e10,1.e10/))
+ id_total_ocean_wfiform = register_diag_field('ocean_model','total_ocean_wfiform',  &
+       Time%model_time, 'total iceform outof ocean (>0 enters ocean)',     &
+       'kg/sec/1e15', missing_value=missing_value,range=(/-1.e10,1.e10/))
+#endif
 
  id_total_ocean_runoff = register_diag_field('ocean_model','total_ocean_runoff',&
        Time%model_time, 'total liquid river runoff (>0 water enters ocean)',    &
@@ -2165,6 +2196,9 @@ subroutine get_ocean_sbc(Time, Ice_ocean_boundary, Thickness, Ext_mode, T_prog, 
 
 
   ! start of long if-block for use_waterflux true or false. 
+
+  !!! NOTE for the ACCESS-OM/CM setup, we always have use_waterflux = .t. !!!
+
   if (use_waterflux) then
 
       ! water flux in (kg/m^3)*(m/s) from liquid, frozen, and q_flux (evaporation)  
@@ -2173,20 +2207,52 @@ subroutine get_ocean_sbc(Time, Ice_ocean_boundary, Thickness, Ext_mode, T_prog, 
             do i = isc_bnd,iec_bnd
                ii = i + i_shift
                jj = j + j_shift
+#ifdef AusCOM
+               melt(ii,jj) =  -Ice_ocean_boundary%salt_flux(i,j)*ice_salt_concentration_r
+               !20130410: see below for comments on melt calculation.
+#endif
                pme(ii,jj) = 0.5*pme_taum1(ii,jj)
                pme_taum1(ii,jj) = (Ice_ocean_boundary%lprec(i,j) + Ice_ocean_boundary%fprec(i,j) &
+#ifdef AusCOM
+               !20130327: according to comment XXX(below), "pme" in GFDL model includes "melt",
+               !          therefore wfimelt + wfiform should be put in here in the case that 
+               !          ice melt water flux is NOT included in lprec anymore (since ACCESS1.4).
+               !          * however, we leave "liquid_precip" below alone. 
+               !	  wfi_factor = 1 or 0,
+               !          using ice waterfluxes directly or salt flux converted waterflux!!! 
+                                  +(Ice_ocean_boundary%wfimelt(i,j) + Ice_ocean_boundary%wfiform(i,j))*wfi_factor &
+                                  +melt(ii,jj) * (1-wfi_factor) & 
+               !20130412: allowing removal of the global water flux imbalance:
+                                  -wfo_adj                     &
+#endif
                                   -Ice_ocean_boundary%q_flux(i,j))*Grd%tmask(ii,jj,1) 
                pme(ii,jj) = pme(ii,jj) + 0.5*pme_taum1(ii,jj)
                liquid_precip(ii,jj) =  Ice_ocean_boundary%lprec(i,j)*Grd%tmask(ii,jj,1) 
                evaporation(ii,jj)   = -Ice_ocean_boundary%q_flux(i,j)*Grd%tmask(ii,jj,1) 
             enddo
          enddo
-      else 
+      else     !The following is the case for ACESS
          do j = jsc_bnd,jec_bnd
             do i = isc_bnd,iec_bnd
                ii = i + i_shift
                jj = j + j_shift
+#ifdef AusCOM
+                  melt(ii,jj) =  -Ice_ocean_boundary%salt_flux(i,j)*ice_salt_concentration_r
+                  !20130410: see below for comments on melt calculation.
+#endif
                   pme(ii,jj) = (Ice_ocean_boundary%lprec(i,j) + Ice_ocean_boundary%fprec(i,j) &
+#ifdef AusCOM
+               !20130327: according to comment XXX(below), "pme" in GFDL model includes "melt",
+               !          therefore wfimelt + wfiform should be put in here in the case that 
+               !          ice melt water flux is NOT included in lprec anymore (since ACCESS1.4).
+               !          * however, we leave "liquid_precip" below alone. 
+               !          HERE, wfi_factor = 1 or 0, 
+               !	  using ice waterfluxes directly or salt flux converted waterflux!!! 
+                               +(Ice_ocean_boundary%wfimelt(i,j) + Ice_ocean_boundary%wfiform(i,j))*wfi_factor &
+                               +melt(ii,jj) * (1-wfi_factor) &
+               !20130412: allowing removal of the global water flux imbalance:
+                               -wfo_adj                      &
+#endif
                                -Ice_ocean_boundary%q_flux(i,j))*Grd%tmask(ii,jj,1) 
                   liquid_precip(ii,jj) =  Ice_ocean_boundary%lprec(i,j)*Grd%tmask(ii,jj,1) 
                   evaporation(ii,jj)   = -Ice_ocean_boundary%q_flux(i,j)*Grd%tmask(ii,jj,1) 
@@ -2439,16 +2505,30 @@ subroutine get_ocean_sbc(Time, Ice_ocean_boundary, Thickness, Ext_mode, T_prog, 
       ! since the coupler has already included the 
       ! ice melt within the pme field. 
       pme_river = 0.0 
-      if(zero_net_water_coupler) then 
+      if(zero_net_water_coupler) then       !!! .f. for fully-coupled model !!! 
          do j=jsc,jec
             do i=isc,iec
 #ifndef AusCOM
                pme_river(i,j) = pme(i,j) + river(i,j) - melt(i,j)
 #else
-               pme_river(i,j) = pme(i,j) + river(i,j)
+               !pme_river(i,j) = pme(i,j) + river(i,j) !cmip5 practice (with melt in pme)
+               !20130410: HERE wfi_factor = 1 or 0,
+               !takink away the "direct" icemelt/form waterfluxes or the ice saltflux converted waterflux melt: 
+               pme_river(i,j) = pme(i,j) + river(i,j) - &
+                                (Ice_ocean_boundary%wfimelt(i,j) +  Ice_ocean_boundary%wfiform(i,j)) * wfi_factor - &
+                                !!! or simply, + melt || !!! check: "melt ?=? wfimelt + wfiform
+                                melt(i,j) * (1-wfi_factor) 
 !20100414: "melt" part here is responsible for the SSL tendency--
 !           In AusCOM case, taking "melt" off pme-river would cause SSL to decrease dramatically
 !           in the course of run. Keeping it can maintain global mean SSL!
+!-----------------------------------------------------------------------------------------------
+!20121207: this is tricky! the above note actually shows the case of p including ice melt water flux 
+!           in AusCOM, therefore the pme_river is actually supposed to exclude "melt" here, same as the 
+!           "GFDL way". But it did cause trouble in SSL...... don't really understand why ......
+!
+!           Anyway, since now ice melt/form part is already excluded from "lpre", pme_river should
+!           be pme+river only. namely, the above calculation is 'logically' correct. However, it probably 
+!           causes SSL troulbe becuase the "opposite" reason. XXXXXX Revisit ...
 #endif
             enddo
          enddo
@@ -2485,7 +2565,7 @@ subroutine get_ocean_sbc(Time, Ice_ocean_boundary, Thickness, Ext_mode, T_prog, 
       endif
 
 
-  else  ! now code for use_waterflux=.false.  
+  else  ! now code for use_waterflux=.false.  !!! The following is NOT for the ACCESS-OM/CM case !!!
 
      
       ! water flux in (kg/m^3)*(m/s) from rivers and calving land glaciers  
@@ -2514,6 +2594,17 @@ subroutine get_ocean_sbc(Time, Ice_ocean_boundary, Thickness, Ext_mode, T_prog, 
                jj = j + j_shift
                T_prog(index_salt)%stf(ii,jj) = -Ice_ocean_boundary%salt_flux(i,j)*1000.0     -&
                                                (Ice_ocean_boundary%lprec(i,j)                +&
+#ifdef AusCOM	!dhb
+!!!
+!!! 20121207: note here lprec does NOT include icemelt/form waterflux, and since "salt_flux" is already
+!!!           in place, the calculation seems "already" right ???  ...Revist...
+!!!           (then the previous calculation for AusCOM was wrong--double counting???...)
+!!! 20130227: Need (???) put in the ice-melt/form associated freshwater flux which is NOT(?) reflected 
+!!!           by the salt_flux here(?)! Note in the "GFDL case" here lprec includes ice melt waterflux!
+!!!  
+                                                Ice_ocean_boundary%wfimelt(i,j)              +&
+                                                Ice_ocean_boundary%wfiform(i,j)              +&
+#endif
                                                 Ice_ocean_boundary%fprec(i,j) + river(ii,jj) -&
                                                 Ice_ocean_boundary%q_flux(i,j))*salinity_ref*Grd%tmask(ii,jj,1) 
          enddo
@@ -2980,8 +3071,11 @@ subroutine get_ocean_sbc(Time, Ice_ocean_boundary, Thickness, Ext_mode, T_prog, 
   endif
 
   ! salt input from calving land ice (kg/(m2*sec))
-  if (id_stf_runoff(index_salt) > 0) then
-      used = send_data(id_stf_runoff(index_salt),                                      &
+  ! BUG: SHould ber calving not runoff
+!  if (id_stf_runoff(index_salt) > 0) then
+!      used = send_data(id_stf_runoff(index_salt),                                      &
+  if (id_stf_calving(index_salt) > 0) then
+      used = send_data(id_stf_calving(index_salt),                                      &
              T_prog(index_salt)%calving_tracer_flux(:,:)*T_prog(index_salt)%conversion,&
              Time%model_time, rmask=Grd%tmask(:,:,1),                                  &
              is_in=isc, js_in=jsc, ie_in=iec, je_in=jec)
@@ -3143,6 +3237,61 @@ subroutine get_ocean_sbc(Time, Ice_ocean_boundary, Thickness, Ext_mode, T_prog, 
       total_stuff  = mpp_global_sum(Dom%domain2d,wrk1_2d(:,:), NON_BITWISE_EXACT_SUM)
       used = send_data (id_total_ocean_lprec, total_stuff*1e-15, Time%model_time)
   endif
+
+#ifdef AusCOM
+  ! waterflux associated with ice melt (kg/(m2*sec))
+  if (id_wfimelt > 0) then
+      do j=jsc_bnd,jec_bnd
+         do i=isc_bnd,iec_bnd
+            ii=i+i_shift
+            jj=j+j_shift
+            tmp_flux(ii,jj) = Ice_ocean_boundary%wfimelt(i,j)
+         enddo
+      enddo
+      used = send_data(id_wfimelt, tmp_flux(:,:),        &
+             Time%model_time, rmask=Grd%tmask(:,:,1),  &
+             is_in=isc, js_in=jsc, ie_in=iec, je_in=jec)
+  endif
+  ! total water into ocean associated ice melt (kg/sec)
+  if (id_total_ocean_wfimelt > 0) then
+      do j=jsc_bnd,jec_bnd
+         do i=isc_bnd,iec_bnd
+            ii=i+i_shift
+            jj=j+j_shift
+            tmp_flux(ii,jj) = Ice_ocean_boundary%wfimelt(i,j)
+         enddo
+      enddo
+      wrk1_2d(:,:) = Grd%tmask(:,:,1)*Grd%dat(:,:)*tmp_flux(:,:)
+      total_stuff  = mpp_global_sum(Dom%domain2d,wrk1_2d(:,:), NON_BITWISE_EXACT_SUM)
+      used = send_data (id_total_ocean_wfimelt, total_stuff*1e-15, Time%model_time)
+  endif
+  ! waterflux associated with ice form (kg/(m2*sec))
+  if (id_wfiform > 0) then
+      do j=jsc_bnd,jec_bnd
+         do i=isc_bnd,iec_bnd
+            ii=i+i_shift
+            jj=j+j_shift
+            tmp_flux(ii,jj) = Ice_ocean_boundary%wfiform(i,j)
+         enddo
+      enddo
+      used = send_data(id_wfiform, tmp_flux(:,:),        &
+             Time%model_time, rmask=Grd%tmask(:,:,1),  &
+             is_in=isc, js_in=jsc, ie_in=iec, je_in=jec)
+  endif
+  ! total water outof ocean associated ice melt (kg/sec)
+  if (id_total_ocean_wfiform > 0) then
+      do j=jsc_bnd,jec_bnd
+         do i=isc_bnd,iec_bnd
+            ii=i+i_shift
+            jj=j+j_shift
+            tmp_flux(ii,jj) = Ice_ocean_boundary%wfiform(i,j)
+         enddo
+      enddo
+      wrk1_2d(:,:) = Grd%tmask(:,:,1)*Grd%dat(:,:)*tmp_flux(:,:)
+      total_stuff  = mpp_global_sum(Dom%domain2d,wrk1_2d(:,:), NON_BITWISE_EXACT_SUM)
+      used = send_data (id_total_ocean_wfiform, total_stuff*1e-15, Time%model_time)
+  endif
+#endif
 
   ! river (mass flux of land water (liquid+solid) ) entering ocean (kg/m^3)*(m/s)
   if (id_river > 0) used =  send_data(id_river, river(:,:), &

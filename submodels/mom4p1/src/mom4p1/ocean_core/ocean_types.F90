@@ -1052,7 +1052,9 @@ module ocean_types_mod
      real, pointer, dimension(:,:) :: p               =>NULL() ! pressure of overlying sea ice and atmosphere (Pa)
 #ifdef AusCOM
      real, pointer, dimension(:,:) :: aice               =>NULL() !  ice fraction
-     real, pointer, dimension(:,:) :: mh_flux               =>NULL() ! heat flux from melting ice (W/m^2)
+     real, pointer, dimension(:,:) :: mh_flux            =>NULL() ! heat flux from melting ice (W/m^2)
+     real, pointer, dimension(:,:) :: wfimelt            =>NULL() ! water flux from melting ice (kg/m^2/s)
+     real, pointer, dimension(:,:) :: wfiform            =>NULL() ! water flux from forming ice (kg/m^2/s)
 #endif
      integer :: xtype                                          ! REGRID, REDIST or DIRECT
 

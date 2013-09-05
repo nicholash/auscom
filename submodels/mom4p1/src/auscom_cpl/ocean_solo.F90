@@ -381,7 +381,9 @@ program main
              Ice_ocean_boundary% calving (isc:iec,jsc:jec),         &
              Ice_ocean_boundary% p (isc:iec,jsc:jec),               &
              Ice_ocean_boundary% aice(isc:iec,jsc:jec),             &
-             Ice_ocean_boundary% mh_flux(isc:iec,jsc:jec))
+             Ice_ocean_boundary% mh_flux(isc:iec,jsc:jec),          &
+             Ice_ocean_boundary% wfimelt(isc:iec,jsc:jec),          &
+             Ice_ocean_boundary% wfiform(isc:iec,jsc:jec))
 
   Ice_ocean_boundary%u_flux          = 0.0
   Ice_ocean_boundary%v_flux          = 0.0
@@ -398,8 +400,10 @@ program main
   Ice_ocean_boundary%runoff          = 0.0
   Ice_ocean_boundary%calving         = 0.0
   Ice_ocean_boundary%p               = 0.0
-  Ice_ocean_boundary%aice             = 0.0
+  Ice_ocean_boundary%aice            = 0.0
   Ice_ocean_boundary%mh_flux         = 0.0
+  Ice_ocean_boundary% wfimelt        = 0.0
+  Ice_ocean_boundary% wfiform        = 0.0
 
   call external_coupler_sbc_init(Ocean_sfc%domain, dt_cpld, Run_len)
 
@@ -440,6 +444,7 @@ program main
 
   enddo
 
+  !!!call external_coupler_restart( dt_cpld, num_cpld_calls, Ocean_sfc)
   ! close some of the main components 
 
   call ocean_model_end(Ocean_sfc, Ocean_state, Time)
@@ -452,7 +457,7 @@ program main
   ! write restart file
   call ocean_solo_restart(Time_end, Time_restart_current)
 
-  call external_coupler_restart( dt_cpld, num_cpld_calls )
+  call external_coupler_restart( dt_cpld, num_cpld_calls, Ocean_sfc)
 
   call fms_io_exit
 
@@ -603,7 +608,7 @@ call mpp_sync()
 
   rtimestep = (nsteps-1) * dt_cpld   ! runtime in this run segment!
   stimestep = rtimestep
-  call from_coupler( rtimestep, Ice_ocean_boundary )
+  call from_coupler( rtimestep, Ocean_sfc, Ice_ocean_boundary )
   call into_coupler( stimestep, Ocean_sfc, before_ocean_update = .true.)
   end subroutine external_coupler_sbc_before
 !-----------------------------------------------------------------------------------------
@@ -623,18 +628,24 @@ call mpp_sync()
   integer                        :: stimestep ! Send timestep
 
   stimestep = nsteps * dt_cpld   ! runtime in this run segment!
-  call into_coupler(stimestep, Ocean_sfc, before_ocean_update = .false.)
+#ifdef OASIS3_MCT
+  if (stimestep < num_cpld_calls*dt_cpld) call into_coupler(stimestep, Ocean_sfc, before_ocean_update = .false.)
+#else
+   call into_coupler(stimestep, Ocean_sfc, before_ocean_update = .false.)
+#endif
   end subroutine external_coupler_sbc_after
 !-----------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------
-  subroutine external_coupler_restart( dt_cpld, num_cpld_calls )
+  subroutine external_coupler_restart( dt_cpld, num_cpld_calls, Ocean_sfc)
 ! Clean up as appropriate and write a restart
   use mom_oasis3_interface_mod, only : write_coupler_restart
   implicit none
   integer, intent(in)               :: dt_cpld, num_cpld_calls
   integer                           :: timestep
+  type (ocean_public_type)         :: Ocean_sfc
+
   timestep = num_cpld_calls * dt_cpld
-  call write_coupler_restart(timestep, write_restart=.true.)
+  call write_coupler_restart(timestep, Ocean_sfc, write_restart=.true.)
   end subroutine external_coupler_restart
 
 

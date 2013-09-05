@@ -50,6 +50,11 @@ module ocean_shortwave_csiro_mod
 ! used by researchers at CSIRO Marine and Atmospheric Research in 
 ! Australia.  It has been optimized for vector peformance in 
 ! June 2003 on the Australian NEC computer. 
+
+!
+! Original version of optimized code  was not reproducible over different layouts. This was noticible if shallow values of
+!  zmax_pen were chosen. 
+!
 ! </DESCRIPTION>
 !
 ! <INFO>
@@ -562,18 +567,26 @@ subroutine sw_pen (z_sw, sw_fk, ksw)
   endif 
 
   kswp1=min(ksw+1,nk)
-     ! compute shortwave fraction based on sinle exponential 
+     ! compute shortwave fraction based on single exponential 
      ! shortwave fraction set to zero for 
      ! depths greater than zmax_pen.
-  if ( any( z_sw(isc:iec,jsc:jec) <= zmax_pen ) ) then
-    do j=jsc,jec
-       do i=isc,iec
-          sw_fk(i,j) =   F_vis  * Grd%tmask(i,j,kswp1)* exp( -z_sw(i,j)/ssw_atten_depth(i,j) ) 
-       enddo  ! i-loop finish 
-
-    enddo  ! j-loop finish
-  else
-    sw_fk(:,:) = 0.0
+  sw_fk(:,:) = 0.0
+  if  ( any( z_sw(isc:iec,jsc:jec) <= zmax_pen ) ) then
+     if ( all( z_sw(isc:iec,jsc:jec) <= zmax_pen ) ) then
+       do j=jsc,jec
+          do i=isc,iec
+             sw_fk(i,j) =   F_vis  * Grd%tmask(i,j,kswp1)* exp( -z_sw(i,j)/ssw_atten_depth(i,j) ) 
+          enddo  ! i-loop finish 
+       enddo  ! j-loop finish
+     else
+       do j=jsc,jec
+          do i=isc,iec
+             if ( z_sw(i,j) <= zmax_pen ) then
+                sw_fk(i,j) =   F_vis  * Grd%tmask(i,j,kswp1)* exp( -z_sw(i,j)/ssw_atten_depth(i,j) ) 
+             endif
+          enddo  ! i-loop finish 
+       enddo  ! j-loop finish
+     endif
   endif
 
   if(debug_this_module) then 

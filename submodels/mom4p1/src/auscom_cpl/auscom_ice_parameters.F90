@@ -66,6 +66,13 @@ logical :: redsea_gulfbay_sfix = .true.
 logical :: do_sfix_now = .true.
 logical :: chk_i2o_fields = .false.
 logical :: chk_o2i_fields = .false.
+real :: wfi_factor = 0.0    !20130314
+real :: wfo_adj = 0.0       !20130412: remove global ocean waterflux imbalance (e.g., x.xxxxE-07 kg/m^2/s)
+                            !          this number should be determined by piControl run with no adjustment for
+                            !          water flux ==> net = rain + snow - evap + river + icemelt + iceform
+                            !          wfo_adj = net[x=@ave,y=@ave,l=@ave] for a period of say, 20 years.
+                            !          The average must be properly area-weighted! 
+
 namelist /auscom_ice_nml/  dt_cpl, &
                    tlthk0,                              & !23/04/2010
                    pop_icediag,                         &
@@ -81,6 +88,8 @@ namelist /auscom_ice_nml/  dt_cpl, &
                    frazil_factor,                       & !16/07/2008	     
                    iceform_adj_salt,                    & !20100410
                    sign_stflx,                          & !20100410
+                   wfi_factor,                          & !20130314
+                   wfo_adj,                             & !20130412
                    redsea_gulfbay_sfix,                 & !20100819
                    irs1, ire1, jrs1, jre1,              &
                    irs2, ire2, jrs2, jre2,              &

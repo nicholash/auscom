@@ -134,13 +134,6 @@ use ocean_residency_mod, only: ocean_residency_source
 use ocean_residency_mod, only: ocean_residency_start
 use ocean_residency_mod, only: ocean_residency_tracer
 
-! This module actually refers to ocmip2_cfc_ocean_only
-! Eventually the variables and subroutines contained will need 
-! to be all renamed so as not to clash with
-!  the coupled model subroutine.  
-! mac, apr11.
-use ocmip2_cfc_oo_mod
-
 #ifdef USE_OCEAN_BGC 
 use ocean_pert_co2_mod, only: do_ocean_pert_co2
 use ocean_pert_co2_mod, only: ocean_pert_co2_avg_sfc
@@ -785,13 +778,6 @@ if (do_generic_tracer) call ocean_generic_end
 
 #endif 
 
-if (do_ocmip2_cfc_oo) then  !{
-  call ocmip2_cfc_oo_end(Domain%isc, Domain%iec, Domain%jsc, Domain%jec, Grid%nk,  &
-                      Domain%isd, Domain%ied, Domain%jsd, Domain%jed,           &
-                      T_prog, Grid%dat, Grid%tmask,                             &
-                      Thickness%rho_dzt, Time%taup1)
-endif  !}
-
 return
 
 end subroutine ocean_tpm_end  !}
@@ -1409,14 +1395,6 @@ endif  !}
 
 #endif 
 
-if (do_ocmip2_cfc_oo) then  !{
-  call ocmip2_cfc_oo_sbc(Domain%isc, Domain%iec, Domain%jsc, Domain%jec, Grid%nk,          &
-                      Domain%isd, Domain%ied, Domain%jsd, Domain%jed,                   &
-                      isc_bnd, iec_bnd, jsc_bnd, jec_bnd,                               &
-                      T_prog, Time%model_time, Time%taum1,                              &
-                      Grid%tmask)
-endif  !}
-
 return
 
 end subroutine ocean_tpm_sbc  !}
@@ -1516,7 +1494,6 @@ call ocean_generic_init(Domain,Grid,Time)
 
 call transport_matrix_init
 
-call ocmip2_cfc_oo_init
 
 return
 
@@ -1849,15 +1826,6 @@ if (do_ocean_ibgc) then  !{
 endif  !}
 
 #endif 
-
-if (do_ocmip2_cfc_oo) then  !{
-  call ocmip2_cfc_oo_start(Domain%isc, Domain%iec, Domain%jsc, Domain%jec, Grid%nk,        &
-                        Domain%isd, Domain%ied, Domain%jsd, Domain%jed,                 &
-                        T_prog, Time%taup1, Time%model_time,                              &
-                        Grid%dat, Grid%tmask, Grid%tracer_axes, Thickness%rho_dzt,      &
-                        Domain)
-endif  !}
-
 
 if (do_transport_matrix) then  !{
   call transport_matrix_start(Time, T_prog, Domain%isd, Domain%ied, Domain%jsd,         &

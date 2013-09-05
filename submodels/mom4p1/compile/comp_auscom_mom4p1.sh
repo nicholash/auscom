@@ -20,63 +20,14 @@
 set platform = nci.org.au  # A unique identifier for your platform, 
 				# This corresponds to the mkmf templates in $root/bin.
 
-# Use MPI? (1 if yesI, 0 otherwise)
-set MPI		= 1
-echo MPI: $MPI
-# Use MPI1 or MPI2
+setenv MPI  1  # Use MPI? (1 if yesI, 0 otherwise)
 setenv CHAN	MPI1
-#set CHAN	= MPI1
-echo CHAN: $CHAN
 ### Location of AusCOM system
 setenv AusCOMHOME $cwd:h:h:h
-#set AusCOMHOME	= $cwd:h:h:h
-echo AusCOMHOME: $AusCOMHOME
 # Location and name of the generated exectuable 
 set bindir        = $AusCOMHOME/bin
-set exe           = mom4_${CHAN}.exe-20101128
+set exe         = mom4_${CHAN}.exe
 
-#20110111: check size of i2o cpl fields:
-set exe           = mom4_${CHAN}.exe-20110111
-
-set exe           = mom4p1_${CHAN}.exe-20110203
-
-# Simon's new version (with tidal mixing fix)
-set exe           = mom4p1_${CHAN}.exe-20110210
-
-#check sea level fields: "copy" version
-set exe           = mom4p1_${CHAN}.exe-20110322-test
-
-#check sea level fields: "copy" version
-set exe           = mom4p1_${CHAN}.exe-20110328-dave
-set exe           = mom4p1_${CHAN}.exe-20110510-dave   # ke_tot range increased
-
-set exe           = mom4p1_${CHAN}.exe-20110511-dave   # chk cpl fields back in.
-
-set exe           = mom4p1_MPI1.exe-20110513-simon-ke5000 #ke_tot range increased more!
-
-set exe           = mom4p1_${CHAN}.exe-20110512-dave   # chk_cpl + more.
-
-set exe           = mom4p1_${CHAN}.exe-20110620-dave	
-#0620 is same to 0512, except "fixing" ocean_tracer.F90 at about line 2046.
-#T_diag(index_diag_temp)%field(:,:,:)=T_diag(index_diag_temp)%field(:,:,:)*Grd%tmask(:,:,:)
-
-#20110802: set latitude-dependent background_diffusivity (bg_diff)
-set exe           = mom4p1_${CHAN}.exe-20110802
-
-#20110803: read namelist auscom_ice_nml in ocean_vert_tidal
-set exe           = mom4p1_${CHAN}.exe-20110803-check-OK
-
-#20110902: modified mom4p1/ocean_tracers/ocean_tempsalt.F90 to allow for the possible cmip_offse
-#          avoiding *false* "out of range" warnings (which fill up stderr quickly and kill the job!) 
-set exe           = mom4p1_${CHAN}.exe-20110902
-
-set DATESTR = `date +%Y%m%d`
-#20111013: Applying sjm599's modification to some code to get rid of "false" warning messages
-#          (mainly range of temeperature and transports for different cmip5 units) 
-set exe           = mom4_${CHAN}.exe.${DATESTR}.VAYU
-
-#"pointer" version (Russ's original code)
-#set exe           = mom4p1_${CHAN}.exe-20110328-russ
 #
 # User does not need to change anything below!
 #
@@ -84,11 +35,11 @@ set root          = $cwd:h 			# The directory you created when you checkout
 set code_dir      = $root/src			# source code directory
 set executable    = $cwd/build_${CHAN}/$exe	# executable created after compilation
 set pathnames     = $executable:h/path_names	# path to file containing list of source paths
-set mppnccombine  = $bindir/mppnccombine.VAYU	# path to executable mppnccombine
+set mppnccombine  = $bindir/mppnccombine.exe # path to executable mppnccombine
 set mkmfTemplate  = $root/bin/mkmf.template.nci.org.au
 set mkmf          = $root/bin/mkmf		# path to executable mkmf
 set cppDefs       = ( "-Duse_netCDF" )		# list of cpp #defines to be passed to the source files
-if ($MPI) set cppDefs  = ( "-Duse_netCDF -Duse_netCDF3 -Duse_libMPI -DAusCOM -DOASIS3" )
+if  cppDefs  = ( "-Duse_netCDF -Duse_netCDF3 -Duse_libMPI -DAusCOM -DOASIS3 -DOASIS3_MCT" )
 
 source /etc/profile.d/nf_csh_modules
 module purge
@@ -106,7 +57,7 @@ echo mppnccombine: $mppnccombine
 #
 # compile mppnccombine.c, needed only if $npes > 1
 if ( $MPI && ! -f $mppnccombine ) then
-mpicc -O -o $mppnccombine -I/apps/netcdf/3.6.3/include/Intel/ -L/apps/netcdf/3.6.3/lib/Intel\
+mpicc -O -o $mppnccombine -I${NETCDF_ROOT}/include -L${NETCDF_ROOT}/lib \
             $code_dir/postprocessing/mppnccombine.c -lnetcdf
 
 endif

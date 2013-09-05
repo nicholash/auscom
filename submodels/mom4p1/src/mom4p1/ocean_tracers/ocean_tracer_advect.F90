@@ -189,6 +189,9 @@ use ocean_types_mod,       only: ocean_domain_type, ocean_grid_type, ocean_densi
 use ocean_types_mod,       only: ocean_prog_tracer_type, ocean_thickness_type, ocean_adv_vel_type
 use ocean_workspace_mod,   only: wrk1, wrk2, wrk3, wrk4, wrk1_2d 
 
+! For fast compute_gyre_ov
+use mpp_domains_mod,       only: mpp_get_domain_components, mpp_get_layout, domain1d, mpp_get_pelist
+use mpp_mod,               only:  mpp_sum
 implicit none
 
 private
@@ -215,6 +218,7 @@ integer :: id_clock_psom_y
 integer :: id_clock_psom_z
 integer :: id_clock_mdppm 
 integer :: id_clock_gyre_over
+integer :: id_clock_gyre_over_fast
 integer :: id_clock_adv_diss
 
 !for restart file
@@ -381,6 +385,16 @@ real, dimension(:,:),   allocatable :: global_dxt_jp1
 real, dimension(:,:,:), allocatable :: global_tracer_jp1
 real, dimension(:,:,:), allocatable :: global_tmask_jp1
 
+! for fast overturning computation
+integer, allocatable :: pelist_x(:)
+integer  :: layout(2)
+type(domain1d),save :: Domx,Domy
+real, dimension(:,:,:), allocatable :: local_basin_mask, local_basin_mask_jp1       ! (I,J,nbasin)
+real, dimension(:,:,:), allocatable :: local_basin_width_r, local_basin_width_jp1_r ! (J,K,nbasin)
+real, dimension(:,:), allocatable :: local_basin_width                              ! work array (J,K)
+logical,dimension(0:5) :: do_this_basin
+logical :: do_fast_compute = .false.
+
 
 public  horz_advect_tracer
 private horz_advect_tracer_upwind
@@ -415,6 +429,7 @@ private mdppm_init
 private psom_init
 
 private gyre_overturn_diagnose
+private gyre_overturn_diagnose_fast
 private compute_adv_diss
 
 public ocean_tracer_advect_init
@@ -439,7 +454,8 @@ logical :: psom_limit_prather      = .false.
 namelist /ocean_tracer_advect_nml/ debug_this_module, limit_with_upwind, advect_sweby_all, &
                                    zero_tracer_advect_horz, zero_tracer_advect_vert,       &
                                    write_a_restart, psom_limit_prather,                    &
-                                   read_basin_mask, compute_gyre_overturn_diagnose
+                                   read_basin_mask, compute_gyre_overturn_diagnose,        &
+                                   do_fast_compute
 
 contains
 
@@ -681,72 +697,156 @@ subroutine ocean_tracer_advect_init (Grid, Domain, Time, T_prog, dtime, obc, deb
       allocate(merid_flux_gyre(isd:ied,jsd:jed))   ; merid_flux_gyre   = 0.0
       allocate(merid_flux_over(isd:ied,jsd:jed))   ; merid_flux_over   = 0.0
 
-      ! global arrays without halo information 
-      allocate(global_dxtn(Grd%ni,Grd%nj))           ; global_dxtn       = 0.0
-      allocate(global_dxt(Grd%ni,Grd%nj))            ; global_dxt        = 0.0
-      allocate(global_tmask(Grd%ni,Grd%nj,nk))       ; global_tmask      = 0.0
-      allocate(global_basin_mask(Grd%ni,Grd%nj,0:5)) ; global_basin_mask = 0.0
-      call mpp_global_field( Dom%domain2d, Grd%tmask , global_tmask) 
-      call mpp_global_field( Dom%domain2d, basin_mask, global_basin_mask(:,:,0)) 
-      call mpp_global_field( Dom%domain2d, Grd%dxt,    global_dxt)
-      call mpp_global_field( Dom%domain2d, Grd%dxtn,   global_dxtn)
+!
+! For the new fast version we only require those PEs in the horizontal in order to perform sums
+! Partial sums are computed locally.
+! 
+      if ( do_fast_compute) then
+        ! get pelist
+         call mpp_get_layout (Dom%domain2d, layout)
+         allocate ( pelist_x(layout(1)))
+         call mpp_get_domain_components (Dom%domain2d, Domx,Domy)
+         call mpp_get_pelist( Domx, pelist_x )
+         allocate(local_basin_mask(isd:ied,jsd:jed,0:5)); local_basin_mask = 0.0
+         allocate(local_basin_mask_jp1(isd:ied,jsd:jed,0:5)); local_basin_mask_jp1 = 0.0
+         allocate(local_basin_width_r(jsc:jec,nk,0:5)); local_basin_width_r = 0.0
+         allocate(local_basin_width_jp1_r(jsc:jec,nk,0:5)); local_basin_width_jp1_r = 0.0
+         if(read_basin_mask) then 
+            do j=jsd,jed
+               do i=isc,iec
+                  if(basin_mask(i,j)==1.0) local_basin_mask(i,j,1) = 1.0
+                  if(basin_mask(i,j)==2.0) local_basin_mask(i,j,2) = 1.0
+                  if(basin_mask(i,j)==3.0) local_basin_mask(i,j,3) = 1.0
+                  if(basin_mask(i,j)==4.0) local_basin_mask(i,j,4) = 1.0
+                  if(basin_mask(i,j)==5.0) local_basin_mask(i,j,5) = 1.0
 
-      ! global arrays with j+1 halo information 
-      allocate(global_basin_mask_jp1(Grd%ni,Grd%nj,0:5)) ; global_basin_mask_jp1 = 0.0
-      call mpp_global_field(Dom%domain2d, basin_mask_jp1, global_basin_mask_jp1(:,:,0))
-
-      allocate(global_dxt_jp1(Grd%ni,Grd%nj)) ; global_dxt_jp1 = 0.0
-      wrk1_2d(:,:) = 0.0
-      do j=jsc,jec
-         do i=isc,iec
-            wrk1_2d(i,j) = Grd%dxt(i,j+1)
-         enddo
-      enddo
-      call mpp_global_field(Dom%domain2d, wrk1_2d, global_dxt_jp1)
-
-      allocate(global_tmask_jp1(Grd%ni,Grd%nj,nk)) ; global_tmask_jp1 = 0.0
-      wrk1(:,:,:) = 0.0
-      do k=1,nk
-         do j=jsc,jec
-            do i=isc,iec
-               wrk1(i,j,k) = Grd%tmask(i,j+1,k)
+                  if(basin_mask_jp1(i,j)==1.0) local_basin_mask_jp1(i,j,1) = 1.0
+                  if(basin_mask_jp1(i,j)==2.0) local_basin_mask_jp1(i,j,2) = 1.0
+                  if(basin_mask_jp1(i,j)==3.0) local_basin_mask_jp1(i,j,3) = 1.0
+                  if(basin_mask_jp1(i,j)==4.0) local_basin_mask_jp1(i,j,4) = 1.0
+                  if(basin_mask_jp1(i,j)==5.0) local_basin_mask_jp1(i,j,5) = 1.0
+               enddo
             enddo
-         enddo
-      enddo
-      call mpp_global_field(Dom%domain2d, wrk1, global_tmask_jp1)
-
-      if(read_basin_mask) then 
-          do j=1,Grd%nj
-             do i=1,Grd%ni
-                if(global_basin_mask(i,j,0)==1.0) global_basin_mask(i,j,1) = 1.0
-                if(global_basin_mask(i,j,0)==2.0) global_basin_mask(i,j,2) = 1.0
-                if(global_basin_mask(i,j,0)==3.0) global_basin_mask(i,j,3) = 1.0
-                if(global_basin_mask(i,j,0)==4.0) global_basin_mask(i,j,4) = 1.0
-                if(global_basin_mask(i,j,0)==5.0) global_basin_mask(i,j,5) = 1.0
-
-                if(global_basin_mask_jp1(i,j,0)==1.0) global_basin_mask_jp1(i,j,1) = 1.0
-                if(global_basin_mask_jp1(i,j,0)==2.0) global_basin_mask_jp1(i,j,2) = 1.0
-                if(global_basin_mask_jp1(i,j,0)==3.0) global_basin_mask_jp1(i,j,3) = 1.0
-                if(global_basin_mask_jp1(i,j,0)==4.0) global_basin_mask_jp1(i,j,4) = 1.0
-                if(global_basin_mask_jp1(i,j,0)==5.0) global_basin_mask_jp1(i,j,5) = 1.0
-             enddo
-          enddo
-
           ! fill basin=0 mask with tmask
-          do nbasin=0,0
-             global_basin_mask(:,:,nbasin)     = global_tmask(:,:,1)
-             global_basin_mask_jp1(:,:,nbasin) = global_tmask_jp1(:,:,1)
-          enddo
+            do nbasin=0,0
+               local_basin_mask(:,:,nbasin)     = Grd%tmask(:,:,1)
+               local_basin_mask_jp1(:,jsc:jec,nbasin)     = Grd%tmask(:,jsc+1:jec+1,1)
+            enddo
 
-      else 
+         else 
 
           ! fill basin mask with tmask as default  
-          do nbasin=1,5
-             global_basin_mask(:,:,nbasin)     = global_tmask(:,:,1)
-             global_basin_mask_jp1(:,:,nbasin) = global_tmask_jp1(:,:,1)
-          enddo
+            do nbasin=0,5
+               local_basin_mask(isc:iec,jsc:jec,nbasin)     = Grd%tmask(isc:iec,jsc:jec,1)
+               local_basin_mask_jp1(:,jsc:jec,nbasin)     = Grd%tmask(:,jsc+1:jec+1,1)
+            enddo
 
-      endif
+         endif
+         call mpp_update_domains(local_basin_mask(:,:,:), Dom%domain2d)
+         call mpp_update_domains(local_basin_mask_jp1(:,:,:), Dom%domain2d)
+! Basin masks don't change with time.  We can precalculate a mask to decide if we want to do anything on this PE.
+         do nbasin=0,5
+            if(any(local_basin_mask(:,:,nbasin)==1.0) )  then
+               do_this_basin(nbasin) = .true.
+            else
+               do_this_basin(nbasin) = .false.
+            endif
+         enddo
+         allocate(local_basin_width(jsc:jec,nk))
+         do nbasin=0,5
+           local_basin_width(:,:)=0.0
+           do k=1,nk
+              do j=jsc,jec
+                 do i=isc,iec
+                    local_basin_width(j,k)  = local_basin_width(j,k) + Grd%dxt(i,j)*Grd%tmask(i,j,k) &
+                      *local_basin_mask(i,j,nbasin)
+                 enddo
+              enddo
+           enddo
+           call mpp_sum(local_basin_width ,nk*(jec-jsc+1),pelist_x)
+           where(local_basin_width > 0.0 ) local_basin_width_r(:,:,nbasin)=1./local_basin_width
+! jp1
+           local_basin_width(:,:)=0.0
+           do k=1,nk
+              do j=jsc,jec
+                 do i=isc,iec
+                    local_basin_width(j,k)  = local_basin_width(j,k) + Grd%dxt(i,j+1)*Grd%tmask(i,j+1,k) &
+                      *local_basin_mask_jp1(i,j,nbasin)
+                 enddo
+              enddo
+           enddo
+           call mpp_sum(local_basin_width ,nk*(jec-jsc+1),pelist_x)
+           where(local_basin_width > 0.0 ) local_basin_width_jp1_r(:,:,nbasin)=1./local_basin_width
+        enddo
+        deallocate(local_basin_width)
+      else
+      ! global arrays without halo information 
+         allocate(global_dxtn(Grd%ni,Grd%nj))           ; global_dxtn       = 0.0
+         allocate(global_dxt(Grd%ni,Grd%nj))            ; global_dxt        = 0.0
+         allocate(global_tmask(Grd%ni,Grd%nj,nk))       ; global_tmask      = 0.0
+         allocate(global_basin_mask(Grd%ni,Grd%nj,0:5)) ; global_basin_mask = 0.0
+         call mpp_global_field( Dom%domain2d, Grd%tmask , global_tmask) 
+         call mpp_global_field( Dom%domain2d, basin_mask, global_basin_mask(:,:,0)) 
+         call mpp_global_field( Dom%domain2d, Grd%dxt,    global_dxt)
+         call mpp_global_field( Dom%domain2d, Grd%dxtn,   global_dxtn)
+
+      ! global arrays with j+1 halo information 
+         allocate(global_basin_mask_jp1(Grd%ni,Grd%nj,0:5)) ; global_basin_mask_jp1 = 0.0
+         call mpp_global_field(Dom%domain2d, basin_mask_jp1, global_basin_mask_jp1(:,:,0))
+
+         allocate(global_dxt_jp1(Grd%ni,Grd%nj)) ; global_dxt_jp1 = 0.0
+         wrk1_2d(:,:) = 0.0
+         do j=jsc,jec
+            do i=isc,iec
+               wrk1_2d(i,j) = Grd%dxt(i,j+1)
+            enddo
+         enddo
+         call mpp_global_field(Dom%domain2d, wrk1_2d, global_dxt_jp1)
+
+         allocate(global_tmask_jp1(Grd%ni,Grd%nj,nk)) ; global_tmask_jp1 = 0.0
+         wrk1(:,:,:) = 0.0
+         do k=1,nk
+            do j=jsc,jec
+               do i=isc,iec
+                  wrk1(i,j,k) = Grd%tmask(i,j+1,k)
+               enddo
+            enddo
+         enddo
+         call mpp_global_field(Dom%domain2d, wrk1, global_tmask_jp1)
+
+         if(read_basin_mask) then 
+             do j=1,Grd%nj
+                do i=1,Grd%ni
+                   if(global_basin_mask(i,j,0)==1.0) global_basin_mask(i,j,1) = 1.0
+                   if(global_basin_mask(i,j,0)==2.0) global_basin_mask(i,j,2) = 1.0
+                   if(global_basin_mask(i,j,0)==3.0) global_basin_mask(i,j,3) = 1.0
+                   if(global_basin_mask(i,j,0)==4.0) global_basin_mask(i,j,4) = 1.0
+                   if(global_basin_mask(i,j,0)==5.0) global_basin_mask(i,j,5) = 1.0
+
+                   if(global_basin_mask_jp1(i,j,0)==1.0) global_basin_mask_jp1(i,j,1) = 1.0
+                   if(global_basin_mask_jp1(i,j,0)==2.0) global_basin_mask_jp1(i,j,2) = 1.0
+                   if(global_basin_mask_jp1(i,j,0)==3.0) global_basin_mask_jp1(i,j,3) = 1.0
+                   if(global_basin_mask_jp1(i,j,0)==4.0) global_basin_mask_jp1(i,j,4) = 1.0
+                   if(global_basin_mask_jp1(i,j,0)==5.0) global_basin_mask_jp1(i,j,5) = 1.0
+                enddo
+             enddo
+
+          ! fill basin=0 mask with tmask
+             do nbasin=0,0
+                global_basin_mask(:,:,nbasin)     = global_tmask(:,:,1)
+                global_basin_mask_jp1(:,:,nbasin) = global_tmask_jp1(:,:,1)
+             enddo
+
+         else
+
+          ! fill basin mask with tmask as default  
+             do nbasin=1,5
+                global_basin_mask(:,:,nbasin)     = global_tmask(:,:,1)
+                global_basin_mask_jp1(:,:,nbasin) = global_tmask_jp1(:,:,1)
+             enddo
+
+         endif
+     endif  ! fast version
 
   endif  ! endif for compute_gyre_overturn_diagnose
 
@@ -1168,6 +1268,7 @@ subroutine ocean_tracer_advect_init (Grid, Domain, Time, T_prog, dtime, obc, deb
   id_clock_psom_y         = mpp_clock_id('(Ocean psom advect: psom_y)  ',grain=CLOCK_ROUTINE)
   id_clock_psom_z         = mpp_clock_id('(Ocean psom advect: psom_z)  ',grain=CLOCK_ROUTINE)
   id_clock_gyre_over      = mpp_clock_id('(Ocean advect: gyre_overturn)',grain=CLOCK_ROUTINE)
+  id_clock_gyre_over_fast = mpp_clock_id('(Ocean advect: gyre_overturn fast)',grain=CLOCK_ROUTINE)
   id_clock_adv_diss       = mpp_clock_id('(Ocean advect: advect diss)'  ,grain=CLOCK_ROUTINE)
 
 end subroutine ocean_tracer_advect_init
@@ -1760,7 +1861,11 @@ subroutine horz_advect_tracer(Time, Adv_vel, Thickness, T_prog, Tracer, ntracer,
 ! It must be checked, if still correct with the new scheme
   ! for gyre/overturning diagnostics 
   if(compute_gyre_overturn_diagnose) then 
+    if(do_fast_compute) then
+      call gyre_overturn_diagnose_fast(Time, Adv_vel, Tracer, Thickness, ntracer)
+    else
       call gyre_overturn_diagnose(Time, Adv_vel, Tracer, Thickness, ntracer)
+    endif
   endif
 
  
@@ -5401,6 +5506,152 @@ end subroutine ppm_limit_sh
 ! </SUBROUTINE> NAME="ppm_limit_sh"
 
 
+!#######################################################################
+! <SUBROUTINE NAME="gyre_overturn_diagnose_fast">
+!
+! <DESCRIPTION>
+! Diagnose tracer transport according to zonal mean and 
+! deviations from zonal mean. 
+!
+! We allow for the use of a basin mask so that the zonal means
+! are performed over the global domain and each of five other
+! basins.  If no basin mask is read, then assume global domain 
+! used to define the zonal means. 
+! 
+! []=zonal mean; *=deviation from zonal mean
+!
+! V = rho_dzt dxt T, with rho=rho0 for Boussinesq 
+!
+! int [V T]   = total advective 
+! int [V][T]  = overturning
+! int V* T*   = gyre
+!
+! Stephen.Griffies@noaa.gov
+! May 2007
+!
+! Fast version.
+! In this version we compute partial zonal sums locally  and then perform a "global" sum over a restricted
+! set of pes. 
+! This will result in slightly different anwers at the REAL(8) level however differences should be negligible
+! at REAL(4). We no longer require global arrays and redundant computation is eliminated.
+!
+! Russ Fiedler Feb 2012
+!
+! </DESCRIPTION>
+  
+  subroutine gyre_overturn_diagnose_fast(Time, Adv_vel, Tracer, Thickness, ntracer)
+
+  type(ocean_time_type),        intent(in) :: Time
+  type(ocean_adv_vel_type),     intent(in) :: Adv_vel
+  type(ocean_prog_tracer_type), intent(in) :: Tracer
+  type(ocean_thickness_type),   intent(in) :: Thickness
+  integer,                      intent(in) :: ntracer
+
+  integer :: i, j, k, tau, nbasin
+  integer :: njnk
+  real,dimension(jsc:jec,nk)    :: sum_vhrho_nt, avg_tracer, avg_tracer_n
+  real,dimension(jsc:jec)              :: merid_flux_advect_1d,merid_flux_gyre_1d,merid_flux_over_1d
+  real,dimension(jsc:jec,nk)           :: merid_flux_advect_2d
+
+  call mpp_clock_begin(id_clock_gyre_over_fast)
+
+  tau = Time%tau
+  njnk=nk*(jec-jsc+1)
+
+  do nbasin=0,5
+
+     if(id_merid_flux_advect(nbasin,ntracer) > 0 .or. &
+        id_merid_flux_over(nbasin,ntracer)   > 0 .or. & 
+        id_merid_flux_gyre(nbasin,ntracer)   > 0) then 
+
+! These are overwritten. No need to reinitialise. We will anyway RASF
+        merid_flux_advect(:,:) = 0.0
+        merid_flux_gyre(:,:)   = 0.0
+        merid_flux_over(:,:)   = 0.0
+!
+        merid_flux_advect_1d(:) = 0.0
+        merid_flux_advect_2d(:,:) = 0.0
+        merid_flux_gyre_1d(:)   = 0.0
+        merid_flux_over_1d(:)   = 0.0
+        sum_vhrho_nt    = 0.0  
+        avg_tracer      = 0.0  
+        avg_tracer_n    = 0.0
+        if( do_this_basin(nbasin) ) then
+           do k=1,nk
+              do j=jsc,jec
+                 do i=isc,iec
+                    sum_vhrho_nt(j,k) = sum_vhrho_nt(j,k)  + Grd%dxtn(i,j)*Grd%tmask(i,j,k) &
+                      *Grd%tmask(i,j+1,k)*local_basin_mask(i,j,nbasin)*Adv_vel%vhrho_nt(i,j,k)
+                    avg_tracer(j,k)   = avg_tracer(j,k) + Grd%dxt(i,j)*Grd%tmask(i,j,k) &
+                      *local_basin_mask(i,j,nbasin)* Tracer%field(i,j,k,tau)
+                    merid_flux_advect_2d(j,k) = merid_flux_advect_2d(j,k) &
+                      + Grd%tmask(i,j,k)*local_basin_mask(i,j,nbasin)*flux_y(i,j,k) 
+                 enddo
+              enddo
+              do j=jsc,jec
+                 do i=isc,iec
+                  avg_tracer_n(j,k) = avg_tracer_n(j,k) + Grd%dxt(i,j+1)*Grd%tmask(i,j+1,k) &
+                   *local_basin_mask_jp1(i,j,nbasin)* Tracer%field(i,j+1,k,tau)
+                 enddo
+              enddo
+           enddo
+        endif
+! If doing regional sums the we could avoid these by checking if any(basin_width(:,1) /= 0.0)
+        call mpp_sum(sum_vhrho_nt,njnk,pelist_x)
+        call mpp_sum(avg_tracer  ,njnk,pelist_x)
+        call mpp_sum(avg_tracer_n,njnk,pelist_x)
+! 2D or not 2D, that is the question...
+!        call mpp_sum(merid_flux_advect_1d,jec-jsc+1,pelist_x)
+        call mpp_sum(merid_flux_advect_2d,njnk,pelist_x)
+        merid_flux_advect_1d(:)=sum(merid_flux_advect_2d,dim=2)
+
+        do k=1,nk
+           do j=jsc,jec
+                  avg_tracer_n(j,k)     = avg_tracer_n(j,k)*local_basin_width_jp1_r(j,k,nbasin)
+                  avg_tracer(j,k)       = avg_tracer(j,k)*local_basin_width_r(j,k,nbasin)
+                  merid_flux_over_1d(j) = merid_flux_over_1d(j) &
+                  + sum_vhrho_nt(j,k)*0.5*(avg_tracer(j,k)+avg_tracer_n(j,k)) 
+           enddo
+        enddo
+        do j=jsc,jec
+           merid_flux_gyre_1d(j) = merid_flux_advect_1d(j) - merid_flux_over_1d(j)
+        enddo
+
+        ! due to limitations in the diag manager, it is unable to write 
+        ! one-dimensional arrays.  So we avoid this issue by extending  
+        ! the one-dimensional merid_flux diagnostics to two-dimensions. 
+        do j=jsc,jec
+        do i=isd,ied
+           merid_flux_advect(i,j) = merid_flux_advect_1d(j)
+           merid_flux_over(i,j)   = merid_flux_over_1d(j)
+           merid_flux_gyre(i,j)   = merid_flux_gyre_1d(j)
+        enddo
+        enddo
+        if (id_merid_flux_advect(nbasin,ntracer) > 0 ) then
+            used = send_data(id_merid_flux_advect(nbasin,ntracer),      &
+                   Tracer%conversion*merid_flux_advect,Time%model_time, &
+                   is_in=isc, js_in=jsc, ie_in=iec, je_in=jec)
+        endif
+        if (id_merid_flux_over(nbasin,ntracer) > 0 ) then
+            used = send_data(id_merid_flux_over(nbasin,ntracer),      &
+                   Tracer%conversion*merid_flux_over,Time%model_time, &
+                   is_in=isc, js_in=jsc, ie_in=iec, je_in=jec)
+        endif
+        if (id_merid_flux_gyre(nbasin,ntracer) > 0 ) then
+            used = send_data(id_merid_flux_gyre(nbasin,ntracer),      &
+                   Tracer%conversion*merid_flux_gyre,Time%model_time, &
+                   is_in=isc, js_in=jsc, ie_in=iec, je_in=jec)
+        endif
+
+     endif ! endif for id_merid_flux_advect or id_merid_flux_over or id_merid_flux_gyre
+
+  enddo   ! enddo for nbasin 
+    
+
+  call mpp_clock_end(id_clock_gyre_over_fast)
+
+end subroutine gyre_overturn_diagnose_fast
+! </SUBROUTINE> NAME="gyre_overturn_diagnose_fast"
 !#######################################################################
 ! <SUBROUTINE NAME="gyre_overturn_diagnose">
 !
