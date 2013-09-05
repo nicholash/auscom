@@ -6,11 +6,15 @@ module cpl_interfaces
 !
 !============================================================================
 
-use mod_prism_proto
-use mod_prism_def_partition_proto
-use mod_prism_put_proto
-use mod_prism_get_proto
-!use mod_prism_grids_writing
+#ifdef OASIS3_MCT
+  use mod_prism
+#else
+  use mod_prism_proto
+  use mod_prism_def_partition_proto
+  use mod_prism_put_proto
+  use mod_prism_get_proto
+  !use mod_prism_grids_writing
+#endif
 
 use atm_kinds
 use atm_domain
