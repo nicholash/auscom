@@ -22,7 +22,7 @@ setenv ARCH nci.org.au
 # Set AusCOM home:
 setenv AusCOMHOME $cwd:h:h:h
 
-set platform = nci.org.au
+set platform = $SITE
 
 source /etc/profile.d/nf_csh_modules
 module purge
@@ -40,32 +40,29 @@ setenv SHRDIR   csm_share # location of CCSM shared code
 setenv NETCDF   yes       # set to no if netcdf library is unavailable
 setenv DITTO    no        # reproducible diagnostics
 setenv AusCOM   yes       # set to yes for AusCOM
-### Use MPI1 or MPI2 ?
-setenv CHAN     MPI1
+setenv OASIS3_MCT yes	  # oasis3-mct version
+setenv CHAN     MPI1	  # MPI1 or MPI2 (always MPI1!)
  
 ### Location of ACCESS system
 setenv SYSTEMDIR $AusCOMHOME
 echo SYSTEMDIR: $SYSTEMDIR
 
 ### Location of this model (source)
-setenv SRCDIR $SYSTEMDIR/submodels/cice4.1
+setenv SRCDIR $cwd:h
 echo SRCDIR: $SRCDIR
  
 ### Location and names of coupling libraries and inclusions
 if ( $AusCOM == 'yes' ) then
-  setenv CPLLIBDIR $SYSTEMDIR/submodels/oasis3/prism/Linux/lib
-  setenv CPLLIBS '$(CPLLIBDIR)/libpsmile.$(CHAN).a'
-  echo CPLLIBS: $CPLLIBS
-  setenv CPLINCDIR $SYSTEMDIR/submodels/oasis3/prism/Linux/build/lib
-  setenv CPL_INCS '-I$(CPLINCDIR)/psmile.$(CHAN)'
-  #echo CPL_INCS: $CPL_INCS
+    # Location and names of coupling libraries
+    setenv CPLLIBDIR $SYSTEMDIR/submodels/oasis3-mct/Linux/lib
+    setenv CPLLIBS '-L$(CPLLIBDIR) -lpsmile.${CHAN} -lmct -lmpeu -lscrip'
+    setenv CPLINCDIR $SYSTEMDIR/submodels/oasis3-mct/Linux/build/lib
+    setenv CPL_INCS '-I$(CPLINCDIR)/psmile.$(CHAN) -I$(CPLINCDIR)/pio -I$(CPLINCDIR)/mct'
 endif
  
 ### Location and name of the generated exectuable
-setenv DATESTR `date +%Y%m%d`
 setenv BINDIR $SYSTEMDIR/bin
-#setenv EXE cice_${CHAN}.${DATESTR}.VAYU_${nproc}p
-setenv EXE cice_${CHAN}.VAYU_${nproc}p
+setenv EXE cice_${CHAN}.${nproc}p.exe
 
 ### Where this model is compiled
 setenv OBJDIR $SRCDIR/compile/build_${CHAN}_{$nproc}p
@@ -100,7 +97,7 @@ setenv NTASK      $nproc
 setenv BLCKX     `expr $NXGLOB / $nproc`
 echo BLCKX: $BLCKX
 #setenv BLCKY     38       # y-dimension of blocks (  ghost cells  )
-setenv BLCKY     `expr $NYGLOB / $nproc` 
+setenv BLCKY     `expr $NYGLOB` 
 echo BLCKY: $BLCKY
 
 echo
@@ -108,7 +105,7 @@ echo
 # may need to increase MXBLCKS with rake distribution or padding
 @ a = $NXGLOB * $NYGLOB ; @ b = $BLCKX * $BLCKY * $NTASK
 @ m = $a / $b ; setenv MXBLCKS $m ; if ($MXBLCKS == 0) setenv MXBLCKS 1
-setenv MXBLCKS 12 # if necessary (code will print proper value)
+echo Autimatically generated: MXBLCKS = $MXBLCKS
                                                                                 
 setenv CBLD   $SRCDIR/bld
                                                                                 
