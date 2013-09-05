@@ -35,7 +35,8 @@
 #PBS -P v45
 #PBS -W group_list=v45
 #PBS -q normal
-#PBS -l walltime=4:00:00
+##PBS -l walltime=4:00:00
+#PBS -l walltime=0:10:00
 #PBS -l mem=64GB
 #PBS -l ncpus=128
 #PBS -l software=vampir
@@ -179,7 +180,6 @@ fi
 #
 
 # Processor for each executable:
-nproc_cpl=1		#always 1
 if [[ $DEBUG = "yes" ]]; then
     nproc_atm=1		#       1
     nproc_ice=6		#changable
@@ -188,11 +188,10 @@ else
     nproc_atm=1		#       1
     nproc_ice=6		#changable
     nproc_oce=120	#changable 
-    #nproc_oce=28	#changable 
 fi
 
 # Total number of procs for this job (must <= requested in the #PSB line):
-(( ntproc = nproc_atm + nproc_ice + nproc_oce + nproc_cpl ))
+(( ntproc = nproc_atm + nproc_ice + nproc_oce ))
 
 # Currently AusCOM is hardwired for mono-cpu coupling:
 ncplproc_atm=1
@@ -203,15 +202,13 @@ ncplproc_oce=1
 if [[ $DEBUG = "yes" ]]; then
     oce_nx=4; oce_ny=7	#oce_nx x oce_ny = nproc_oce
 else
-    #    oce_nx=4; oce_ny=7	#oce_nx x oce_ny = nproc_oce
-    oce_nx=8; oce_ny=15	#oce_nx x oce_ny = nproc_oce
+    oce_nx=12; oce_ny=10	#oce_nx x oce_ny = nproc_oce
 fi
 
 #
 ## 2.3 Names of the 4 executables 
 #
 
-oa3_exe=oasis3
 atm_exe=matmxx		#These 3 sub-model exe names much be same as
 ice_exe=cicexx		#defined in namcouple and model code
 ocn_exe=mom4xx		#(character*6)
@@ -360,7 +357,7 @@ if [ $jobnum = 1 ]; then	#initial run
     rm -rf $AusCOMHOME/output/$expid
     mkdir -p $restdir/ice $restdir/ocn $restdir/cpl
     mkdir -p $histdir/ice $histdir/ocn
-    ln -s $outputdir $AusCOMHOME/output/.
+    ln -fs $outputdir $AusCOMHOME/output/.
 
     # Make work directories
     rm -fr $rundir; 
@@ -369,48 +366,24 @@ if [ $jobnum = 1 ]; then	#initial run
     cd $rundir
 
     # Individual RUNDIRS RASF
-
     mkdir -p $atmrundir/INPUT				#subdirs for MATM
     mkdir -p $icerundir/$INPUT -p $icerundir/$RESTART -p $icerundir/$HISTORY 	#subdirs for CICE
     mkdir -p $ocnrundir/$MOM4_input $ocnrundir/$MOM4_restart $ocnrundir/$MOM4_hist	#subdirs for MOM4
     mkdir -p $cplrundir
-    # Old Auscom uses $MOM4_input, $MOM4_restart. Make compatible for the moment RASF
+
     cd $ocnrundir
-    #  if [ ! -f $MOM4_input ]; then
-    #     ln -s INPUT $MOM4_input
-    #  fi
-    #  if [ ! -f $MOM4_restart ]; then
-    #     ln -s RESTART $MOM4_restart
-    #  fi
 
     # get the executables:
     cd $rundir
     if [[ $DEBUG = "yes" ]]; then
-        cp -f $bindir/oasis3_$chan.VAYU_debug   		$oa3_exe
-    else   
-        cp -f $bindir/oasis3_$chan.exe   		$oa3_exe
-    fi
-    if [[ $DEBUG = "yes" ]]; then
         cp -f $bindir/mom4_MPI1.debug.20110907.VAYU 	$ocn_exe
-    else 
-        #cp -f $bindir/mom4_MPI1.20110907.VAYU 	$ocn_exe
-        cp -f $bindir/mom4_MPI1.VAYU    $ocn_exe
-    fi
-    #cp /home/599/sjm599/AusCOM1.0/bin/mom4_$chan.20110118.VAYU $ocn_exe
-    if [[ $DEBUG = "yes" ]]; then
-        #cp -f $bindir/cice_$chan.20110817.debug.VAYU_${nproc_ice}p	$ice_exe
         cp -f $bindir/cice_$chan.20110907.debug.VAYU_${nproc_ice}p	$ice_exe
-    else
-        #    cp -f $bindir/cice_$chan.20110817.VAYU_${nproc_ice}p	$ice_exe
-        #cp -f $bindir/cice_$chan.20111209.VAYU_${nproc_ice}p	$ice_exe
-        cp -f $bindir/cice_$chan.VAYU_${nproc_ice}p	$ice_exe
-    fi
-    if [[ $DEBUG = "yes" ]]; then
         cp -f $bindir/matm_MPI1.VAYU_nt62_debug		$atm_exe
-    else
+    else 
+        cp -f $bindir/mom4_MPI1.VAYU    $ocn_exe
+        cp -f $bindir/cice_$chan.VAYU_${nproc_ice}p	$ice_exe
         cp -f $bindir/matm_MPI1.VAYU_nt62		$atm_exe
     fi
-    #cp -f /home/565/pju565/AusCOM1.0/bin/matm_$chan.VAYU_nt62		$atm_exe
 
     # get input files for oasis3:
 
@@ -418,7 +391,7 @@ if [ $jobnum = 1 ]; then	#initial run
     cd $cplrundir
     cp -f $inputdir/oasis3/cf_name_table.txt	.
     cp -f $inputdir/oasis3/oasis3_grids_20101208.nc grids.nc
-    cp -f $inputdir/oasis3/oasis3_masks_20101208.nc masks.nc
+    cp -f $inputdir/oasis3/oasis3_masks_20130116-mct.nc masks.nc
     cp -f $inputdir/oasis3/oasis3_areas_20101208.nc areas.nc
 
     # b. restart
@@ -426,7 +399,7 @@ if [ $jobnum = 1 ]; then	#initial run
         # the pre-processed coupling restart files:
         cp -f $inputdir/oasis3/AusCOM3.0_a2i_10fields_T0.nc	a2i.nc
         cp -f $inputdir/oasis3/AusCOM3.0_o2i_7fields_T0.nc	o2i.nc
-        cp -f $inputdir/oasis3/AusCOM3.0_i2o_13fields_T0.nc	i2o.nc
+        cp -f $inputdir/oasis3/AusCOM3.0_i2o_15fields_T0.nc	i2o.nc
         cp -f $inputdir/oasis3/AusCOM3.0_i2a_1fields_T0.nc	i2a.nc
     else					#warm start
         # rstart from an existing run (spinup)
@@ -455,7 +428,6 @@ if [ $jobnum = 1 ]; then	#initial run
     # b. IC/restart 
     if [ $cold_start = 1 ]; then       #cold start
         runtype="'initial'"; Lrestart=.false.; ice_ic="'default'"
-        #    cp -f $inputdir/cice/A2I_time0_10fields.nc	$INPUT/A2I_time0.nc
         cp -f $inputdir/cice/SSTS_12Jans.nc 	$INPUT/monthly_sstsss.nc 
         if [ $boundary_layer = gfdl ]; then
             cp -f $inputdir/cice/uu_star_t0.nc	$INPUT/u_star.nc
@@ -463,12 +435,9 @@ if [ $jobnum = 1 ]; then	#initial run
     else	#warm start
         runtype="'continue'"; Lrestart=.true.; ice_ic="'default'"
         ice_restart=${cice_ic}/iced.$rest_date_cice
-        # instead of just copying the CICE restart dump
-        # also reset time
+        # instead of just copying the CICE restart dump, also reset time
         $bindir/cicedumpdatemodify.py -v -i $ice_restart -o $RESTART/iced
-        # cp -f $ice_restart 				$RESTART/iced
         echo iced  >  				$RESTART/ice.restart_file
-        #    cp -f ${cice_ic}/A2I_time1.nc-$rest_date_oasis	$INPUT/A2I_time0.nc
         if [ $boundary_layer = gfdl ]; then
             cp -f ${cice_ic}/u_star.nc-$rest_date_oasis	$INPUT/u_star.nc
         fi
@@ -485,10 +454,10 @@ if [ $jobnum = 1 ]; then	#initial run
     cp -f $inputdir/mom4p1/geothermal_heating_auscom_20080605.nc geothermal_heating.nc
     cp -f $inputdir/mom4p1/tides_auscom_20080605.nc     tideamp.nc
     cp -f $inputdir/mom4p1/roughness_auscom_20080605_roughness_amp.nc roughness_amp.nc
-    #cp -f $inputdir/mom4p1/seawifs_auscom_edit_time.nc		ssw_atten_depth.nc
     cp -f $inputdir/mom4p1/seawifs_auscom_20111118_edit_time.nc	ssw_atten_depth.nc
     cp -f $inputdir/mom4p1/salt_sfc_restore_20110829.nc 	salt_sfc_restore.nc
     cp -f $inputdir/mom4p1/temp_sfc_restore_20110829.nc 	temp_sfc_restore.nc
+    cp -f $inputdir/mom4p1/basin_mask_20111103.nc		basin_mask.nc
     if [ $cold_start = 1 ]; then 
         #get ocean initial condition (only T-S)
         cp -f $inputdir/mom4p1/ocean_temp_salt.20110518.nc	ocean_temp_salt.res.nc
@@ -537,7 +506,6 @@ else	#for continue runs
     # for cice: 
     cd $icerundir
     runtype="'continue'"; Lrestart=.true.; ice_ic="'default'"
-    #  cp $restdir/ice/A2I_time1.nc-${prevdate} $INPUT/A2I_time0.nc
     cp $restdir/ice/ice.restart_file-${prevdate} $RESTART/ice.restart_file
     cp $restdir/ice/`cat $RESTART/ice.restart_file` $RESTART/.
     cp $restdir/ice/u_star.nc-${prevdate} $INPUT/u_star.nc
@@ -580,7 +548,7 @@ $inputdir/matm/get_${atmdata}_${datatype}.ksh $y1 $y2 $AusCOMHOME
 
 # 3.2.1 namelist for oasis3:
 
-nlogprt=1 	#cplout writing control: 0-no, 1-medium, 2-full output
+nlogprt=2 	#cplout writing control: 0-no, 1-medium, 2-full output
 npt1=${nproc_ice}; npc1=${ncplproc_ice}; arg1=$ice_exe; nam1=$ice_exe
 npt2=${nproc_atm}; npc2=${ncplproc_atm}; arg2=$atm_exe; nam2=$atm_exe
 npt3=${nproc_oce}; npc3=${ncplproc_oce}; arg3=$ocn_exe; nam3=$ocn_exe
@@ -607,23 +575,13 @@ fi
 #
 
 cd $cplrundir
-
-#cp -f /home/565/pju565/AusCOM1.0/input/oasis3/namcouple_31fields_mom4p1_pubrel_18dec2009_wind_rotate	namcouple
-cp -f $inputdir/oasis3/namcouple_31fields_mom4p1_pubrel_18dec2009_wind_rotate	namcouple
-#cp /home/599/sjm599/AusCOM1.0/input/oasis3/namcouple_31fields_mom4p1_pubrel_18dec2009       namcouple
-
+cp -f $inputdir/oasis3/namcouple_33fields_mom4p1_pubrel_07dec2012-mct	namcouple
 
 ed namcouple <<eof
-g/#Channel/s/#Channel/${chan} ${nobsend}/
-g/#Mod1procs/s/#Mod1procs/ $npt1 $npc1 $arg1 /
-g/#Mod2procs/s/#Mod2procs/ $npt2 $npc2 $arg2 /
-g/#Mod3procs/s/#Mod3procs/ $npt3 $npc3 $arg3 /
 g/#Mod1_name/s/#Mod1_name/ $nam1 /
 g/#Mod2_name/s/#Mod2_name/ $nam2 /
 g/#Mod3_name/s/#Mod3_name/ $nam3 /
 g/#Runtime_sec/s/#Runtime_sec/${runtime}/
-g/#Inidate/s/#Inidate/${date}/
-g/#Caltype/s/#Caltype/${caltype}/
 g/#NLOGPRT/s/#NLOGPRT/${nlogprt}/
 g/#CPL_intv_ai/s/#CPL_intv_ai/${dt_cpl_ai}/
 g/#CPL_intv_io/s/#CPL_intv_io/${dt_cpl_io}/
@@ -633,6 +591,11 @@ g/#DT_ICE/s/#DT_ICE/${dt_ice}/
 w
 q
 eof
+
+#Oasis3-mct needs namcouple file in running dir of each module
+cp namcouple $atmrundir/
+cp namcouple $icerundir/
+cp namcouple $ocnrundir/
 
 # 3.2.2 namelist for matm coupling 
 
@@ -682,11 +645,14 @@ mixedocean=.false.      #use or not use the mixed ocean layer
 #
 # conductivity MU71 or bubbly
 conduct="'bubbly'"
-# ridging folding scale default 4
-mu_rdg=2.0
+# ridging folding scale = 3, matching ACCESS-CM setting:
+mu_rdg=3
 # turning angle default 0 degrees
-cosw=1.00
-sinw=0.0000
+#cosw=1.00
+#sinw=0.0000
+# truning angle changed to 16 degrees, matching ACCESS-CM setting:
+cosw=0.96	#1.0 -- default 0 degrees
+sinw=0.28	#0.0 -- default 0 degrees
 # shortwave parametrisation default or dEdd
 shortwave="'default'"
 # dEdd tuning parameters defs 0.
@@ -731,11 +697,7 @@ chio=0.004
 # ice surfare roughness length, def 0.0005 m
 iceruf=0.0005
 
-#cp -f $inputdir/cice/cice4.1_in.nml.sis2.output_every_timestep	cice_in.nml
-#cp /home/599/sjm599/AusCOM1.0/input/cice/cice4.1_in.nml.sis2_daily        cice_in.nml
-#cp /short/p66/dhb599/AusCOM2.0/input/cice/cice4.1_in.nml.sis2_new	cice_in.nml
-#cp /home/599/sjm599/AusCOM1.0/input/cice/cice4.1_in.nml.sis2_new	cice_in.nml
-cp ${inputdir}/cice/cice4.1_in.nml.sis2_new     cice_in.nml
+cp $inputdir/cice/cice4.1_in.nml.sis2_daily	cice_in.nml
 
 ed cice_in.nml <<eof
 g/#DAYS_per_year/s/#DAYS_per_year/${days_this_year}/
@@ -814,7 +776,7 @@ zcoh1 = 0.0
 zcoq1 = 0.0
 /
 eof
-    cat > input_ice_monin.nml << eof
+cat > input_ice_monin.nml << eof
 &monin_obukhov_nml
 neutral=.true.
 &end
@@ -840,17 +802,16 @@ use_umask=.false.
 rotate_winds=.false.
 limit_icemelt=.false.
 meltlimit=-200.0
-use_core_runoff=.true.
+use_core_nyf_runoff=.true.
 precip_factor=1.0
 cst_ocn_albedo=.true.
 ocn_albedo=0.1
 gfdl_surface_flux=$GFDL_FLUXES
 chk_gfdl_roughness=.false.
 chk_frzmlt_sst=.false.
-chk_i2o_fields=.true.
+chk_i2o_fields=.false.
 chk_o2i_fields=.false.
 chk_i2a_fields=.false.
-chk_a2i_fields=.false.
 &end
 eof
 
@@ -859,8 +820,7 @@ eof
 cd $ocnrundir
 
 # a. standalone mode input namelist file
-#cp -f $inputdir/mom4/mom4_in.nml	input.nml
-cp -f $inputdir/mom4p1/mom4_in_20110823.nml-BL input.nml
+cp -f $inputdir/mom4p1/mom4_in_20121207_dhb599.nml	input.nml
 
 alap=1.0e5
 truncate_velocity='.true.'  
@@ -875,20 +835,33 @@ temp_restore_tscale=-1.0	#NO SST restoration!
 #salt_restore_tscale=60.0	#sss restoring time scale of 60 days
 salt_restore_tscale=15.0	#strong SSS relaxation as 'recommended'
 #salt_restore_tscale=-1		#NO SSS restoration!
+sss_restore_under_ice='.true.'	#SSS restoration under ice. ??????
+#----------- CHECK the SSS restoration under ice! WHY use it? ---------!
 use_waterflux='.true.'
 layout=$oce_nx,$oce_ny		#mpi partitioning pattern
 Simple_frazil='.false.'		#simple temp frazil. if '.f.' use complicated scheme
-#                    and allow multi-layer frazil.
+# and allow multi-layer frazil.
 Accurate_frazil='.true.'        #accurate temp frazil. must be .t. if Simple_frazil=.f. 
 #		     vice versa.	
 TL_frazil='.false.'		#top layer frazil. if '.f.' multi-layer frazil 
 
-convection='.true.'
-aredi=600.
-agm=100.
-smax=0.002
-swidth=0.002
+#explicit convection turned off (using implicit convection determined by KPP mixing)
+convection='.false.'
+#------------------------------2012.07.20------------------------------------------#
+aredi=600.0
+agm=600.0
+#smax=0.002
+#swidth=0.002
 ricr=0.3
+
+ocean_mixdownslope='.true.'
+aredi_equal_agm='.false.'
+agm_closure='.true.'
+min_agm=50.0
+max_agm=600.0
+
+max_drag_diff=1.0e-2
+zmax_pen=7000		#No limit. SW penetration depth (m)!
 
 # AusCOM treatment of ocean background vertical diffusivity
 # 3 possible cases	*** ONLY USE one of the three to avoid double counting
@@ -904,7 +877,8 @@ ricr=0.3
 #visc_cbu_iw=0.1e-4  		#KPP bg visc set ON
 ###	2 tidal
 bryan_lewis='.false.'		#turn OFF B-L background diffusion profile
-bg_diff=1.0e-5			#tidal background diff set ON
+#bg_diff=1.0e-5			#tidal background diff set ON
+bg_diff=0.5e-5			#tidal background diff set ON
 bg_visc=1.0e-4			#tidal background visc set ON
 diff_cbt_iw=0.0   		#KPP bg diff set OFF
 visc_cbu_iw=0.0			#KPP bg viso set OFF
@@ -929,6 +903,7 @@ g/#VLIMIT/s/#VLIMIT/${truncate_velocity}/
 g/#VWARN/s/#VWARN/${truncate_verbose}/
 g/#SST_restoring/s/#SST_restoring/${temp_restore_tscale}/
 g/#SSS_restoring/s/#SSS_restoring/${salt_restore_tscale}/
+g/#SSS_relax_under_ice/s/#SSS_relax_under_ice/${sss_restore_under_ice}/
 g/#Freezing_simple/s/#Freezing_simple/${Simple_frazil}/
 g/#Freezing_accurate/s/#Freezing_accurate/${Accurate_frazil}/
 g/#TL_frazil_only/s/#TL_frazil_only/${TL_frazil}/
@@ -945,6 +920,13 @@ g/#DIFF_CBT_IW/s/#DIFF_CBT_IW/${diff_cbt_iw}/
 g/#VISC_CBU_IW/s/#VISC_CBU_IW/${visc_cbu_iw}/
 g/#BG_DIFF/s/#BG_DIFF/${bg_diff}/
 g/#BG_VISC/s/#BG_VISC/${bg_visc}/
+g/#MIN_AGM/s/#MIN_AGM/${min_agm}/
+g/#MAX_AGM/s/#MAX_AGM/${max_agm}/
+g/#aredi_eq_agm/s/#aredi_eq_agm/${aredi_equal_agm}/
+g/#agm_closure/s/#agm_closure/${agm_closure}/
+g/#OCEAN_MIXDOWNSLOPE/s/#OCEAN_MIXDOWNSLOPE/${ocean_mixdownslope}/
+g/#ZMAX_PEN/s/#ZMAX_PEN/${zmax_pen}
+g/#MAX_DRAG_DIFF/s/#MAX_DRAG_DIFF/${max_drag_diff}/
 w
 q
 eof
@@ -956,10 +938,8 @@ if [ ! -f mom4_in.nml ]; then
 fi
 
 #'base_time' is read in from diag_table, and must NOT be changed during the exp.
-if [ $jobnum = 1 ]; then 
-    #cp -f $inputdir/mom4p1/diag_table_20101217_sjm599		$MOM4_input/diag_table
-    #cp -f $inputdir/mom4p1/diag_table_20110901-dailymean              $MOM4_input/diag_table
-    cp -f $inputdir/mom4p1/diag_table_20101217_sjm599		$MOM4_input/diag_table
+if [ $jobnum = 1 ]; then
+    cp -f $inputdir/mom4p1/diag_table_20110901-dailymean  $MOM4_input/diag_table
     ed $MOM4_input/diag_table <<eof
 g/#SYEAR/s/#SYEAR/${year}/
 g/#SMON/s/#SMON/${month}/
@@ -968,7 +948,6 @@ w
 q
 eof
 fi
-
 # b. namelist for coupling purpose
 #
 
@@ -1022,16 +1001,21 @@ echo
 #David Singleton's solution to the bad performance of model: 
 export PATH=/opt/anumpirun/2.1.16a/bin:$PATH
 
-sleep 10
+module load openmpi ipm
+export IPM_LOGDIR=/short/v45/nah599/ 
+export IPM_LOGFILE=$PBS_JOBNAME.$PBS_JOBID.$USER.$PROJECT.`date +%s`
+echo "IPM_LOGDIR=" $IPM_LOGDIR
+echo "IPM_LOGFILE=" $IPM_LOGFILE
+
 cd $rundir
 if [[ $DEBUG = "yes" ]]; then
     module load totalview
-    mpirun --debug --mca mpi_paffinity_alone 1 -wd $cplrundir -n $nproc_cpl $rundir/$oa3_exe : \
+    mpirun --debug --mca mpi_paffinity_alone 1 \
     -wd $icerundir -n $nproc_ice $rundir/$ice_exe : \
     -wd $atmrundir -n $nproc_atm $rundir/$atm_exe : \
     -wd $ocnrundir -n $nproc_oce $rundir/$ocn_exe
 else
-    mpirun --mca mpi_paffinity_alone 1 -wd $cplrundir -n $nproc_cpl $rundir/$oa3_exe : \
+    mpirun --mca mpi_paffinity_alone 1 \
     -wd $icerundir -n $nproc_ice $rundir/$ice_exe : \
     -wd $atmrundir -n $nproc_atm $rundir/$atm_exe : \
     -wd $ocnrundir -n $nproc_oce $rundir/$ocn_exe
@@ -1085,7 +1069,6 @@ ${tool} -v bdir=${bindir},sdir=${sdir},tdir=${tdir},idate=${enddate}
 cd $icerundir
 
 # Restart files
-#mv $INPUT/A2I_time1.nc       ${restdir}/ice/A2I_time1.nc-${enddate}
 mv $RESTART/ice.restart_file ${restdir}/ice/ice.restart_file-${enddate}
 mv $RESTART/iced.*           ${restdir}/ice/. 
 if [ -f u_star.nc ]; then
