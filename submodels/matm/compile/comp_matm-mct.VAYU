@@ -13,7 +13,6 @@ setenv ARCH `uname -s`
 setenv ARCH $ARCH.$SITE
 echo ARCH: $ARCH
 
-### Specialty code
 setenv OASIS3_MCT yes	# oasis3-mct version
 setenv CHAN 	  MPI1	#MPI1 or MPI2 (always MPI1!)
 

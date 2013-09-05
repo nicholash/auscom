@@ -13,8 +13,8 @@ setenv ARCH `uname -s`
 setenv ARCH $ARCH.$SITE
 echo ARCH: $ARCH
 
-### Use MPI1 or MPI2 ?
-setenv CHAN MPI1
+setenv OASIS3_MCT yes	# oasis3-mct version
+setenv CHAN 	  MPI1	#MPI1 or MPI2 (always MPI1!)
 
 # Users must ensure the correct environment file exists for their platform.
 set platform = nci.org.au
@@ -34,20 +34,19 @@ setenv SYSTEMDIR $AusCOMHOME
 echo SYSTEMDIR: $SYSTEMDIR
 
 ### Location of this data ocean model (source)
-setenv SRCDIR $SYSTEMDIR/submodels/matm
+setenv SRCDIR $cwd:h  #$SYSTEMDIR/submodels/matm
 echo SRCDIR: $SRCDIR
 
 ### Location and names of coupling libraries
-#setenv CPLLIBDIR $SYSTEMDIR/submodels/oasis3_prism_2-5/prism/Linux/lib
-setenv CPLLIBDIR $SYSTEMDIR/submodels/oasis3/prism/Linux/lib
-setenv CPLLIBS '$(CPLLIBDIR)/libpsmile.$(CHAN).a'
+setenv CPLLIBDIR $SYSTEMDIR/submodels/oasis3-mct_local/Linux/lib
+setenv CPLLIBS '-L$(CPLLIBDIR) -lpsmile.${CHAN} -lmct -lmpeu -lscrip'
 #echo CPLLIBS: ${CPLLIBS}
 
 ### Location of coupling inclusions
-#setenv CPLINCDIR $SYSTEMDIR/submodels/oasis3_prism_2-5/prism/Linux/build/lib
-setenv CPLINCDIR $SYSTEMDIR/submodels/oasis3/prism/Linux/build/lib
-setenv CPL_INCS '-I$(CPLINCDIR)/psmile.$(CHAN)'
-#echo CPL_INCS: ${CPL_INCS}
+setenv CPLINCDIR $SYSTEMDIR/submodels/oasis3-mct/Linux/build/lib
+setenv CPL_INCS '-I$(CPLINCDIR)/psmile.$(CHAN) -I$(CPLINCDIR)/pio -I$(CPLINCDIR)/mct'
+#echo CPL_INCS: $CPL_INCS
+
 
 ### Grid resolution
 setenv GRID nt62
@@ -55,7 +54,7 @@ setenv RES 192x94
 
 ### Location and name of the generated exectuable 
 setenv BINDIR $AusCOMHOME/bin
-setenv EXE matm_${CHAN}.VAYU_${GRID}
+setenv EXE matm_${CHAN}.${GRID}
 
 ### Where this model is compiled
 setenv OBJDIR $SRCDIR/compile/build_MPI1_${GRID}
