@@ -116,7 +116,7 @@
       integer (kind=int_kind) :: k
 
 #ifdef AusCOM 
-      integer (kind=int_kind) :: time_sec, itap, icpl_ai, icpl_io
+      integer (kind=int_kind) :: time_sec, itap, icpl_ai, icpl_io, tmp_time
       integer (kind=int_kind) :: rtimestamp_ai, stimestamp_ai
       integer (kind=int_kind) :: rtimestamp_io, stimestamp_io
                                 !receive and send timestamps (seconds)
@@ -134,20 +134,38 @@
    !--------------------------------------------------------------------
 
 #ifdef AusCOM
+      write(il_out,*)'A <==> I coupling num_cpl_ai= ',num_cpl_ai
+      write(il_out,*)' to/from ocean num_cpl_io= ',num_cpl_io
+      write(il_out,*)' ice steps num_ice_io = ',   num_ice_io
+      write(il_out,*)'runtime, runtime0=', runtime, runtime0 
 
       time_sec = 0
+      ! get from atm once at time 0
+!      rtimestamp_ai = time_sec
+!      call ice_timer_start(timer_from_atm)  ! atm/ocn coupling
+!      call from_atm(rtimestamp_ai)
+!      call ice_timer_stop(timer_from_atm)  ! atm/ocn coupling
+!
+!      !set time averaged ice and ocn variables back to 0
+!      call initialize_mice_fields_4_i2a
+!      call initialize_mocn_fields_4_i2a
       
       DO icpl_ai = 1, num_cpl_ai   !begin A <==> I coupling iterations
 
-      rtimestamp_ai = time_sec
-
-      call from_atm(rtimestamp_ai)
-
-      !set time averaged ice and ocn variables back to 0
-      call initialize_mice_fields_4_i2a
-      call initialize_mocn_fields_4_i2a
- 
       Do icpl_io = 1, num_cpl_io   !begin I <==> O coupling iterations
+
+      if(icpl_ai <= num_cpl_ai  .and. mod(time_sec, dt_cpl_ai ) == 0) then ! atm ice coupling time except last step 
+      rtimestamp_ai = time_sec
+      call ice_timer_start(timer_from_atm)  ! atm/ice coupling
+      call from_atm(rtimestamp_ai)
+      call ice_timer_stop(timer_from_atm)  ! atm/ice coupling
+   
+!!      !set time averaged ice and ocn variables back to 0
+      write(il_out,*)' calling init_mice_fields_4_i2a at time_sec = ',time_sec
+      call initialize_mice_fields_4_i2a
+!      call initialize_mocn_fields_4_i2a
+      end if
+
 
         stimestamp_io = time_sec
 
@@ -179,7 +197,9 @@
         call t2ugrid_vector(io_strsv)
 
         write(il_out,*)' calling into_ocn at time_sec = ', time_sec
+        call ice_timer_start(timer_into_ocn)  ! atm/ocn coupling
         call into_ocn(stimestamp_io)
+        call ice_timer_stop(timer_into_ocn)  ! atm/ocn coupling
 
         !at the beginning of the run, cice (CICE_init) reads in the required o2i fields
         !(saved from the last timestep of ocean).
@@ -210,6 +230,30 @@
            !------------------------------------------------------------------------------
 
            call ice_step
+        write(il_out,*)' calling ave_ice_fields_4_i2a at time_sec = ',time_sec
+
+!=======================================
+      tmp_time = time_sec + dt
+      if ( mod(tmp_time, dt_cpl_ai) == 0  ) then  !put to atm i step before coupling
+      write(il_out,*)' calling get_i2a_fields at time_sec = ',time_sec
+      call ice_timer_start(timer_into_atm)  ! atm/ocn coupling
+      call get_i2a_fields           ! i2a fields ready to be sent for next IA cpl int in atm.
+
+!        if(tmp_time < runtime ) then
+      ! * because of using lag=+dt_ice, we must take one step off the time_sec
+      ! * to make the sending happen at right time:
+      stimestamp_ai = time_sec ! - dt
+      write(il_out,*)' calling into_atm at time_sec = ',time_sec
+      call into_atm(stimestamp_ai)
+
+!      !set time averaged ice and ocn variables back to 0
+      write(il_out,*)' calling init_mocn_fields_4_i2a at time_sec = ',time_sec
+      !call initialize_mice_fields_4_i2a
+      call initialize_mocn_fields_4_i2a
+!        end if
+      call ice_timer_stop(timer_into_atm)  ! atm/ocn coupling
+      end if
+!======================================
 
            ! note ice_step makes call to time_average_fields_4_i2o  
            !      and                    time_average_fields_4_i2a
@@ -235,27 +279,53 @@
 
         !!write(il_out,*)' calling get_i2o_fields at time_sec = ',time_sec
         !!call get_i2o_fields                 !i2o fields ready to be sent for next IO cpl int in ocn. 
- 
         rtimestamp_io = time_sec
+        if (rtimestamp_io < runtime) then  !get coupling from ocean except the last time step
         write(il_out,*)' calling from_ocn at time_sec = ',time_sec
+        call ice_timer_start(timer_from_ocn)  ! atm/ocn coupling
         call from_ocn(rtimestamp_io)        !get o2i fields for next IO cpl int
+        call ice_timer_stop(timer_from_ocn)  ! atm/ocn coupling
 
         write(il_out,*)' calling ave_ocn_fields_4_i2a at time_sec = ',time_sec
-        call time_average_ocn_fields_4_i2a  !accumulate/average ocn fields needed for IA coupling 
+        call time_average_ocn_fields_4_i2a  !accumulate/average ocn fields needed for IA coupling        
+        end if
 
         !CH: maybe--
         ! call get_i2a_fields 
-
-      End Do      !icpl_io
-
+#ifdef WRONG_INTO_ATM
+      tmp_time = time_sec + dt
+      if ( mod(tmp_time, dt_cpl_ai) == 0  ) then  !put to atm i step before coupling
       write(il_out,*)' calling get_i2a_fields at time_sec = ',time_sec
+      call ice_timer_start(timer_into_atm)  ! atm/ocn coupling
       call get_i2a_fields           ! i2a fields ready to be sent for next IA cpl int in atm.
 
-      ! * because of using lag=+dt_ice, we must take one step off the time_sec 
+!        if(tmp_time < runtime ) then
+      ! * because of using lag=+dt_ice, we must take one step off the time_sec
       ! * to make the sending happen at right time:
-      stimestamp_ai = time_sec - dt
+      stimestamp_ai = time_sec ! - dt
       write(il_out,*)' calling into_atm at time_sec = ',time_sec
       call into_atm(stimestamp_ai)
+
+!      !set time averaged ice and ocn variables back to 0
+      write(il_out,*)' calling init_mocn_fields_4_i2a at time_sec = ',time_sec
+      !call initialize_mice_fields_4_i2a
+      call initialize_mocn_fields_4_i2a
+!        end if
+      call ice_timer_stop(timer_into_atm)  ! atm/ocn coupling
+      end if
+#endif
+      End Do      !icpl_io
+
+!      write(il_out,*)' calling get_i2a_fields at time_sec = ',time_sec
+!      call ice_timer_start(timer_into_atm)  ! atm/ocn coupling
+!      call get_i2a_fields           ! i2a fields ready to be sent for next IA cpl int in atm.
+!
+!      ! * because of using lag=+dt_ice, we must take one step off the time_sec 
+!      ! * to make the sending happen at right time:
+!      stimestamp_ai = time_sec - dt
+!      write(il_out,*)' calling into_atm at time_sec = ',time_sec
+!      call into_atm(stimestamp_ai)
+!      call ice_timer_stop(timer_into_atm)  ! atm/ocn coupling
 
       END DO      !icpl_ai
 
@@ -263,7 +333,7 @@
       stimestamp_io = stimestamp_io + dt
 
       ! *** need save o2i fields here instead of in mom4 ***
-      call save_restart_o2i('o2i.nc', stimestamp_io)
+      !call save_restart_o2i('o2i.nc', stimestamp_io) !it is done in mom4
 
       ! *** need save the last IO cpl int (time-averaged) ice variables used to get i2o fields ***
       ! *** 				at the beginning of next run			       ***

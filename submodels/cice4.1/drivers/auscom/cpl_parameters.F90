@@ -15,13 +15,13 @@ implicit none
 
 integer(kind=int_kind) :: nt_cells                   ! nx_global x ny_global 
                                                      ! assigned in prism_init	
-integer(kind=int_kind), parameter :: jpfldout = 14   ! total number of fields sent
+integer(kind=int_kind), parameter :: jpfldout = 16   ! total number of fields sent
 integer(kind=int_kind), parameter :: jpfldin  = 17   ! total number of fields rcvd 
 
 integer(kind=int_kind), parameter :: n_a2i = 10      ! number of a2i fields
 integer(kind=int_kind), parameter :: n_o2i = 7       ! number of o2i fields
 integer(kind=int_kind), parameter :: n_i2a = 1       ! number of i2a fields
-integer(kind=int_kind), parameter :: n_i2o = 13      ! number of i2o fields
+integer(kind=int_kind), parameter :: n_i2o = 15      ! number of i2o fields
 
 !
 character(len=8), dimension(jpfldout) :: cl_writ ! Symb names fields sent
@@ -43,7 +43,8 @@ logical :: &                         !pop_icediag is as that for ocn model, if t
    ice_fwflux     = .false. , &
    rotate_winds   = .false. , &      !.t. if oasis sends U,V as scalars. 20090319 
    limit_icemelt  = .false. , &      !.f. no limit to ice melt .         20090320
-   use_core_runoff = .true. , &      !.t. use core runoff data (remapped) 20090718
+   use_core_nyf_runoff = .false. , &      !.t. use core Normal Year Forcing runoff data (remapped) 20090718
+   use_core_iaf_runoff = .false. , &      !.t. use core Inter-Annual Forcing runoff data (remapped) 20120302
    cst_ocn_albedo = .true.  , &      !.t. use constant ocean albedo (e.g., 0.06, to 0.1)
    chk_frzmlt_sst = .false. , &      !      otherwise use alfa = 0.069 - 0.011 cos(2phi)
    chk_a2i_fields = .false. , &      !      as in Large & Yeager (2009).
@@ -92,7 +93,8 @@ namelist/coupling_nml/       &
          gfdl_surface_flux, &
          chk_gfdl_roughness, &
          chk_frzmlt_sst, &
-         use_core_runoff, &
+         use_core_nyf_runoff, &
+         use_core_iaf_runoff, &
          chk_a2i_fields, &
          chk_i2a_fields, &
          chk_i2o_fields, &
@@ -145,7 +147,10 @@ write(6,coupling_nml)
 call release_fileunit(nu_nml)
 
 if (nml_error /= 0) then
-   call abort_ice('ice: error reading coupling_nml')
+   !!!call abort_ice('ice: error reading coupling_nml')
+   write(6, *)
+   write(6, *)'XXX Warning: after reading coupling_nml, nml_error = ',nml_error
+   write(6, *)
 endif
 
 ! * make sure runtime is mutliple of dt_cpl_ai, dt_cpl_ai is mutliple of dt_cpl_io, 

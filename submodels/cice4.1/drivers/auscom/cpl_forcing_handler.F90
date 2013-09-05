@@ -49,6 +49,9 @@ end if
 iopress(:,:,:) = 0.0
 iorunof(:,:,:) = 0.0
 ioaice(:,:,:)  = 0.0
+!!!
+iomelt(:,:,:)  = 0.0
+ioform(:,:,:)  = 0.0
 
 return
 end subroutine nullify_i2o_fluxes
@@ -69,6 +72,10 @@ iolwflx(:,:,:) = iolwflx(:,:,:) + tiolwflx(:,:,:)*coef_ic
 iorunof(:,:,:) = iorunof(:,:,:) + tiorunof(:,:,:)*coef_ic
 iopress(:,:,:) = iopress(:,:,:) + tiopress(:,:,:)*coef_ic
 ioaice(:,:,:)  = ioaice(:,:,:)  + tioaice(:,:,:)*coef_ic
+!!!
+iomelt (:,:,:) = iomelt (:,:,:) + tiomelt (:,:,:)*coef_ic
+ioform (:,:,:) = ioform (:,:,:) + tioform (:,:,:)*coef_ic
+
 return
 end subroutine tavg_i2o_fluxes
 
@@ -222,7 +229,7 @@ dbug = .true.
 if ( file_exist(fname) ) then
   if (my_task == 0) write(il_out,*) '(get_time0_o2i_fields) reading in o2i fields......'
   call ice_open_nc(fname, ncid_o2i)
-  call ice_read_nc(ncid_o2i, 1, 'sst_i',    ssto,   dbug)
+  call ice_read_nc(ncid_o2i, 1, 'sst_i',    ssto,   dbug, field_loc_center, field_type_scalar)
   call ice_read_nc(ncid_o2i, 1, 'sss_i',    ssso,   dbug)
   call ice_read_nc(ncid_o2i, 1, 'ssu_i',    ssuo,   dbug)
   call ice_read_nc(ncid_o2i, 1, 'ssv_i',    ssvo,   dbug)
@@ -269,6 +276,9 @@ if ( file_exist(fname) ) then
     if (jf == n_i2a+11) iorunof = vwork
     if (jf == n_i2a+12) iopress = vwork
     if (jf == n_i2a+13) ioaice  = vwork
+    !!!
+    if (jf == n_i2a+14) iomelt = vwork
+    if (jf == n_i2a+15) ioform = vwork
   enddo
   if (my_task == master_task) call ice_close_nc(ncid_i2o)
   if (my_task == master_task) write(il_out,*) '(get_time0_i2o_fields) has read in 11 i2o fields.'
@@ -418,6 +428,9 @@ do jf = n_i2a + 1, jpfldout   !2:13
   if (jf == n_i2a+11) vwork = iorunof
   if (jf == n_i2a+12) vwork = iopress
   if (jf == n_i2a+13) vwork = ioaice
+  !!!
+  if (jf == n_i2a+14 ) vwork = iomelt
+  if (jf == n_i2a+15 ) vwork = ioform
 
   call gather_global(gwork, vwork, master_task, distrb_info)
   if (my_task == 0) then 
@@ -687,6 +700,18 @@ tioshflx = fsens_ocn
 tiolwflx = flw + flwout_ocn   !net lw flux (down) into ocean 
 tioswflx = swabs_ocn
 
+!PU17052011
+if (my_task == master_task) then
+   write(il_out,*) "get_i2o_fluxes: after gfld_ocean_fluxes"
+   write(il_out,*) "get_i2o_fluxes: tioswflx(97,301)",tioswflx(97,301,1)
+   write(il_out,*) "get_i2o_fluxes: sum(tioswflx)",sum(tioswflx(2:361,2:301,1))
+   write(il_out,*) "get_i2o_fluxes: aice(97,301)",aice(97,301,1)
+   write(il_out,*) "get_i2o_fluxes: sum(aice)",sum(aice(2:361,2:301,1))
+   write(il_out,*) "get_i2o_fluxes: swabs_ocn(97,301)",swabs_ocn(97,301,1)
+   write(il_out,*) "get_i2o_fluxes: sum(swabs_ocn)",sum(swabs_ocn(2:361,2:301,1))
+endif
+!PU
+
 ! === double checked with Siobhan the following mergeing under sea ice:  ===
 !     Note: for those i2o fluxes which are already weighted with ice catagory
 !     fractions in routine 'merge_fluxes', they must NOT be weighted here
@@ -711,7 +736,10 @@ tioswflx = swabs_ocn
 ! 3) rainfall to ocean
   tiorain(:,:,:) = frain(:,:,:) * (1. - aice(:,:,:)) 
   
-  if (ice_fwflux) tiorain(:,:,:) = tiorain(:,:,:) + fresh(:,:,:)  !!!CH confirmed--ice_fwflux=.t.!!!
+!!!  if (ice_fwflux) tiorain(:,:,:) = tiorain(:,:,:) + fresh(:,:,:)  !!!CH confirmed--ice_fwflux=.t.!!!
+!!!
+!!! Now ice_fwflux (melt/form) is sent to ocn seperately (see below)
+!!!
 
 ! 4) snowfall to ocean
   tiosnow(:,:,:) = fsnow(:,:,:) * (1. - aice(:,:,:))
@@ -764,6 +792,12 @@ tioswflx = swabs_ocn
   !---------------------------------------------------------------------------- 
 !13) ice coverage
   tioaice(:,:,:) = aice(:,:,:)
+
+!--------------------------
+!14) ice melt waterflux:
+  tiomelt(:,:,:) = max(0.0,fresh(:,:,:))
+!15) ice form waterflux:
+  tioform(:,:,:) = min(0.0,fresh(:,:,:))
 
 return
 end subroutine get_i2o_fluxes
@@ -1206,6 +1240,11 @@ call gather_global(gwork, scale*iopress, master_task, distrb_info)
 if (my_task == 0) call write_nc2D(ncid, 'iopress', gwork, 2, nx_global,ny_global,currstep,ilout=il_out)
 call gather_global(gwork, scale*ioaice,  master_task, distrb_info)
 if (my_task == 0) call write_nc2D(ncid, 'ioaice',  gwork, 2, nx_global,ny_global,currstep,ilout=il_out)
+!!!
+call gather_global(gwork, scale*iomelt,  master_task, distrb_info)
+if (my_task == 0) call write_nc2D(ncid, 'iomelt',  gwork, 2, nx_global,ny_global,currstep,ilout=il_out)
+call gather_global(gwork, scale*ioform,  master_task, distrb_info)
+if (my_task == 0) call write_nc2D(ncid, 'ioform',  gwork, 2, nx_global,ny_global,currstep,ilout=il_out)
 
 if (my_task == 0) call ncheck(nf_close(ncid))
 

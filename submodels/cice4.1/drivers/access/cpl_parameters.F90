@@ -2,11 +2,6 @@
 !
 module cpl_parameters
 !
-! * since the CICE model is too 'small' and needs far less processors than *
-! * the other models (UM, MOM4) in the ACCESS system, it is NOT practical  *
-! * at all to use "parallel coupling" between CICE and UM and CICE and MOM4*
-! * via oasis3. we've thus removed the unlikely "parallel coupling" option *
-! * to simplify the coupling code (in cpl_interface_mod)   Feburary, 2008. *
 !----------------------------------------------------------------------------
 
 use ice_kinds_mod
@@ -14,12 +9,13 @@ use ice_kinds_mod
 implicit none
 
 integer(kind=int_kind) :: il_im, il_jm, il_imjm    ! il_im=nx_global, il_jm=ny_global 
-                                                   ! assigned in prism_init	
+                                                   ! assigned in prism_init
+integer (kind=int_kind) :: xdim, ydim
 !integer(kind=int_kind), parameter :: nsend = 50   ! maxium no of flds sent allowed
 !integer(kind=int_kind), parameter :: nrecv = 50   ! maxium no of flds rcvd allowed
 integer(kind=int_kind) :: nsend_i2a, nsend_i2o
 integer(kind=int_kind) :: nrecv_a2i, nrecv_o2i 
-integer(kind=int_kind), parameter :: jpfldout = 31 ! actual number of fields sent
+integer(kind=int_kind), parameter :: jpfldout = 33 ! actual number of fields sent
 integer(kind=int_kind), parameter :: jpfldin  = 31 ! actual umber of fields rcvd 
 
 character(len=8), dimension(jpfldout) :: cl_writ ! Symb names fields sent
@@ -133,7 +129,7 @@ real(kind=dbl_kind) :: frazil_factor = 0.5
 contains
 
 !=======================================================================================
-subroutine get_cpl_timecontrol
+subroutine get_cpl_timecontrol_simple
 
 implicit none
 
@@ -142,6 +138,62 @@ open(unit=99,file="input_ice.nml",form="formatted",status="old")
 read (99, coupling)
 close(unit=99)
 ! *** make sure dt_cpl_ai is multiple of dt_cpl_io, and dt_cpl_io if multiple of dt_ice ***
+num_cpl_ai = runtime/dt_cpl_ai
+num_cpl_io = dt_cpl_ai/dt_cpl_io
+num_ice_io = dt_cpl_io/dt_cice
+
+coef_io = float(dt_cice)/float(dt_cpl_io)
+coef_ia = float(dt_cice)/float(dt_cpl_ai)
+coef_cpl = float(dt_cpl_io)/float(dt_cpl_ai)
+
+iniday  = mod(inidate, 100)
+inimon  = mod( (inidate - iniday)/100, 100)
+iniyear = inidate / 10000
+
+return
+end subroutine get_cpl_timecontrol_simple
+
+!===============================================================================
+subroutine get_cpl_timecontrol
+
+use ice_exit
+use ice_fileunits
+
+implicit none
+
+integer (int_kind) :: nml_error       ! namelist read error flag
+
+! all processors read the namelist--
+
+call get_fileunit(nu_nml)
+open(unit=nu_nml,file="input_ice.nml",form="formatted",status="old",iostat=nml_error)
+!
+write(6,*)'CICE: input_ice.nml opened at unit = ', nu_nml
+!
+if (nml_error /= 0) then
+   nml_error = -1
+else
+   nml_error =  1
+endif
+do while (nml_error > 0)
+   read(nu_nml, nml=coupling,iostat=nml_error)
+   if (nml_error > 0) read(nu_nml,*)  ! for Nagware compiler
+end do
+if (nml_error == 0) close(nu_nml)
+
+write(6,coupling)
+
+call release_fileunit(nu_nml)
+
+if (nml_error /= 0) then
+   !!!call abort_ice('ice: error reading coupling')
+   write(6, *)
+   write(6, *)'XXX Warning: after reading coupling, nml_error = ',nml_error
+   write(6, *)
+endif
+
+! * make sure runtime is mutliple of dt_cpl_ai, dt_cpl_ai is mutliple of dt_cpl_io, 
+! * and dt_cpl_io is mutliple of dt_cice!
 num_cpl_ai = runtime/dt_cpl_ai
 num_cpl_io = dt_cpl_ai/dt_cpl_io
 num_ice_io = dt_cpl_io/dt_cice

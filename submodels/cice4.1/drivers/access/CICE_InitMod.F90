@@ -138,7 +138,7 @@
 #ifdef AusCOM 
       call prism_init		! called in init_communicate	
       MPI_COMM_ICE = il_commlocal
-      call init_cpl     ! initialize message passing
+!      call init_cpl     ! initialize message passing
       call get_cpl_timecontrol
 #endif
       call init_fileunits       ! unit numbers
@@ -146,6 +146,14 @@
       call init_work            ! work arrays
       call init_domain_blocks   ! set up block decomposition
       call init_grid1           ! domain distribution
+
+#ifdef AusCOM 
+!      call prism_init		! called in init_communicate	
+!      MPI_COMM_ICE = il_commlocal
+      call init_cpl     ! initialize message passing
+!      call get_cpl_timecontrol
+#endif
+
       call init_ice_timers      ! initialize all timers
       call ice_timer_start(timer_total)   ! start timing entire run
       call init_grid2           ! grid variables
@@ -229,26 +237,41 @@
       call ice_write_hist(dt)   ! write initial conditions if write_ic = T
 
 #ifdef AusCOM
+      write(il_out,*)' calling init_mocn_fields_4_i2a at time_sec = ',0
+      !call initialize_mice_fields_4_i2a
+      call initialize_mocn_fields_4_i2a
+
       ! for continue runs, need restart o2i forcing fields and time-averaged ice 
       ! variables ('mice')saved at the end of last run from ice models; 
       ! for initial run, pre-processed o2i (and maybe mice) fields are required.
 !      call get_restart_o2i('o2i.nc')
       call get_restart_o2i(trim(restartdir)//'/o2i.nc')
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !if no lag for ice to atm coupling, then cice has to read restart file i2a.nc and 
+      !put the data to atm. the call is not needed if there is lag for ice2atm coupling
+      !must call after get_restart_o2i(), by which the ocn_sst ect are read in and re-used by put_restart_i2a()  
+!      call put_restart_i2a('i2a.nc', 0)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 !      if ( file_exist('CICE_restart/mice.nc') ) then
       if ( file_exist(trim(restartdir)//'/mice.nc') ) then
         !for continue runs, mice data MUST be available.
 !        call get_restart_mice('CICE_restart/mice.nc')
         call get_restart_mice(trim(restartdir)//'/mice.nc')
       else
-        write(6,*)'*** CICE WARNING: No initial mice.nc data available here! ***'
-        write(6,*)'*** CICE WARNING: ALL mice variables will be set to ZERO! ***'
-        write(6,*)'*** CICE WARNING: This is allowed for the init run ONLY ! ***' 
+write(6,*)'*** CICE WARNING: No initial mice.nc data available here! **'
+write(6,*)'*** CICE WARNING: ALL mice variables will be set to ZERO! **'
+write(6,*)'*** CICE WARNING: This is allowed for the init run ONLY ! **' 
       endif
       if (use_core_runoff) then
 !         call get_core_runoff('CICE_input/core_runoff_regrid.nc',&
          call get_core_runoff(trim(inputdir)//'/core_runoff_regrid.nc',&
                               'runoff',1)
       endif
+
+        write(il_out,*)' calling ave_ocn_fields_4_i2a at time_sec = ',0 !time_sec
+        call time_average_ocn_fields_4_i2a  !accumulate/average ocn fields needed for IA coupling
 
       !get a2i fields and then set up initial SBC for ice
       !call from_atm(0)

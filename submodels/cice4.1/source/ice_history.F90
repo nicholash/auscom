@@ -2141,7 +2141,7 @@
       integer (kind=int_kind), dimension(3) :: dimidex
       real (kind=real_kind) :: ltime
       character (char_len) :: title
-      character (char_len_long) :: ncfile(max_nstrm)
+      character (char_len_long), save :: ncfile(max_nstrm)
 
       integer (kind=int_kind) :: iyear, imonth, iday
       integer (kind=int_kind) :: icategory,ind,i_aice,boundid

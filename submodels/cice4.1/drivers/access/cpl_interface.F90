@@ -6,17 +6,15 @@
 !----------------------------------------------------------------------------
 
   !prism stuff
-  use mod_kinds_model
-  use mod_prism_proto
-  use mod_prism_def_partition_proto
-  use mod_prism_put_proto
-  use mod_prism_get_proto
+  use mod_prism
 
   !cice stuff
   use ice_kinds_mod
-  use ice_communicate, only : my_task, master_task
+  use ice_communicate !, only : my_task, master_task
+  use ice_broadcast
   use ice_blocks       !, only : nx_block, ny_block, nghost
   use ice_domain_size  !, only : max_blocks, nx_global, ny_global, ncat
+  use ice_distribution, only : distrb, nprocsX, nprocsY
   use ice_gather_scatter
   use ice_constants
   use ice_domain       !, only : distrb_info
@@ -33,14 +31,14 @@
   implicit none
 
   public :: prism_init, init_cpl, coupler_termination, get_time0_sstsss, &
-            from_atm, into_ocn, from_ocn, into_atm
+            from_atm, into_ocn, from_ocn, into_atm, save_restart_i2a
 
   private
 
   logical :: mpiflag
   integer(kind=int_kind)  :: ierror, ibou
-  character(len=8) :: chiceout
-  character(len=2) :: chout
+  character(len=9) :: chiceout
+  character(len=3) :: chout
   logical :: ll_comparal    ! paralell or mono-cpl coupling
   integer(kind=int_kind) :: il_comp_id     ! Component ID
   integer(kind=int_kind) :: il_nbtotproc   ! Total number of processes
@@ -50,13 +48,19 @@
   integer(kind=int_kind), dimension(2) :: il_var_nodims
   integer(kind=int_kind), dimension(4) :: il_var_shape
 
+  integer(kind=int_kind) :: l_ilo, l_ihi, l_jlo, l_jhi !local partition
+  integer(kind=int_kind) :: gh_ilo, gh_ihi, gh_jlo, gh_jhi !local ghost outline 
+  integer :: sendsubarray, recvsubarray , resizedrecvsubarray
+  integer, dimension(:), allocatable :: counts, disps 
+
   integer(kind=int_kind) :: il_flag        ! Flag for grid writing
   integer(kind=int_kind) :: il_status, il_fileid, il_varid
   integer(kind=int_kind)      :: io_size, ii, il_bufsize, il_real, il_bufsizebyt
   integer(kind=int_kind)      :: integer_byte_size, integer_io_size
   real(kind=dbl_kind), dimension(:,:), allocatable :: rla_array
   real(kind=dbl_kind), dimension(:), allocatable :: rla_bufsend
-
+  real(kind=dbl_kind), dimension(:,:), allocatable :: vwork2d
+    !local domain work array, 4 coupling data passing 
   contains
 
 !======================================================================
@@ -142,39 +146,67 @@
       print *, 'CICE: _get_localcomm_ OK! il_commlocal= ',il_commlocal
   endif
 
+  !
+  ! Inquire if model is parallel or not and open the process log file 
+  !
+ ! print *, '* CICE: Entering init_cpl.....'
+
+  print *, '* CICE (prism_init) calling MPI_Comm_Size ...'
+  call MPI_Comm_Size(il_commlocal, il_nbtotproc, ierror)
+  print *, '* CICE (prism_init) calling MPI_Comm_Rank ...'
+  call MPI_Comm_Rank(il_commlocal, my_task, ierror)
+
+  print *, '* CICE (prism_init) il_commlocal, il_nbtotproc, my_task = '
+  print *, '* CICE (prism_init) ', il_commlocal, il_nbtotproc, my_task
+  !
+  il_nbcplproc = il_nbtotproc   !multi-process coupling (real parallel cpl)!
+  !il_nbcplproc = 1               !mono process coupling
+
+  if (il_nbtotproc /= 1 .and. il_nbcplproc == il_nbtotproc ) then
+    ll_comparal = .TRUE.          ! multi-cpl coupling!
+  else
+    ll_comparal = .FALSE.          !mono-cpl coupling!
+  endif
+
   print *, '* CICE: prism_init called OK!'  
 
   end subroutine prism_init
 
 !=======================================================================
   subroutine init_cpl
+
+  use mpi
 !--------------------!
   integer(kind=int_kind) :: jf, jfs
   integer(kind=int_kind), dimension(2) :: il_var_nodims ! see below
   integer(kind=int_kind), dimension(4) :: il_var_shape  ! see below
-  
-  !
-  ! Inquire if model is parallel or not and open the process log file 
-  !
-  print *, '* CICE: Entering init_cpl.....'
 
-  print *, '* CICE (init_cpl) calling MPI_Comm_Size ...'
-  call MPI_Comm_Size(il_commlocal, il_nbtotproc, ierror)
-  print *, '* CICE (init_cpl) calling MPI_Comm_Rank ...'
-  call MPI_Comm_Rank(il_commlocal, my_task, ierror)
+  integer(kind=int_kind) :: ilo,ihi,jlo,jhi,iblk,i,j, n
+  type (block) ::  this_block           ! block information for current block
 
-  print *, '* CICE (init_cpl) il_commlocal, il_nbtotproc, my_task = '
-  print *, '* CICE (init_cpl) ', il_commlocal, il_nbtotproc, my_task
-  !
-  !il_nbcplproc = il_nbtotproc   !multi-process coupling (real parallel cpl)!
-  !
-  il_nbcplproc = 1               !mono process coupling
-  ll_comparal = .FALSE.          !hard-coded for mono-cpl coupling!
+  integer, dimension(2) :: starts,sizes,subsizes
+  integer(kind=mpi_address_kind) :: start, extent
+!  integer, dimension(:), allocatable :: counts, disps 
+  real(kind=dbl_kind) :: realvalue
+  integer (int_kind) :: nprocs
+  integer (int_kind),dimension(:), allocatable :: vilo, vjlo 
 
+  nprocs = get_num_procs()
+  allocate(vilo(nprocs))
+  allocate(vjlo(nprocs))
+!initialise partition to inexisting region
+ l_ilo=nx_global
+ l_ihi=0
+ l_jlo=ny_global
+ l_jhi=0
+ gh_ilo=nx_global
+ gh_ihi=0
+ gh_jlo=ny_global
+ gh_jhi=0
   ! Open the process log file
 !20100406  if (my_task == 0 .or. ll_comparal) then
     il_out = 85 + my_task
-    write(chout,'(I2)')il_out
+    write(chout,'(I3.3)')il_out
     chiceout='iceout'//chout
     open(il_out,file=chiceout,form='formatted')
   
@@ -186,7 +218,144 @@
                      nx_block,ny_block,max_blocks
 !20100406  endif
 
-  if (my_task == 0 ) then
+!  write(il_out,*) 'Number of blocks :', nblocks
+!  do iblk = 1, nblocks
+!
+!    this_block = get_block(blocks_ice(iblk),iblk)
+!    ilo = this_block%ilo
+!    ihi = this_block%ihi
+!    jlo = this_block%jlo
+!    jhi = this_block%jhi
+!!         do j=this_block%jlo,this_block%jhi
+!!         do i=this_block%ilo,this_block%ihi
+!!           ARRAY_G(this_block%i_glob(i), &
+!!                   this_block%j_glob(j)) = &
+!!                  ARRAY(i,j,src_dist%blockLocalID(n))
+!
+!    write(il_out,*) '   block:', iblk, "ilo, jlo, ihi, jhi=", ilo, jlo, ihi, jhi
+!
+!  end do
+!find out partition of this processor, which is done by init_domain_blocks
+  write(il_out,*) 'nblocks_x, nblocks_y, Number of tot blocks :', nblocks_x, nblocks_y, nblocks_tot
+!!!!!!!!!!!!
+!     do iblk=1,nblocks_tot
+!        if (distrb_info%blockLocation(iblk) == my_task+1) then
+!          this_block = get_block(iblk,iblk)
+!          ilo = this_block%ilo
+!          ihi = this_block%ihi
+!          jlo = this_block%jlo
+!          jhi = this_block%jhi
+!          !print local to global mapping
+!          write(il_out,*) 'block, local ilo ihi jlo jhi:', distrb_info%blockLocalID(iblk), ilo,ihi,jlo,jhi
+!          write(il_out,*) 'block global:', this_block%i_glob(ilo),this_block%i_glob(ihi),  &
+!              this_block%j_glob(jlo),this_block%j_glob(jhi)
+!        endif
+!     end do
+
+
+  do iblk=1,nblocks_tot
+
+    if (distrb_info%blockLocation(iblk) == my_task+1) then
+
+      this_block = get_block(iblk,iblk)
+      ilo = this_block%ilo
+      ihi = this_block%ihi
+      jlo = this_block%jlo
+      jhi = this_block%jhi
+      write(il_out,*) '   this block: iblock, jblock=', this_block%iblock, this_block%jblock
+!      write(il_out,*) '   block:', iblk, "ilo, jlo, ihi, jhi=", ilo, jlo, ihi, jhi
+      write(il_out,*) '   block:', iblk, "gilo, gjlo, gihi, gjhi=", this_block%i_glob(ilo), this_block%j_glob(jlo), this_block%i_glob(ihi), this_block%j_glob(jhi)
+      if (this_block%i_glob(ilo) < l_ilo) then
+        l_ilo = this_block%i_glob(ilo)
+        gh_ilo = this_block%i_glob(ilo-nghost)
+      endif
+      if (this_block%j_glob(jlo) < l_jlo) then
+        l_jlo = this_block%j_glob(jlo)
+        gh_jlo = this_block%j_glob(jlo-nghost)
+      endif
+      if (this_block%i_glob(ihi) > l_ihi) then
+        l_ihi = this_block%i_glob(ihi)
+        gh_ihi = this_block%i_glob(ihi+nghost)
+      endif
+      if (this_block%j_glob(jhi) > l_jhi) then
+        l_jhi = this_block%j_glob(jhi)
+        gh_jhi = this_block%j_glob(jhi+nghost)
+      endif
+!      l_ilo = min(l_ilo, this_block%i_glob(ilo))
+!      l_ihi = max(l_ihi, this_block%i_glob(ihi))
+!      l_jlo = min(l_jlo, this_block%j_glob(jlo))
+!      l_jhi = max(l_jhi, this_block%j_glob(jhi))
+!    else if (distrb_info%blockLocation(n) == 0) then 
+!       write(il_out,*) '  land block:', n
+       
+    endif
+  end do
+  write(il_out,*) '  local partion, ilo, ihi, jlo, jhi=', l_ilo, l_ihi, l_jlo, l_jhi
+  write(il_out,*) '  partition x,y sizes:', l_ihi-l_ilo+1, l_jhi-l_jlo+1
+!print ghost info
+  write(il_out,*) '  ghost global:',gh_ilo, gh_ihi, gh_jlo, gh_jhi 
+
+!calculate partition using nprocsX and nprocsX
+  l_ilo=mod(my_task,nprocsX)*nx_global/nprocsX+1
+  l_ihi=l_ilo + nx_global/nprocsX -1
+  l_jlo=int(my_task/nprocsX) * ny_global/nprocsY+1
+  l_jhi=l_jlo+ny_global/nprocsY - 1
+ 
+  write(il_out,*) '  2local partion, ilo, ihi, jlo, jhi=', l_ilo, l_ihi, l_jlo, l_jhi
+  write(il_out,*) '  2partition x,y sizes:', l_ihi-l_ilo+1, l_jhi-l_jlo+1
+ 
+  call mpi_gather(l_ilo, 1, mpi_integer, vilo, 1, mpi_integer, 0, MPI_COMM_ICE, ierror)
+  call broadcast_array(vilo, 0)  
+  call mpi_gather(l_jlo, 1, mpi_integer, vjlo, 1, mpi_integer, 0, MPI_COMM_ICE, ierror)
+  call broadcast_array(vjlo, 0)  
+ 
+!create subarray of this rank
+    sizes(1)=l_ihi-l_ilo+1; sizes(2)=l_jhi-l_jlo+1
+    subsizes(1)=l_ihi-l_ilo+1; subsizes(2)=l_jhi-l_jlo+1
+    starts(1)=0; starts(2)=0
+    call mpi_type_create_subarray(2, sizes, subsizes, starts, mpi_order_fortran, &
+                                mpiR8, sendsubarray, ierror)
+    call mpi_type_commit(sendsubarray,ierror)
+    if (my_task == 0) then ! create recv buffer in main cpu
+     sizes(1)=nx_global; sizes(2)=ny_global
+     subsizes(1)=l_ihi-l_ilo+1; subsizes(2)=l_jhi-l_jlo+1
+     starts(1)=0; starts(2)=0
+     call mpi_type_create_subarray(2, sizes, subsizes, starts, mpi_order_fortran, &
+                                   mpiR8, recvsubarray, ierror)
+     call mpi_type_commit(recvsubarray, ierror)
+     extent = sizeof(realvalue)
+     start = 0
+     call mpi_type_create_resized(recvsubarray, start, extent, resizedrecvsubarray, ierror)
+     call mpi_type_commit(resizedrecvsubarray,ierror)
+    end if
+    allocate(counts(nprocs),disps(nprocs))
+    forall (n=1:nprocs) counts(n) = 1
+    do n=1,  nprocs
+      disps(n) = ((vjlo(n)-1)*nx_global + (vilo(n)-1)) 
+      !disps(n) = ((vilo(n)-1)*ny_global + (vjlo(n)-1)) 
+    end do
+    
+    write(il_out,*) ' vilo ', vilo
+    write(il_out,*) ' vjlo ', vjlo
+    write(il_out,*) ' counts ', counts
+    write(il_out,*) ' disps ', disps
+ 
+!  if ( ll_comparal ) then 
+!    il_im = l_ihi-l_ilo+1 !nx_global
+!    il_jm = l_jhi-l_jlo+1 !ny_global
+!    il_imjm = il_im * il_jm
+!  endif
+    if (ll_comparal) then
+      xdim=l_ihi-l_ilo+1
+      ydim=l_jhi-l_jlo+1
+    else
+      xdim=il_im
+      ydim=il_jm
+    endif
+  
+
+!-----------------------------------------------------------------------
+  if (my_task == 0 .or. ll_comparal) then
     !
     ! The following steps need to be done:
     ! -> by the process if cice is monoprocess;
@@ -206,18 +375,29 @@
 
     il_var_nodims(1) = 2 ! rank of coupling field
     il_var_nodims(2) = 1 ! number of bundles in coupling field (always 1)
-    il_var_shape(1)= 1     ! min index for the coupling field local dim
-    il_var_shape(2)= il_im ! max index for the coupling field local dim  
-    il_var_shape(3)= 1   
-    il_var_shape(4)= il_jm 
- 
+    !il_var_shape(1)= 1     ! min index for the coupling field local dim
+    !il_var_shape(2)= xdim !il_im ! max index for the coupling field local dim  
+    !il_var_shape(3)= 1   
+    !il_var_shape(4)= ydim !il_jm
+    if (ll_comparal) then 
+      il_var_shape(1)= 1 !l_ilo ! min index for the coupling field local dimension
+      il_var_shape(2)= l_ihi-l_ilo+1 ! max index for the coupling field local dim
+      il_var_shape(3)= 1 !l_jlo ! min index for the coupling field local dim
+      il_var_shape(4)= l_jhi-l_jlo+1 ! max index for the coupling field local dim
+    else
+      il_var_shape(1)= 1 ! min index for the coupling field local dimension
+      il_var_shape(2)= il_im ! max index for the coupling field local dim
+      il_var_shape(3)= 1 ! min index for the coupling field local dim
+      il_var_shape(4)= il_jm ! max index for the coupling field local dim
+    endif
+
     ! ?Does this help?
     !il_var_shape(1)= 2       ! min index for the coupling field local dim
     !il_var_shape(2)= il_im+1 ! max index for the coupling field local dim
     !il_var_shape(3)= 2  
     !il_var_shape(4)= il_jm+1
 
-  endif   !my_task==0
+  endif   !my_task==0 .or. ll_comparal
 
   !*** 								***!
   !***B: we now define cl_writ/cl_read on all ranks! (20090403) ***!
@@ -285,8 +465,12 @@
     cl_writ(nsend_i2o)='press_io'
     nsend_i2o = nsend_i2o + 1
     cl_writ(nsend_i2o)='aice_io'
+    nsend_i2o = nsend_i2o + 1
+    cl_writ(nsend_i2o)='melt_io'
+    nsend_i2o = nsend_i2o + 1
+    cl_writ(nsend_i2o)='form_io'
 
-    if (my_task == 0) then
+    if (my_task == 0 .or. ll_comparal) then
 
       write(il_out,*) 'init_cpl: Number of fields sent to ocn: ',nsend_i2o - nsend_i2a
 
@@ -355,7 +539,7 @@
     nrecv_a2i = nrecv_a2i + 1
     cl_read(nrecv_a2i) = 'press_i'
 
-    if (my_task==0) then
+    if (my_task==0 .or. ll_comparal) then
       write(il_out,*) 'init_cpl: Number of fields rcvd from atm: ',nrecv_a2i
     endif
 
@@ -379,7 +563,7 @@
     nrecv_o2i = nrecv_o2i + 1
     cl_read(nrecv_o2i) = 'pfmice_i'
 
-    if (my_task==0) then
+    if (my_task==0 .or. ll_comparal) then
 
       write(il_out,*) 'init_cpl: Number of fields rcvd from ocn: ',nrecv_o2i-nrecv_a2i
 
@@ -467,6 +651,8 @@
   allocate (io_runof(nx_block,ny_block,max_blocks)); io_runof(:,:,:) = 0
   allocate (io_press(nx_block,ny_block,max_blocks)); io_press(:,:,:) = 0
   allocate (io_aice(nx_block,ny_block,max_blocks));  io_aice(:,:,:) = 0
+  allocate (io_melt(nx_block,ny_block,max_blocks));  io_melt(:,:,:) = 0
+  allocate (io_form(nx_block,ny_block,max_blocks));  io_form(:,:,:) = 0
 
   ! temporary arrays:
   ! IO cpl int time-average
@@ -493,7 +679,12 @@
   allocate (vwork(nx_block,ny_block,max_blocks)); vwork(:,:,:) = 0
   allocate (gwork(nx_global,ny_global)); gwork(:,:) = 0
   allocate (sicemass(nx_block,ny_block,max_blocks)); sicemass(:,:,:) = 0.
-
+  allocate (vwork2d(l_ilo:l_ihi, l_jlo:l_jhi)); vwork2d(:,:) = 0. !l_ihi-l_ilo+1, l_jhi-l_jlo+1
+!  allocate (vwork2d(l_ihi-l_ilo+1, l_jhi-l_jlo+1)); vwork2d(:,:) = 0. !l_ihi-l_ilo+1, l_jhi-l_jlo+1
+!  chk_i2o_fields = .true.
+!  chk_o2i_fields = .true.
+!  chk_a2i_fields = .true.
+!  chk_i2a_fields = .true.
   end subroutine init_cpl
 
 !=======================================================================
@@ -510,6 +701,7 @@
 
   integer(kind=int_kind) :: jf
   integer(kind=int_kind) :: ncid,currstep,ll,ilout
+  
   data currstep/0/
   save currstep
 
@@ -530,16 +722,25 @@
     write(il_out,*) '(from_atm) Total number of fields to be rcvd: ', nrecv_a2i
   endif
   
+  write(il_out,*) "prism_get from_atm at sec: ", isteps
   do jf = 1, nrecv_a2i
 
-    if (my_task==0) then
+    if (my_task==0 .or. ll_comparal ) then
 
       !jf-th field in
       write(il_out,*)
       write(il_out,*) '*** receiving coupling field No. ', jf, cl_read(jf)
       !call flush(il_out)
 
-      call prism_get_proto (il_var_id_in(jf), isteps, gwork, ierror)
+      if (ll_comparal) then 
+        call prism_get_proto (il_var_id_in(jf), isteps, vwork2d(l_ilo:l_ihi, l_jlo:l_jhi), ierror) !vwork(2:,2:,my_task+1), 
+!        call mpi_gatherv(vwork2d(l_ilo:l_ihi, l_jlo:l_jhi),1,sendsubarray,gwork,counts,disps,resizedrecvsubarray, &
+!                     0,MPI_COMM_ICE,ierror)
+!        call broadcast_array(gwork, 0)
+         gwork(l_ilo:l_ihi, l_jlo:l_jhi) = vwork2d(l_ilo:l_ihi, l_jlo:l_jhi)
+      else
+        call prism_get_proto (il_var_id_in(jf), isteps, gwork, ierror)
+      endif 
 
       if ( ierror /= PRISM_Ok .and. ierror < PRISM_Recvd) then
         write(il_out,*) 'Err in _get_ sst at time with error: ', isteps, ierror
@@ -547,22 +748,27 @@
       else 
         write(il_out,*)
         write(il_out,*)'(from_atm) rcvd at time with err: ',cl_read(jf),isteps,ierror
-        if (chk_a2i_fields) then
-          call write_nc2D(ncid, trim(cl_read(jf)), gwork, 1, il_im,il_jm, &
+     
+        if (ll_comparal .and. chk_a2i_fields) then
+           call mpi_gatherv(vwork2d(l_ilo:l_ihi, l_jlo:l_jhi),1,sendsubarray,gwork, &
+                     counts,disps, resizedrecvsubarray, 0,MPI_COMM_ICE,ierror)
+           call MPI_Barrier(MPI_COMM_ICE, ierror)
+        endif
+        if (my_task==0 .and. chk_a2i_fields) then
+            call write_nc2D(ncid, trim(cl_read(jf)), gwork, 1, il_im,il_jm, &
                           currstep,ilout=il_out)
         endif
       endif
 
     endif
 
-!    write(6,*)'CICE (from_atm) scattering for field no: ',jf
-!    write(6,*)'CICE (from_atm) at rank: ', my_task
-    call flush(6)
-    call scatter_global(vwork,gwork,master_task,distrb_info, &
+    if (.not. ll_comparal ) then
+      call scatter_global(vwork,gwork,master_task,distrb_info, &
                         field_loc_center, field_type_scalar)
-!    write(6,*)'CICE (from_atm) scattered for field no:  ',jf
-!    write(6,*)'CICE (from_atm) at rank: ', my_task
-!    call flush(6)
+    else
+      call unpack_global_dbl(vwork,gwork,master_task,distrb_info, &
+                        field_loc_center, field_type_scalar)
+    endif ! not ll_comparal
 
     !***Note following "select case" works only if cl_read(:) is defined at ALL ranks***!
     !-----------------------------------------------------------------------------------!
@@ -597,7 +803,7 @@
     case ('press_i'); um_press(:,:,:) = vwork(:,:,:)
     end select 
 
-    if (my_task == 0) then
+    if (my_task == 0 .or. ll_comparal) then
       write(il_out,*) 
       write(il_out,*)'(from_atm) done: ', jf, trim(cl_read(jf))
     endif
@@ -654,6 +860,8 @@
   integer(kind=int_kind), intent(in) :: isteps
  
   integer(kind=int_kind) :: jf
+  integer(kind=int_kind) :: ilo,ihi,jlo,jhi,iblk,i,j
+  type (block) :: this_block           ! block information for current block
 
   integer(kind=int_kind) :: ncid,currstep,ll,ilout
   data currstep/0/
@@ -673,15 +881,23 @@
     endif
   endif
 
+  write(il_out,*) "prism_get from_ocn at sec: ", isteps
   do jf = nrecv_a2i + 1, jpfldin 
   
-    if (my_task==0) then
+    if (my_task==0 .or. ll_comparal) then
 
       !jf-th field in
       write(il_out,*)
       write(il_out,*) '*** receiving coupling fields No. ', jf, cl_read(jf)
-
-      call prism_get_proto (il_var_id_in(jf), isteps, gwork, ierror)
+      if(ll_comparal) then
+        call prism_get_proto (il_var_id_in(jf), isteps, vwork2d(l_ilo:l_ihi, l_jlo:l_jhi), ierror)
+!        call mpi_gatherv(vwork2d(l_ilo:l_ihi, l_jlo:l_jhi),1,sendsubarray,gwork,counts,disps,resizedrecvsubarray, &
+!                     0,MPI_COMM_ICE,ierror)
+!        call broadcast_array(gwork, 0)
+         gwork(l_ilo:l_ihi, l_jlo:l_jhi) = vwork2d(l_ilo:l_ihi, l_jlo:l_jhi)
+      else
+        call prism_get_proto (il_var_id_in(jf), isteps, gwork, ierror)
+      endif 
 
       if ( ierror /= PRISM_Ok .and. ierror < PRISM_Recvd) then
         write(il_out,*) 'Err in _get_ sst at time with error: ', isteps, ierror
@@ -689,19 +905,28 @@
       else
         write(il_out,*)
         write(il_out,*)'(from_ocn) rcvd at time with err: ',cl_read(jf),isteps,ierror
-        if (chk_o2i_fields) then
+          if(ll_comparal .and. chk_o2i_fields) then
+            call mpi_gatherv(vwork2d(l_ilo:l_ihi, l_jlo:l_jhi),1,sendsubarray,gwork,  &
+                       counts,disps,resizedrecvsubarray, 0,MPI_COMM_ICE,ierror)
+           call MPI_Barrier(MPI_COMM_ICE, ierror)
+          endif
+        if (my_task==0 .and. chk_o2i_fields) then
           call write_nc2D(ncid, trim(cl_read(jf)), gwork, 1, il_im,il_jm, &
                           currstep,ilout=il_out)
         endif
        endif
 
     endif
-
-    call scatter_global(vwork, gwork, master_task, distrb_info, &
+    
+    if (.not. ll_comparal) then
+      call scatter_global(vwork, gwork, master_task, distrb_info, &
                         field_loc_center, field_type_scalar)
+    else
+      call unpack_global_dbl(vwork, gwork, master_task, distrb_info, &
+                        field_loc_center, field_type_scalar)
+    endif 
 
     !Q: 'field_type_scalar' all right for 'vector' (ssu/ssv, sslx/ssly))?! 
-
     select case (trim(cl_read(jf)))
     case ('sst_i'); ocn_sst = vwork
     case ('sss_i'); ocn_sss = vwork 
@@ -734,6 +959,8 @@
  
   integer(kind=int_kind), intent(in) :: isteps
   integer(kind=int_kind) :: jf
+  integer(kind=int_kind) :: ilo,ihi,jlo,jhi,iblk,i,j
+  type (block) :: this_block           ! block information for current block
 
   integer(kind=int_kind) :: ncid,currstep,ll,ilout
   data currstep/0/
@@ -754,6 +981,7 @@
     endif
   endif
 
+  write(il_out,*) "prism_put into_ocn at sec: ", isteps
   do jf = nsend_i2a + 1, jpfldout
 
 !CH: make sure the 'LIMITS' are to be released!
@@ -788,16 +1016,41 @@
        endif 
     case('press_io'); vwork = io_press
     case('aice_io');  vwork = io_aice
+    case('melt_io');  vwork = io_melt
+    case('form_io');  vwork = io_form
     end select
-
-    call gather_global(gwork, vwork, master_task, distrb_info)
-
-    if (my_task == 0 ) then   
+    
+    if(.not. ll_comparal) then 
+      call gather_global(gwork, vwork, master_task, distrb_info)
+    else
+      call pack_global_dbl(gwork, vwork, master_task, distrb_info)
+      vwork2d(l_ilo:l_ihi, l_jlo:l_jhi) = gwork(l_ilo:l_ihi, l_jlo:l_jhi)
+!      do iblk=1,nblocks_tot
+!
+!        if (distrb_info%blockLocation(iblk) == my_task+1) then
+!
+!          this_block = get_block(iblk,iblk)
+!          ilo = this_block%ilo
+!          ihi = this_block%ihi
+!          jlo = this_block%jlo
+!          jhi = this_block%jhi
+!
+!          vwork2d(this_block%i_glob(ilo):this_block%i_glob(ihi),   &
+!             this_block%j_glob(jlo):this_block%j_glob(jhi)) =      &
+!          vwork(ilo:ihi,jlo:jhi,distrb_info%blockLocalID(iblk)) 
+!        endif
+!      end do
+      
+    endif
+    if (my_task == 0 .or. ll_comparal) then   
 
       write(il_out,*)
       write(il_out,*) '*** sending coupling field No. ', jf, cl_writ(jf)
-
-      call prism_put_proto(il_var_id_out(jf), isteps, gwork, ierror)
+      if(ll_comparal) then
+        call prism_put_proto(il_var_id_out(jf), isteps, vwork2d(l_ilo:l_ihi, l_jlo:l_jhi), ierror)
+      else
+        call prism_put_proto(il_var_id_out(jf), isteps, gwork, ierror)
+      endif
       if ( ierror /= PRISM_Ok .and. ierror < PRISM_Sent) then
         write(il_out,*)
         write(il_out,*) '(into_ocn) Err in _put_ ', cl_writ(jf), isteps, ierror
@@ -805,8 +1058,13 @@
       else
         write(il_out,*)
         write(il_out,*)'(into_ocn) sent: ', cl_writ(jf), isteps, ierror
-        if (chk_i2o_fields) then
-          call write_nc2D(ncid, trim(cl_writ(jf)), gwork, 1, il_im,il_jm, &
+        if(chk_i2o_fields .and. ll_comparal) then
+          call mpi_gatherv(vwork2d(l_ilo:l_ihi, l_jlo:l_jhi),1,sendsubarray,gwork, &
+                     counts,disps,resizedrecvsubarray, 0,MPI_COMM_ICE,ierror)
+           call MPI_Barrier(MPI_COMM_ICE, ierror)
+        endif
+        if (my_task==0 .and. chk_i2o_fields) then
+            call write_nc2D(ncid, trim(cl_writ(jf)), gwork, 1, il_im,il_jm, &
                           currstep,ilout=il_out)
         endif
       endif
@@ -844,15 +1102,23 @@
 
   currstep=currstep+1
 
+!debug hxy599
+!if (isteps==runtime-3600) then
+! chk_i2a_fields=.true. !save the last step
+! currstep = 1
+! write (il_out,*) 'hxy599 debug: save i2a fields at time ', isteps
+!end if
+
   if (my_task == 0) then
     write(il_out,*)
     write(il_out,*) '(into_atm) sending coupling fields at stime= ', isteps
     if (chk_i2a_fields) then
       if ( .not. file_exist('fields_i2a_in_ice.nc') ) then
         call create_ncfile('fields_i2a_in_ice.nc',ncid,il_im,il_jm,ll=1,ilout=il_out)
-      endif
-      write(il_out,*) 'opening file fields_i2a_in_ice.nc at nstep = ', isteps
-      call ncheck( nf_open('fields_i2a_in_ice.nc',nf_write,ncid) )
+      else
+        write(il_out,*) 'opening file fields_i2a_in_ice.nc at nstep = ', isteps
+        call ncheck( nf_open('fields_i2a_in_ice.nc',nf_write,ncid) )
+      end if
       call write_nc_1Dtime(real(isteps),currstep,'time',ncid)
     endif
   endif
@@ -886,6 +1152,7 @@
   call u2tgrid_vector(ia_uvel)
   call u2tgrid_vector(ia_vvel) 
 
+  write(il_out,*) "prism_put into_atm at sec: ", isteps
   do jf = 1, nsend_i2a
 
     select case (trim(cl_writ(jf)))
@@ -909,21 +1176,43 @@
     case('uvel_ia');  vwork = ia_uvel * ocn_ssuv_factor     !note ice u/v are also 
     case('vvel_ia');  vwork = ia_vvel * ocn_ssuv_factor     !     included here.
     end select
-
-    call gather_global(gwork, vwork, master_task, distrb_info)
     
-    if (my_task == 0 ) then
+    if (.not. ll_comparal) then
+      call gather_global(gwork, vwork, master_task, distrb_info)
+    else
+      call pack_global_dbl(gwork, vwork, master_task, distrb_info)
+      vwork2d(l_ilo:l_ihi, l_jlo:l_jhi) = gwork(l_ilo:l_ihi, l_jlo:l_jhi)
+!      do iblk=1,nblocks_tot
+!
+!        if (distrb_info%blockLocation(iblk) == my_task+1) then
+!
+!          this_block = get_block(iblk,iblk)
+!          ilo = this_block%ilo
+!          ihi = this_block%ihi
+!          jlo = this_block%jlo
+!          jhi = this_block%jhi
+!
+!          vwork2d(this_block%i_glob(ilo):this_block%i_glob(ihi),   &
+!             this_block%j_glob(jlo):this_block%j_glob(jhi)) =      &
+!          vwork(ilo:ihi,jlo:jhi,distrb_info%blockLocalID(iblk))
+!        endif
+!      end do
+
+    end if
+    if (my_task == 0 .or. ll_comparal) then
   
       write(il_out,*)
       write(il_out,*) '*** sending coupling field No. ', jf, cl_writ(jf)
 
-      call prism_put_inquire_proto(il_var_id_out(jf),isteps,ierror)
+      !call prism_put_inquire_proto(il_var_id_out(jf),isteps,ierror)
   
       write(il_out,*)
       write(il_out,*) '(into_atm) what to do with this var==> Err= ',ierror
-  
-      call prism_put_proto(il_var_id_out(jf), isteps, gwork, ierror)
-  
+      if(ll_comparal) then 
+        call prism_put_proto(il_var_id_out(jf), isteps, vwork2d(l_ilo:l_ihi, l_jlo:l_jhi), ierror)
+      else
+        call prism_put_proto(il_var_id_out(jf), isteps, gwork, ierror)
+      endif 
       if ( ierror /= PRISM_Ok .and. ierror < PRISM_Sent) then
         write(il_out,*)
         write(il_out,*) '(into_atm) Err in _put_ ', cl_writ(jf), isteps, ierror
@@ -931,8 +1220,13 @@
       else
         write(il_out,*)
         write(il_out,*)'(into_atm) sent: ', cl_writ(jf), isteps, ierror
-        if (chk_i2a_fields) then
-          call write_nc2D(ncid, trim(cl_writ(jf)), gwork, 1, il_im,il_jm, &
+        if(chk_i2a_fields .and. ll_comparal) then
+          call mpi_gatherv(vwork2d(l_ilo:l_ihi, l_jlo:l_jhi),1,sendsubarray,gwork, &
+                     counts,disps,resizedrecvsubarray, 0,MPI_COMM_ICE,ierror)
+           call MPI_Barrier(MPI_COMM_ICE, ierror)
+        endif
+        if (my_task==0 .and. chk_i2a_fields) then
+            call write_nc2D(ncid, trim(cl_writ(jf)), gwork, 1, il_im,il_jm, &
                           currstep,ilout=il_out)
         endif
       endif
@@ -965,6 +1259,8 @@
   !  
   ! 9- PSMILe termination 
   !   
+
+  call MPI_Barrier(MPI_COMM_ICE, ierror)
   call prism_terminate_proto (ierror)
   if (ierror /= PRISM_Ok) then
     if (my_task == 0) then
@@ -1072,16 +1368,17 @@
           allocate(il_paral(ig_parsize))
           write(ld_mparout,*)'ig_parsize',ig_parsize
           
-          ilo = 1 + nghost
-          ihi = nx_block - nghost
-          jlo = 1 + nghost
-          jhi = ny_block - nghost
+          !ilo = 1 + nghost
+          !ihi = nx_block - nghost
+          !jlo = 1 + nghost
+          !jhi = ny_block - nghost
           
           il_paral ( clim_strategy ) = clim_Box
-          il_paral ( clim_offset   ) = il_im * (jlo-1) + (ilo-1)
-          il_paral ( clim_SizeX    ) = ihi-ilo+1
-          il_paral ( clim_SizeY    ) = jhi-jlo+1
-          il_paral ( clim_LdX      ) = il_im
+          !il_paral ( clim_offset   ) = nx_global * (l_jlo-1) + (l_ilo-1)
+          il_paral ( clim_offset   ) = (l_ilo-1)
+          il_paral ( clim_SizeX    ) = l_ihi-l_ilo+1
+          il_paral ( clim_SizeY    ) = l_jhi-l_jlo+1
+          il_paral ( clim_LdX      ) = nx_global
           
           id_length = il_paral(clim_sizeX) * il_paral(clim_sizeY)
           
@@ -1123,5 +1420,422 @@
   end subroutine decomp_def
 
 !============================================================================
+
+!============================================================================
+ subroutine unpack_global_dbl(ARRAY, ARRAY_G, src_task, dst_dist, &
+                               field_loc, field_type)
+
+! !DESCRIPTION:
+!  This subroutine scatters a global-sized array to a distributed array.
+!
+! !REVISION HISTORY:
+!  same as module
+!
+! !REMARKS:
+!  This is the specific interface for double precision arrays
+!  corresponding to the generic interface scatter_global.
+
+! !USES:
+
+   include 'mpif.h'
+
+! !INPUT PARAMETERS:
+
+   integer (int_kind), intent(in) :: &
+     src_task       ! task from which array should be scattered
+
+   type (distrb), intent(in) :: &
+     dst_dist       ! distribution of resulting blocks
+
+   real (dbl_kind), dimension(:,:), intent(in) :: &
+     ARRAY_G        ! array containing global field on src_task
+
+   integer (int_kind), intent(in) :: &
+      field_type,               &! id for type of field (scalar, vector, angle)
+      field_loc                  ! id for location on horizontal grid
+                                 !  (center, NEcorner, Nface, Eface)
+
+! !OUTPUT PARAMETERS:
+
+   real (dbl_kind), dimension(:,:,:), intent(inout) :: &
+     ARRAY          ! array containing distributed field
+!EOP
+!BOC
+!-----------------------------------------------------------------------
+!
+!  local variables
+!
+!-----------------------------------------------------------------------
+
+   integer (int_kind) :: &
+     i,j,n,bid,          &! dummy loop indices
+     nrecvs,             &! actual number of messages received
+     isrc, jsrc,         &! source addresses
+     dst_block,          &! location of block in dst array
+     xoffset, yoffset,   &! offsets for tripole boundary conditions
+     yoffset2,           &!
+     isign,              &! sign factor for tripole boundary conditions
+     ierr                 ! MPI error flag
+
+   type (block) :: &
+     this_block  ! block info for current block
+
+   integer (int_kind), dimension(MPI_STATUS_SIZE) :: &
+     status
+
+   integer (int_kind), dimension(:), allocatable :: &
+     rcv_request     ! request array for receives
+
+   integer (int_kind), dimension(:,:), allocatable :: &
+     rcv_status      ! status array for receives
+
+   real (dbl_kind), dimension(:,:), allocatable :: &
+     msg_buffer      ! buffer for sending blocks
+
+!-----------------------------------------------------------------------
+!
+!  initialize return array to zero and set up tripole quantities
+!
+!-----------------------------------------------------------------------
+   ARRAY = c0
+
+   this_block = get_block(1,1) ! for the tripoleTflag - all blocks have it
+   if (this_block%tripoleTFlag) then
+     select case (field_loc)
+     case (field_loc_center)   ! cell center location
+        xoffset = 2
+        yoffset = 0
+     case (field_loc_NEcorner) ! cell corner (velocity) location
+        xoffset = 1
+        yoffset = -1
+     case (field_loc_Eface)    ! cell face location
+        xoffset = 1
+        yoffset = 0
+     case (field_loc_Nface)    ! cell face location
+        xoffset = 2
+        yoffset = -1
+     case (field_loc_noupdate) ! ghost cells never used - use cell center
+        xoffset = 1
+        yoffset = 1
+     end select
+   else
+     select case (field_loc)
+     case (field_loc_center)   ! cell center location
+        xoffset = 1
+        yoffset = 1
+     case (field_loc_NEcorner) ! cell corner (velocity) location
+        xoffset = 0
+        yoffset = 0
+     case (field_loc_Eface)    ! cell face location
+        xoffset = 0
+        yoffset = 1
+     case (field_loc_Nface)    ! cell face location
+        xoffset = 1
+        yoffset = 0
+     case (field_loc_noupdate) ! ghost cells never used - use cell center
+        xoffset = 1
+        yoffset = 1
+     end select
+   endif
+   select case (field_type)
+   case (field_type_scalar)
+      isign =  1
+   case (field_type_vector)
+      isign = -1
+   case (field_type_angle)
+      isign = -1
+   case (field_type_noupdate) ! ghost cells never used - use cell center
+      isign =  1
+   case default
+      call abort_ice('Unknown field type in scatter')
+   end select
+
+
+     !*** copy any local blocks
+
+     do n=1,nblocks_tot
+       if (dst_dist%blockLocation(n) == my_task+1) then
+         dst_block = dst_dist%blockLocalID(n)
+         this_block = get_block(n,n)
+
+         !*** if this is an interior block, then there is no
+         !*** padding or update checking required
+
+         if (this_block%iblock > 1         .and. &
+             this_block%iblock < nblocks_x .and. &
+             this_block%jblock > 1         .and. &
+             this_block%jblock < nblocks_y) then
+
+!            do j=1,ny_block
+!            do i=1,nx_block
+!               ARRAY(i,j,dst_block) = ARRAY_G(this_block%i_glob(i),&
+!                                              this_block%j_glob(j))
+!            end do
+!            end do
+            ARRAY(1:nx_block,1:ny_block,dst_block) =                              &
+                        ARRAY_G(this_block%i_glob(1):this_block%i_glob(nx_block), &
+                                this_block%j_glob(1):this_block%j_glob(ny_block))
+
+         !*** if this is an edge block but not a northern edge
+         !*** we only need to check for closed boundaries and
+         !*** padding (global index = 0)
+
+         else if (this_block%jblock /= nblocks_y) then
+
+            do j=1,ny_block
+               if (this_block%j_glob(j) /= 0) then
+                  do i=1,nx_block
+                     if (this_block%i_glob(i) /= 0) then
+                        ARRAY(i,j,dst_block) = ARRAY_G(this_block%i_glob(i),&
+                                                       this_block%j_glob(j))
+                     endif
+                  end do
+               endif
+            end do
+
+         !*** if this is a northern edge block, we need to check
+         !*** for and properly deal with tripole boundaries
+
+         else
+
+            do j=1,ny_block
+               if (this_block%j_glob(j) > 0) then ! normal boundary
+
+                  do i=1,nx_block
+                     if (this_block%i_glob(i) /= 0) then
+                        ARRAY(i,j,dst_block) = ARRAY_G(this_block%i_glob(i),&
+                                                       this_block%j_glob(j))
+                     endif
+                  end do
+
+               else if (this_block%j_glob(j) < 0) then  ! tripole
+                  ! for yoffset=0 or 1, yoffset2=0,0
+                  ! for yoffset=-1, yoffset2=0,1, for u-rows on T-fold grid
+                  do yoffset2=0,max(yoffset,0)-yoffset
+                    jsrc = ny_global + yoffset + yoffset2 + &
+                         (this_block%j_glob(j) + ny_global)
+                    do i=1,nx_block
+                      if (this_block%i_glob(i) /= 0) then
+                         isrc = nx_global + xoffset - this_block%i_glob(i)
+                         if (isrc < 1) isrc = isrc + nx_global
+                         if (isrc > nx_global) isrc = isrc - nx_global
+                         ARRAY(i,j-yoffset2,dst_block) &
+                           = isign * ARRAY_G(isrc,jsrc)
+                      endif
+                    end do
+                  end do
+
+               endif
+            end do
+
+         endif
+       endif
+     end do
+
+   !-----------------------------------------------------------------
+   ! Ensure unused ghost cell values are 0
+   !-----------------------------------------------------------------
+
+   if (field_loc == field_loc_noupdate) then
+      do n=1,nblocks_tot
+         dst_block = dst_dist%blockLocalID(n)
+         this_block = get_block(n,n)
+
+         if (dst_block > 0) then
+
+         ! north edge
+         do j = this_block%jhi+1,ny_block
+         do i = 1, nx_block
+            ARRAY (i,j,dst_block) = c0
+         enddo
+         enddo
+         ! east edge
+         do j = 1, ny_block
+         do i = this_block%ihi+1,nx_block
+            ARRAY (i,j,dst_block) = c0
+         enddo
+         enddo
+         ! south edge
+         do j = 1, this_block%jlo-1
+         do i = 1, nx_block
+            ARRAY (i,j,dst_block) = c0
+         enddo
+         enddo
+         ! west edge
+         do j = 1, ny_block
+         do i = 1, this_block%ilo-1
+            ARRAY (i,j,dst_block) = c0
+         enddo
+         enddo
+
+         endif
+      enddo
+   endif
+
+ end subroutine unpack_global_dbl
+!============================================================================
+
+!============================================================================
+ subroutine pack_global_dbl(ARRAY_G, ARRAY, dst_task, src_dist)
+
+! !DESCRIPTION:
+!  This subroutine gathers a distributed array to a global-sized
+!  array on the processor dst_task.
+!
+! !REVISION HISTORY:
+!  same as module
+!
+! !REMARKS:
+!  This is the specific inteface for double precision arrays
+!  corresponding to the generic interface gather_global.  It is shown
+!  to provide information on the generic interface (the generic
+!  interface is identical, but chooses a specific inteface based
+!  on the data type of the input argument).
+
+
+! !USES:
+
+   include 'mpif.h'
+
+! !INPUT PARAMETERS:
+
+   integer (int_kind), intent(in) :: &
+     dst_task   ! task to which array should be gathered
+
+   type (distrb), intent(in) :: &
+     src_dist   ! distribution of blocks in the source array
+
+   real (dbl_kind), dimension(:,:,:), intent(in) :: &
+     ARRAY      ! array containing horizontal slab of distributed field
+
+! !OUTPUT PARAMETERS:
+
+
+   real (dbl_kind), dimension(:,:), intent(inout) :: &
+     ARRAY_G    ! array containing global horizontal field on dst_task
+
+!EOP
+!BOC
+!-----------------------------------------------------------------------
+!
+!  local variables
+!
+!-----------------------------------------------------------------------
+
+   integer (int_kind) :: &
+     i,j,n          ,&! dummy loop counters
+     nsends         ,&! number of actual sends
+     src_block      ,&! block locator for send
+     ierr             ! MPI error flag
+
+   integer (int_kind), dimension(MPI_STATUS_SIZE) :: &
+     status
+
+   integer (int_kind), dimension(:), allocatable :: &
+     snd_request
+
+   integer (int_kind), dimension(:,:), allocatable :: &
+     snd_status
+
+   real (dbl_kind), dimension(:,:), allocatable :: &
+     msg_buffer
+
+   type (block) :: &
+     this_block  ! block info for current block
+
+     do n=1,nblocks_tot
+
+       !*** copy local blocks
+
+       if (src_dist%blockLocation(n) == my_task+1) then
+
+         this_block = get_block(n,n)
+
+!         do j=this_block%jlo,this_block%jhi
+!         do i=this_block%ilo,this_block%ihi
+!           ARRAY_G(this_block%i_glob(i), &
+!                   this_block%j_glob(j)) = &
+!                  ARRAY(i,j,src_dist%blockLocalID(n))
+!         end do
+!         end do
+          ARRAY_G(this_block%i_glob(this_block%ilo):this_block%i_glob(this_block%ihi), &
+                 this_block%j_glob(this_block%jlo):this_block%j_glob(this_block%jhi)) = &
+                 ARRAY(this_block%ilo:this_block%ihi,this_block%jlo:this_block%jhi,src_dist%blockLocalID(n))
+
+       !*** fill land blocks with special values
+
+       else if (src_dist%blockLocation(n) == 0) then
+
+         this_block = get_block(n,n)
+
+!         do j=this_block%jlo,this_block%jhi
+!         do i=this_block%ilo,this_block%ihi
+!           ARRAY_G(this_block%i_glob(i), &
+!                   this_block%j_glob(j)) = spval_dbl
+!         end do
+!         end do
+         ARRAY_G(this_block%i_glob(this_block%ilo):this_block%i_glob(this_block%ihi), &
+                 this_block%j_glob(this_block%jlo):this_block%j_glob(this_block%jhi)) = spval_dbl
+       endif
+
+     end do
+
+  end subroutine pack_global_dbl
+!============================================================================
+
+!==============================================================================
+subroutine save_restart_i2a(fname, nstep)
+! output the last i2a forcing data in cice by the end of the run,
+! to be read in at the beginning of next run by cice and sent to atm
+
+implicit none
+
+character*(*), intent(in) :: fname
+integer(kind=int_kind), intent(in) :: nstep
+integer(kind=int_kind) :: ncid
+integer(kind=int_kind) :: jf, jfs, ll, ilout
+
+if (my_task == 0) then
+  call open_ncfile(fname, ncid, il_im, il_jm, ll=1, ilout=il_out)
+endif
+
+do jf = 1, nsend_i2a
+    select case (trim(cl_writ(jf)))
+    case('isst_ia');  vwork = ia_sst
+    case('icecon01'); vwork(:,:,:) = ia_aicen(:,:,1,:)
+    case('icecon02'); vwork(:,:,:) = ia_aicen(:,:,2,:)
+    case('icecon03'); vwork(:,:,:) = ia_aicen(:,:,3,:)
+    case('icecon04'); vwork(:,:,:) = ia_aicen(:,:,4,:)
+    case('icecon05'); vwork(:,:,:) = ia_aicen(:,:,5,:)
+    case('snwthk01'); vwork(:,:,:) = ia_snown(:,:,1,:)
+    case('snwthk02'); vwork(:,:,:) = ia_snown(:,:,2,:)
+    case('snwthk03'); vwork(:,:,:) = ia_snown(:,:,3,:)
+    case('snwthk04'); vwork(:,:,:) = ia_snown(:,:,4,:)
+    case('snwthk05'); vwork(:,:,:) = ia_snown(:,:,5,:)
+    case('icethk01'); vwork(:,:,:) = ia_thikn(:,:,1,:)
+    case('icethk02'); vwork(:,:,:) = ia_thikn(:,:,2,:)
+    case('icethk03'); vwork(:,:,:) = ia_thikn(:,:,3,:)
+    case('icethk04'); vwork(:,:,:) = ia_thikn(:,:,4,:)
+    case('icethk05'); vwork(:,:,:) = ia_thikn(:,:,5,:)
+    !20100305: test effect of ssuv on the tropical cooling biases (as per Harry Henden)
+    case('uvel_ia');  vwork = ia_uvel !* ocn_ssuv_factor     !note ice u/v are also
+    case('vvel_ia');  vwork = ia_vvel !* ocn_ssuv_factor     !     included here.
+    end select
+
+!    if (.not. ll_comparal) then
+      call gather_global(gwork, vwork, master_task, distrb_info)
+!    else
+!      call pack_global_dbl(gwork, vwork, master_task, distrb_info)
+!    end if
+  if (my_task == 0) then
+    call modify_nc2D(ncid, cl_writ(jf), gwork, 2, il_im, il_jm, 1, ilout=il_out)
+  endif
+
+enddo
+
+if (my_task == 0) call ncheck( nf_close(ncid) )
+
+end subroutine save_restart_i2a
+!==========================================================
 
   end module cpl_interface

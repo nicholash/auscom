@@ -68,7 +68,7 @@
       real (kind=dbl_kind), parameter :: &
          gravit    = 9.80616_dbl_kind    ,&! gravitational acceleration (m/s^2)
          omega     = 7.292e-5_dbl_kind   ,&! angular velocity of earth (rad/sec)
-         radius    = 6.37e6_dbl_kind       ! earth radius (m)
+         radius    = 6.371e6_dbl_kind       ! earth radius (m)
 
       real (kind=dbl_kind), parameter :: &
          pi = 3.14159265358979323846_dbl_kind,&! pi

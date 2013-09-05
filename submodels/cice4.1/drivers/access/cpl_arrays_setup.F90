@@ -67,9 +67,14 @@ module cpl_arrays_setup
 !(12) pressure                                    	io_press
 !(13) ice concentration (fraction)                      io_aice
 !
+! Seperate ice melting/forcation associated water fluxes from the rainfall field:
+!
+!(14) ice melt waterflux                                io_melt
+!(15) ice form waterflux                                io_form
+!
 ! Therefore, currently we have 
 ! 
-! 31 in, 31 out => thus we set jpfldout=30, jpfldin=31 in cpl_parameters! 
+! 31 in, 33 out => thus we set jpfldout=33, jpfldin=31 in cpl_parameters.
 !
 !----------------------------------------------------------------------------
 ! This module will be largely modified/'simplifed after ACCESS works !
@@ -110,7 +115,8 @@ real(kind=dbl_kind), dimension(:,:,:,:), allocatable :: &
 
 real(kind=dbl_kind),dimension(:,:,:), allocatable :: &     !to ocn (time averaged)
     io_strsu, io_strsv, io_rain,  io_snow,  io_stflx, io_htflx, io_swflx, &
-    io_qflux, io_shflx, io_lwflx, io_runof, io_press, io_aice
+    io_qflux, io_shflx, io_lwflx, io_runof, io_press, io_aice, &
+    io_melt, io_form
 
 ! Temporary arrays
 !==================

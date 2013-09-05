@@ -148,7 +148,7 @@
 #ifdef AusCOM 
       call prism_init		! called in init_communicate	
       MPI_COMM_ICE = il_commlocal
-      call init_cpl     ! initialize message passing
+!      call init_cpl     ! initialize message passing
       call get_cpl_timecontrol
       write(il_out,*)' CICE (cice_init) 1    jobnum = ',jobnum
       write(il_out,*)' CICE (cice_init) 1   inidate = ',inidate
@@ -169,6 +169,9 @@
       write(il_out,*)' CICE: init_domain_blocks done!'
       call init_grid1           ! domain distribution
       write(il_out,*)' CICE: init_grid1 done!'
+#ifdef AusCOM
+      call init_cpl     ! initialize message passing
+#endif
       call init_ice_timers      ! initialize all timers
       write(il_out,*)' CICE: init_ice_timers done!'
       call ice_timer_start(timer_total)   ! start timing entire run

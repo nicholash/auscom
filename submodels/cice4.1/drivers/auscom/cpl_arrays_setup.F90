@@ -60,7 +60,13 @@ module cpl_arrays_setup
 !(12) pressure                                    	iopress
 !(13) ice concentration (fraction)			ioaice
 !
-! 17 in, 14 out => thus we set jpfldout=14, jpfldin=17 (in cpl_parameters)! 
+! Seperate ice melting/forcation associated water fluxes from the rainfall field:
+!
+!(14) ice melt waterflux				iomelt
+!(15) ice form waterflux				ioform
+!
+!
+! 17 in, 16 out => thus we set jpfldout=16, jpfldin=17 (in cpl_parameters)! 
 !
 !----------------------------------------------------------------------------
 !Note: 
@@ -98,10 +104,12 @@ real(kind=dbl_kind),dimension(:,:,:), allocatable :: &     !to atm
     isst, albvdr, albidr, albvdf, albidf  
 real(kind=dbl_kind),dimension(:,:,:), allocatable :: &     !to ocn (time averaged)
     iostrsu, iostrsv, iorain, iosnow, iostflx, iohtflx, ioswflx &
-   ,ioqflux, ioshflx, iolwflx, iorunof, iopress, ioaice
+   ,ioqflux, ioshflx, iolwflx, iorunof, iopress, ioaice &
+   ,iomelt, ioform
 real(kind=dbl_kind),dimension(:,:,:), allocatable :: &     !to ocn (temporary)
     tiostrsu, tiostrsv, tiorain, tiosnow, tiostflx, tiohtflx, tioswflx &
-   ,tioqflux, tioshflx, tiolwflx, tiorunof, tiopress, tioaice
+   ,tioqflux, tioshflx, tiolwflx, tiorunof, tiopress, tioaice &
+   ,tiomelt, tioform
 
 ! other stuff 
 real(kind=dbl_kind),dimension(:,:,:), allocatable :: & 

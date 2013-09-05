@@ -124,6 +124,36 @@ return
 end subroutine create_ncfile
 
 !===========================================================================
+subroutine open_ncfile(ncfile, ncid, ii, jj, kk, ll, ilout)
+!
+!to open exsiting ncfile to modify it
+!
+
+implicit none
+
+integer(kind=int_kind), intent(in) :: ii,jj             !x, y dimension size
+!!!integer(kind=int_kind), optional, intent(in) :: kk, ll !z, t dimension size
+!!!integer(kind=int_kind), optional, intent(in) :: ilout  !format io file id
+! * 'optional' att can NOT be with 'intent(in) *'
+integer(kind=int_kind), optional :: kk, ll !z, t dimension size
+integer(kind=int_kind), optional :: ilout  !format io file id
+character(len=*), intent(in) :: ncfile
+integer(kind=int_kind), intent(out) :: ncid
+
+if (present(ilout)) write(ilout,*) 'opening a existing netcdf file: ',ncfile
+
+!create a new NetCDF and define the grid:
+call ncheck(nf_open(trim(ncfile),nf_write,ncid))
+
+!close NetCDF file
+!call ncheck(nf_close(ncid))
+!do NOT close it here!
+write(*,'(2a)') 'ncfile opened: ',trim(ncfile)
+
+return
+end subroutine open_ncfile
+
+!===========================================================================
 subroutine create_nc(ncfile,ncid,ii,jj)
 !
 !not needed anymore 'cos its function is covered by 'create_ncfile'
@@ -250,6 +280,50 @@ end select
 
 return
 end subroutine write_nc2D
+
+!===========================================================================
+subroutine modify_nc2D(ncid, vname, vin, prcn, nx, ny, istep, ilout)
+!
+!to modify a 2D array into an existing 3D field (with time dimension)
+!with either single or double precisioin depending on argumnet 'prcn'!
+!
+
+implicit none
+
+integer(kind=int_kind), intent(in) :: ncid
+integer(kind=int_kind), intent(in) :: prcn      !precision choice (1/2: signle/double)
+character(len=*), intent(in) :: vname
+integer(kind=int_kind), intent(in) :: nx, ny
+integer(kind=int_kind), intent(in) :: istep     !position in the time dim (No of record)
+!!!integer(kind=int_kind), intent(in), optional :: ilout
+integer(kind=int_kind), optional :: ilout
+real(kind=dbl_kind), dimension(nx,ny), intent(in) :: vin
+
+integer(kind=int_kind) :: varid, ncstatus
+real*4, dimension(nx,ny) :: vtmp   !single precision
+
+if (present(ilout)) write(ilout,*) 'modify_nc2D: handling var *** ',vname, ' rec: ', istep
+
+ncstatus=nf_inq_varid(ncid,vname,varid)
+if (ncstatus/=nf_noerr) then
+  if (present(ilout)) write(ilout,*) 'modify_nc2D: Error- not found old var ***', vname
+  stop
+else
+  if (present(ilout)) write(ilout,*) 'modify_nc2D: found old var ***', vname
+end if
+
+select case(prcn)
+  case (1)
+    vtmp = real(vin) !dbl precision to single precision
+    !call ncheck(nf_put_vara_real(ncid,varid,(/1,1,istep/),(/nx,ny,1/),vtmp))
+    call ncheck(nf_put_vara_real(ncid,varid,(/1,1/),(/nx,ny/),vtmp))
+  case default    !case (2)
+    !call ncheck(nf_put_vara_double(ncid,varid,(/1,1,istep/),(/nx,ny,1/),vin))
+    call ncheck(nf_put_vara_double(ncid,varid,(/1,1/),(/nx,ny/),vin))
+end select
+
+return
+end subroutine modify_nc2D
 
 !===========================================================================
 subroutine write_nc(vin, nx, ny, vname, ncid)

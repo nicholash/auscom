@@ -115,12 +115,12 @@
       integer (kind=int_kind) :: k
 
 #ifdef AusCOM 
-      integer (kind=int_kind) :: time_sec, itap, icpl_ai, icpl_io
+      integer (kind=int_kind) :: time_sec, itap, icpl_ai, icpl_io, tmp_time
       integer (kind=int_kind) :: rtimestamp_ai, stimestamp_ai
       integer (kind=int_kind) :: rtimestamp_io, stimestamp_io
       !receive and send timestamps (seconds)
-      !indicates if the first time step of experiment
-      logical :: first_step = .true.
+      integer (kind=int_kind) :: imon 
+      logical :: first_step = .true.  !1st time step of experiment or not
 #endif
 
    !--------------------------------------------------------------------
@@ -144,21 +144,25 @@
       ! ahead of the real coupling point, which must be done properly in the data atm 
       ! model (matm).
       !
-!XXX      call get_time0_a2i_fields('INPUT/A2I_time0.nc') 
+!XXX      call get_time0_a2i_fields('CICE_input/A2I_time0.nc') 
      
       ! restart runs need 'initial' o2i and i2o forcing fields saved at the end of 
       !    last run from ocn and ice model;
       ! initial run needs the pre-processed o2i and i2o fields.
 
       call get_time0_o2i_fields('o2i.nc')
+
+!write(il_out,*) 'after get_time0_o2i_fields, ssto=', ssto
+
       call get_time0_i2o_fields('i2o.nc')
       call get_sicemass('INPUT/sicemass.nc')
 
-      if (use_core_runoff) &
-    &   call get_core_runoff('INPUT/core_runoff_regrid.nc',& 
-    &   'runoff',1)
+      if (use_core_nyf_runoff) then 
+        call get_core_runoff('INPUT/core_runoff_regrid.nc','runoff',1)
+      endif
 
       time_sec = 0
+      imon = 0
 
       DO icpl_ai = 1, num_cpl_ai   !begin I <==> A coupling iterations
 
@@ -170,6 +174,17 @@
       if (my_task == 0) then
         write(il_out,*) ' called from_atm at icpl_ai, rtimestamp_ai = ',&
     &   icpl_ai,rtimestamp_ai
+      endif
+
+! In case of CORE-IAF RUNOFF:
+      if (use_core_iaf_runoff) then
+        call calendar(time-runtime0)
+        if (imon /= month ) then
+          imon = month
+          print *, "use_core_iaf_runoff: icpl_ai, month, mday", icpl_ai, month, mday
+          write(1001,*)'icpl_ai, month, mday = ',icpl_ai, month, mday
+          call get_core_runoff('INPUT/core_runoff_regrid.nc','RUNOFF', month)
+        endif
       endif
 
       Do icpl_io = 1, num_cpl_io   !begin I <==> O coupling iterations
@@ -207,10 +222,16 @@
 
           !put in place all (atm and ocn) 'raw' forcing fields:
           call newt_forcing_raw
+!write(il_out,*) 'after newt_forcing_raw, tair=', tair
+!write(il_out,*) 'after newt_forcing_raw, sst=', sst
+
           !convert the 'raw' atm forcing into that required by cice
           call get_forcing_atmo_ready
+!write(il_out,*) 'after get_forcing_atmo_ready, trcr=', trcr
+!write(il_out,*) 'after get_forcing_atmo_ready, sst=', sst
 
           call ice_step
+
 
           istep  = istep  + 1    ! update time step counters
           istep1 = istep1 + 1
@@ -238,18 +259,41 @@
         ! ----------------------------------- 
 
         rtimestamp_io = time_sec
-        call ice_timer_start(timer_from_ocn)  ! atm/ocn coupling
-        call from_ocn(rtimestamp_io)
-        call ice_timer_stop(timer_from_ocn)  ! atm/ocn coupling
-        if (my_task == 0) then
-           write(il_out,*) ' called from_ocn at icpl_ai, icpl_io = ', icpl_ai,icpl_io
-           write(il_out,*) '                       rtimestamp_io = ', rtimestamp_io
+#ifdef OASIS3_MCT
+        if (rtimestamp_io < runtime) then
+#endif
+          call ice_timer_start(timer_from_ocn)  ! atm/ocn coupling
+          call from_ocn(rtimestamp_io)
+          call ice_timer_stop(timer_from_ocn)  ! atm/ocn coupling
+          if (my_task == 0) then
+             write(il_out,*) ' called from_ocn at icpl_ai, icpl_io = ', icpl_ai,icpl_io
+             write(il_out,*) '                       rtimestamp_io = ', rtimestamp_io
+          endif
+#ifdef OASIS3_MCT
         endif
 
-      End Do      !icpl_io
-
+      tmp_time = time_sec + dt
+      if (mod(tmp_time, dt_cpl_ai) == 0) then 
       ! merge sst and Tsfc etc and then send i2a fields to coupler
       call ice_timer_start(timer_into_atm)  ! atm/ocn coupling
+      write(il_out,*) ' called get_i2a_fields at ', time_sec
+      call get_i2a_fields
+      ! * because of using lag=+dt_ice, we must take one step off the time_sec 
+      ! * to make the sending happen at right time:
+      stimestamp_ai = time_sec !- dt
+      call into_atm(stimestamp_ai)
+      call ice_timer_stop(timer_into_atm)  ! atm/ocn coupling
+      if (my_task == 0) then
+         write(il_out,*) ' called into_atm at icpl_ai, time_sec = ', icpl_ai,time_sec
+      endif
+      end if
+#endif
+
+      End Do      !icpl_io
+#ifndef OASIS3_MCT
+      ! merge sst and Tsfc etc and then send i2a fields to coupler
+      call ice_timer_start(timer_into_atm)  ! atm/ocn coupling
+      write(il_out,*) ' called get_i2a_fields at ', time_sec
       call get_i2a_fields
       ! * because of using lag=+dt_ice, we must take one step off the time_sec 
       ! * to make the sending happen at right time:
@@ -262,13 +306,13 @@
 
       ! replace the time0 i2a data with new values
 !XXX      call update_time0_a2i_fields 
-
+#endif
       END DO        !icpl_ia
 
       ! final update of the stimestamp_io, ie., put back the last dt_ice:
       stimestamp_io = stimestamp_io + dt
 
-!XXX      call save_time0_a2i_fields('INPUT/A2I_time1.nc', stimestamp_io)
+!XXX      call save_time0_a2i_fields('CICE_input/A2I_time1.nc', stimestamp_io)
 
       call save_time0_i2o_fields('i2o.nc', stimestamp_io) 
 

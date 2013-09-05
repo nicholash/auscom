@@ -157,6 +157,138 @@ call check_a2i_fields(istep)
 
 end subroutine read_access_a2i_data
 
+!=============================================================================
+subroutine read_restart_i2a(fname, sec) !'i2a.nc', 0)
+
+! read ice to atm coupling fields from restart file, and send to atm module
+
+implicit none
+character*(*), intent(in) :: fname
+integer :: sec
+
+integer(kind=int_kind) :: ncid
+logical :: dbug
+
+dbug = .true.
+if ( file_exist(fname) ) then
+  if (my_task==0) then
+    write(il_out,*) '(read_restart_i2a) reading in i2a fields......'
+  endif
+  call ice_open_nc(fname, ncid)
+  call ice_read_nc(ncid, 1, 'icecon01',   ia_aicen(:,:,1,:),   dbug)
+  call ice_read_nc(ncid, 1, 'icecon02',   ia_aicen(:,:,2,:),   dbug)
+  call ice_read_nc(ncid, 1, 'icecon03',   ia_aicen(:,:,3,:),   dbug)
+  call ice_read_nc(ncid, 1, 'icecon04',   ia_aicen(:,:,4,:),   dbug)
+  call ice_read_nc(ncid, 1, 'icecon05',   ia_aicen(:,:,5,:),   dbug)
+  call ice_read_nc(ncid, 1, 'snwthk01',   ia_snown(:,:,1,:),   dbug)
+  call ice_read_nc(ncid, 1, 'snwthk02',   ia_snown(:,:,2,:),   dbug)
+  call ice_read_nc(ncid, 1, 'snwthk03',   ia_snown(:,:,3,:),   dbug)
+  call ice_read_nc(ncid, 1, 'snwthk04',   ia_snown(:,:,4,:),   dbug)
+  call ice_read_nc(ncid, 1, 'snwthk05',   ia_snown(:,:,5,:),   dbug)
+  call ice_read_nc(ncid, 1, 'icethk01',   ia_thikn(:,:,1,:),   dbug)
+  call ice_read_nc(ncid, 1, 'icethk02',   ia_thikn(:,:,2,:),   dbug)
+  call ice_read_nc(ncid, 1, 'icethk03',   ia_thikn(:,:,3,:),   dbug)
+  call ice_read_nc(ncid, 1, 'icethk04',   ia_thikn(:,:,4,:),   dbug)
+  call ice_read_nc(ncid, 1, 'icethk05',   ia_thikn(:,:,5,:),   dbug)
+  call ice_read_nc(ncid, 1, 'isst_ia',    ia_sst,   dbug)
+  call ice_read_nc(ncid, 1, 'uvel_ia',    ia_uvel,   dbug)
+  call ice_read_nc(ncid, 1, 'vvel_ia',    ia_vvel,   dbug)
+  if (my_task == master_task) then
+    call ice_close_nc(ncid)
+    write(il_out,*) '(read_restart_i2a) has read in 18 i2a fields.'
+  endif
+
+else
+  if (my_task==0) then
+    write(il_out,*) 'ERROR: (read_restart_i2a) not found file *** ',fname
+  endif
+  print *, 'CICE: (read_restart_i2a) not found file *** ',fname
+  call abort_ice('CICE stopped -- Need time0 i2a data file.')
+endif
+end subroutine read_restart_i2a
+
+
+!=============================================================================
+subroutine read_restart_i2asum(fname, sec) !'i2a.nc', 0)
+
+! read ice to atm coupling fields from restart file, and send to atm module
+
+implicit none
+character*(*), intent(in) :: fname
+integer :: sec
+
+integer(kind=int_kind) :: ncid
+logical :: dbug
+
+dbug = .true.
+if ( file_exist(fname) ) then
+  if (my_task==0) then
+    write(il_out,*) '(read_restart_i2asum) reading in i2a fields......'
+  endif
+  call ice_open_nc(fname, ncid)
+  call ice_read_nc(ncid, 1, 'maicen1',   maicen(:,:,1,:),   dbug)
+  call ice_read_nc(ncid, 1, 'maicen2',   maicen(:,:,2,:),   dbug)
+  call ice_read_nc(ncid, 1, 'maicen3',   maicen(:,:,3,:),   dbug)
+  call ice_read_nc(ncid, 1, 'maicen4',   maicen(:,:,4,:),   dbug)
+  call ice_read_nc(ncid, 1, 'maicen5',   maicen(:,:,5,:),   dbug)
+  call ice_read_nc(ncid, 1, 'msnown1',   msnown(:,:,1,:),   dbug)
+  call ice_read_nc(ncid, 1, 'msnown2',   msnown(:,:,2,:),   dbug)
+  call ice_read_nc(ncid, 1, 'msnown3',   msnown(:,:,3,:),   dbug)
+  call ice_read_nc(ncid, 1, 'msnown4',   msnown(:,:,4,:),   dbug)
+  call ice_read_nc(ncid, 1, 'msnown5',   msnown(:,:,5,:),   dbug)
+  call ice_read_nc(ncid, 1, 'mthikn1',   mthikn(:,:,1,:),   dbug)
+  call ice_read_nc(ncid, 1, 'mthikn2',   mthikn(:,:,2,:),   dbug)
+  call ice_read_nc(ncid, 1, 'mthikn3',   mthikn(:,:,3,:),   dbug)
+  call ice_read_nc(ncid, 1, 'mthikn4',   mthikn(:,:,4,:),   dbug)
+  call ice_read_nc(ncid, 1, 'mthikn5',   mthikn(:,:,5,:),   dbug)
+  call ice_read_nc(ncid, 1, 'msst',    msst,   dbug)
+  call ice_read_nc(ncid, 1, 'mssu',    mssu,   dbug)
+  call ice_read_nc(ncid, 1, 'mssv',    mssv,   dbug)
+  call ice_read_nc(ncid, 1, 'muvel',    muvel,   dbug)
+  call ice_read_nc(ncid, 1, 'mvvel',    mvvel,   dbug)
+  call ice_read_nc(ncid, 1, 'maiu',    maiu,   dbug)
+  if (my_task == master_task) then
+    call ice_close_nc(ncid)
+    write(il_out,*) '(read_restart_i2asum) has read in 21 i2a fields.'
+  endif
+
+else
+  if (my_task==0) then
+    write(il_out,*) 'ERROR: (read_restart_i2asum) not found file *** ',fname
+  endif
+  print *, 'CICE: (read_restart_i2asum) not found file *** ',fname
+  call abort_ice('CICE stopped -- Need time0 i2a data file.')
+endif
+end subroutine read_restart_i2asum
+
+!==============================================================================
+subroutine put_restart_i2a(fname, sec)
+! call this subroutine after called get_restart_oi2
+! it uses ocn_sst etc to calculate average ocn fields which will be used to send 
+!to atm at the 1st step of continue run, because the ocn_sst cannot be sent to ice at the end of last run. 
+! average ice fields (done at end of last run) are ready by calling read_restart_i2asum() 
+!
+implicit none
+
+character*(*), intent(in) :: fname
+integer :: sec
+
+  if ( file_exist('i2a.nc') ) then
+    write(il_out,*)' calling read_restart_i2a at time_sec = ',sec
+    call read_restart_i2a('i2a.nc', sec)  
+  endif
+  if ( file_exist('i2asum.nc') ) then
+    write(il_out,*)' calling read_restart_i2asum at time_sec = ',sec
+    call read_restart_i2asum('i2asum.nc', sec) 
+
+    write(il_out,*)' calling ave_ocn_fields_4_i2a at time_sec = ',sec
+    call time_average_ocn_fields_4_i2a  !accumulate/average ocn fields needed for IA coupling
+    write(il_out,*) ' calling get_i2a_fields at time_sec =', sec
+    call get_i2a_fields
+  endif
+
+end subroutine put_restart_i2a
+
 !===============================================================================
 subroutine get_restart_o2i(fname)
 
@@ -275,6 +407,8 @@ if ( file_exist(fname) ) then
     case ('runof_io'); io_runof = vwork
     case ('press_io'); io_press = vwork
     case ('aice_io');  io_aice  = vwork
+    case ('melt_io');  io_melt  = vwork
+    case ('form_io');  io_form  = vwork
     end select
   enddo
   if (my_task == master_task) then
@@ -514,6 +648,82 @@ if (my_task == 0) call ncheck( nf_close(ncid) )
 return
 end subroutine save_restart_o2i
 
+!==============================================================================
+subroutine save_restart_i2asum(fname, nstep)
+! output the last i2a forcing data in cice at the end of the run,
+! to be read in at the beginning of next run by cice and sent to atm
+
+implicit none
+
+character*(*), intent(in) :: fname
+integer(kind=int_kind), intent(in) :: nstep
+integer(kind=int_kind) :: ncid
+integer(kind=int_kind) :: jf, jfs, ll, ilout
+
+integer(kind=int_kind), parameter :: sumfldin  = 21
+character(len=8), dimension(sumfldin) :: sumfld
+
+sumfld(1)='msst'
+sumfld(2)='mssu'
+sumfld(3)='mssv'
+sumfld(4)='muvel'
+sumfld(5)='mvvel'
+sumfld(6)='maiu'
+sumfld(7)='maicen1'
+sumfld(8)='maicen2'
+sumfld(9)='maicen3'
+sumfld(10)='maicen4'
+sumfld(11)='maicen5'
+sumfld(12)='mthikn1'
+sumfld(13)='mthikn2'
+sumfld(14)='mthikn3'
+sumfld(15)='mthikn4'
+sumfld(16)='mthikn5'
+sumfld(17)='msnown1'
+sumfld(18)='msnown2'
+sumfld(19)='msnown3'
+sumfld(20)='msnown4'
+sumfld(21)='msnown5'
+
+if (my_task == 0) then
+  call create_ncfile(fname, ncid, il_im, il_jm, ll=1, ilout=il_out)
+endif
+
+do jf = 1, sumfldin
+    select case (trim(sumfld(jf)))
+    case('msst'); vwork = msst
+    case('mssu'); vwork = mssu
+    case('mssv'); vwork = mssv
+    case('muvel'); vwork = muvel
+    case('mvvel'); vwork = mvvel
+    case('maiu'); vwork = maiu
+    case('maicen1'); vwork = maicen(:,:,1,:)
+    case('maicen2'); vwork =maicen(:,:,2,:)
+    case('maicen3'); vwork =maicen(:,:,3,:)
+    case('maicen4'); vwork =maicen(:,:,4,:)
+    case('maicen5'); vwork =maicen(:,:,5,:)
+    case('mthikn1'); vwork =mthikn(:,:,1,:)
+    case('mthikn2'); vwork =mthikn(:,:,2,:)
+    case('mthikn3'); vwork =mthikn(:,:,3,:)
+    case('mthikn4'); vwork =mthikn(:,:,4,:)
+    case('mthikn5'); vwork =mthikn(:,:,5,:)
+    case('msnown1'); vwork =msnown(:,:,1,:)
+    case('msnown2'); vwork =msnown(:,:,2,:)
+    case('msnown3'); vwork =msnown(:,:,3,:)
+    case('msnown4'); vwork =msnown(:,:,4,:)
+    case('msnown5'); vwork =msnown(:,:,5,:)
+    end select
+    call gather_global(gwork, vwork, master_task, distrb_info)
+  if (my_task == 0) then
+    call write_nc2D(ncid, sumfld(jf), gwork, 2, il_im, il_jm, 1, ilout=il_out)
+  endif
+
+enddo
+
+if (my_task == 0) call ncheck( nf_close(ncid) )
+
+end subroutine save_restart_i2asum
+
 !===============================================================================
 subroutine save_restart_mice(fname, nstep)
 
@@ -614,8 +824,9 @@ io_strsv = um_tauy * (1. - maice) - mstrocnyT * maice
 
 !(3) freshwater flux to ocean: rainfall (+ ice melting water flux ?)
 io_rain = um_rain * (1. - maice)
-!CH: to be confirmed:
-if (ice_fwflux) io_rain = io_rain + mfresh
+!!CH: confirmed:
+!!if (ice_fwflux) io_rain = io_rain + mfresh	!always .t.
+!!NOTE mfresh is now splitted into melt (14) and form (15) and passed into ocn seperately.
 
 !(4) freshwater flux to ocean: snowfall
 io_snow = um_snow * (1. - maice)
@@ -677,6 +888,10 @@ if (air_pressure_on) then
 endif
 !(13) ice concentration
 io_aice = maice
+!(14) ice melt fwflux 
+io_melt = max(0.0,mfresh(:,:,:)) 
+!(15) ice form fwflux
+io_form = min(0.0,mfresh(:,:,:))
 
 return
 end subroutine get_i2o_fields
@@ -952,6 +1167,10 @@ do jf = nsend_i2a + 1, jpfldout
       vwork = scale * io_press
     case('aice_io')
       vwork = scale * io_aice
+    case('form_io')
+      vwork = scale * io_form
+    case('melt_io')
+      vwork = scale * io_melt
   end select
 
   call gather_global(gwork, vwork, master_task, distrb_info)
