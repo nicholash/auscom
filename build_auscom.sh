@@ -12,7 +12,7 @@ function check {
 
 BASEDIR=$(pwd)
 cd submodels/oasis3/prism/compile
-check ./comp_oasis325.nci
+check ./comp_oasis3.sh
 cd ${BASEDIR}
 
 cd submodels/cice4.1/compile

@@ -10,15 +10,14 @@ echo ""
 echo PLATFORM = $PLATFORM
 echo ""
 
-# Set the path to the top-level PRISM directory
-#setenv PRISMHOME $cwd:h:h:h:h:h:h/prism
-setenv PRISMHOME $cwd:h
+# Set the path to the top-level OASIS directory
+setenv COUPLE $cwd:h
 echo ""
-echo PRISMHOME = $PRISMHOME
+echo COUPLE = $COUPLE
 echo ""
 
 # Set path to AusCOM home
-setenv AusCOMHOME $cwd:h:h:h:h
+setenv AusCOMHOME $cwd:h:h:h
 echo "" 
 echo AusCOMHOME = $AusCOMHOME
 echo "" 
@@ -32,12 +31,13 @@ module load openmpi
  
 #------------------------------------------------------------------
 # complie the calendar tool for AusCOM run time use by runscript
-ifort -o $AusCOMHOME/bin/calendar.exe $AusCOMHOME/bin/calendar.F90
+#ifort -o $AusCOMHOME/bin/calendar.exe $AusCOMHOME/bin/calendar.F90
 
 # Compile OASIS3
 echo ""
 echo Compiling OASIS3 ...
 echo ""
-make -f TopMakefileOasis3
+cd  $COUPLE/util/make_dir
+make realclean -f TopMakefileOasis3
+make oasis3_psmile -j4 -f TopMakefileOasis3
 
-mv $PRISMHOME/Linux/bin/oasis3.MPI1.x $AusCOMHOME/bin/oasis3_MPI1.exe
