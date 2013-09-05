@@ -1,0 +1,50 @@
+#!/bin/tcsh
+#
+# Purpose
+# -------
+# Compiles OASIS3 on xe.nci.org.au
+
+# Set the name of the platform on which we are working 
+setenv PLATFORM vayu.nci.org.au
+echo ""
+echo PLATFORM = $PLATFORM
+echo ""
+
+# Set the path to the top-level OASIS directory
+# COUPLE        : path for oasis3-mct main directory
+#setenv PRISMHOME $cwd:h:h:h:h:h:h/prism
+setenv COUPLE $cwd:h
+echo ""
+echo COUPLE = $COUPLE
+echo ""
+
+# ARCHDIR       : directory created when compiling
+setenv ARCHDIR $COUPLE/Linux
+echo ARCHDIR = $ARCHDIR
+
+# Set path to AusCOM home
+setenv AusCOMHOME $cwd:h:h:h
+echo "" 
+echo AusCOMHOME = $AusCOMHOME
+echo "" 
+ 
+source /etc/profile.d/nf_csh_modules
+module purge
+module load intel-cc
+module load intel-fc
+module load netcdf
+module load openmpi
+
+#------------------------------------------------------------------
+# complie the calendar tool for AusCOM run time use by runscript
+#ifort -o $AusCOMHOME/bin/calendar.exe $AusCOMHOME/bin/calendar.F90
+
+# Compile OASIS3
+echo ""
+echo Compiling OASIS3 ...
+echo ""
+cd  $COUPLE/util/make_dir
+make realclean -f TopMakefileOasis3
+make oasis3_psmile -f TopMakefileOasis3
+
+#mv $ARCHDIR/bin/oasis3.MPI1.x $AusCOMHOME/bin/oasis3_MPI1.exe-`date +%Y%h%d`
