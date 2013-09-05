@@ -34,7 +34,9 @@ LDFLAGS    := $(FFLAGS) -v
    SLIBS   := $(SLIBS) -L$(NETCDF_ROOT)/lib -lnetcdf -lnetcdff
 
    INCLDIR := $(INCLDIR) $(CPL_INCS)
-   SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lpsmile.${CHAN} 
-   SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lmpp_io -L$(NETCDF_ROOT)/lib -lnetcdf -lnetcdff
-   #SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lmpp_io
-   #B: as for cice4, netcdf lib MUST be put behind the other libs...
+   SLIBS   := $(SLIBS) $(CPLLIBS) 
+   SLIBS   := $(SLIBS) -L$(NETCDF_ROOT)/lib/ -lnetcdf -lnetcdff
+ifeq ($(OASIS3_MCT), yes)
+   CPPDEFS := $(CPPDEFS) -DOASIS3_MCT
+endif
+

@@ -38,7 +38,7 @@ setenv SRCDIR $cwd:h  #$SYSTEMDIR/submodels/matm
 echo SRCDIR: $SRCDIR
 
 ### Location and names of coupling libraries
-setenv CPLLIBDIR $SYSTEMDIR/submodels/oasis3-mct_local/Linux/lib
+setenv CPLLIBDIR $SYSTEMDIR/submodels/oasis3-mct/Linux/lib
 setenv CPLLIBS '-L$(CPLLIBDIR) -lpsmile.${CHAN} -lmct -lmpeu -lscrip'
 #echo CPLLIBS: ${CPLLIBS}
 

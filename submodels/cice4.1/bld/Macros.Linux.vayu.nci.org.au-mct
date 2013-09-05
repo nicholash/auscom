@@ -69,14 +69,6 @@ ifeq ($(AusCOM), yes)
    SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lmct
    SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lmpeu
    SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lscrip
-#B: for coupled AusCOM, mpi lib is ALWAYS required:
-#   SLIBS   := $(SLIBS) -L$(CPLLIBDIR) $(OMPI_F90LIBS)
-#   SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lmpi
-#B: and, somehow the netcdf lib must be put behind the psmile lib:
-#   SLIBS   := $(SLIBS) -lnetcdf
-   #SLIBS   := $(SLIBS) -L$(NETCDF_ROOT)/lib -lnetcdf
-#   SLIBS   := $(SLIBS) -L$(NETCDF_ROOT)/lib/Intel -lnetcdf
-
 endif
 
 ifeq ($(ACCESS), yes)

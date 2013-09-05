@@ -156,7 +156,7 @@ gmake VPFILE=Filepath EXEC=$BINDIR/$EXE \
            NXGLOB=$NXGLOB NYGLOB=$NYGLOB \
            N_ILYR=$N_ILYR \
            BLCKX=$BLCKX BLCKY=$BLCKY MXBLCKS=$MXBLCKS \
-      -f  $CBLD/Makefile MACFILE=$CBLD/Macros.Linux.$ARCH || exit 2
+      -j 8 -f  $CBLD/Makefile MACFILE=$CBLD/Macros.Linux.$ARCH || exit 2
                                                                                 
 cd ..
 pwd

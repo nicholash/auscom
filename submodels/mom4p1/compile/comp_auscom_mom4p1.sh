@@ -38,8 +38,7 @@ set pathnames     = $executable:h/path_names	# path to file containing list of s
 set mppnccombine  = $bindir/mppnccombine.exe # path to executable mppnccombine
 set mkmfTemplate  = $root/bin/mkmf.template.nci.org.au
 set mkmf          = $root/bin/mkmf		# path to executable mkmf
-set cppDefs       = ( "-Duse_netCDF" )		# list of cpp #defines to be passed to the source files
-if  cppDefs  = ( "-Duse_netCDF -Duse_netCDF3 -Duse_libMPI -DAusCOM -DOASIS3 -DOASIS3_MCT" )
+set cppDefs  = ( "-Duse_netCDF -Duse_netCDF3 -Duse_libMPI -DAusCOM -DOASIS3 -DOASIS3_MCT" )
 
 source /etc/profile.d/nf_csh_modules
 module purge

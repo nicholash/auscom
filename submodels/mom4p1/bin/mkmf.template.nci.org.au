@@ -17,10 +17,10 @@ LD = $(FC)
 #mom4_solo#FFLAGS = $(FFLAGS_BASE) $(FFLAGS_REPRO) -O2 -no-vec -nowarn -fpp -I$(NETCDF)/include/Intel
 
 # PRISM libraries
-CPLLIBDIR = ${AusCOMHOME}/submodels/oasis3/prism/Linux/lib
-CPLLIBS   = -L$(CPLLIBDIR) -lpsmile.${CHAN} -L$(CPLLIBDIR) -lmpp_io
-CPLINCDIR = ${AusCOMHOME}/submodels/oasis3/prism/Linux/build/lib
-CPLINCS   = -I$(CPLINCDIR)/psmile.${CHAN}
+CPLLIBDIR = ${AusCOMHOME}/submodels/oasis3-mct/Linux/lib
+CPLLIBS   = -L$(CPLLIBDIR) -lpsmile.${CHAN} -L$(CPLLIBDIR) -lmct -L$(CPLLIBDIR) -lmpeu -L$(CPLLIBDIR) -lscrip
+CPLINCDIR = ${AusCOMHOME}/submodels/oasis3-mct/Linux/build/lib
+CPLINCS   = -I$(CPLINCDIR)/psmile.$(CHAN) -I$(CPLINCDIR)/pio -I$(CPLINCDIR)/mct
 
 LDFLAGS        = -L$(NETCDF)/lib -lnetcdf -lnetcdff $(CPLLIBS)
 #FFLAGS = $(FFLAGS_BASE) -O2 -no-vec -nowarn -fpp -I$(NETCDF)/include $(CPLINCS)

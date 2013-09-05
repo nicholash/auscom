@@ -10,6 +10,6 @@
 # Note: Choose one of these includes files and modify it according to your
 #       local settings. Replace the currently active file with your own.
 #
-include  $(AusCOMHOME)/submodels/oasis3-mct_local/util/make_dir/make.$(PLATFORM)
+include  $(AusCOMHOME)/submodels/oasis3-mct/util/make_dir/make.$(PLATFORM)
 #
 ### End User configurable options ###

@@ -18,9 +18,9 @@ bin/mppnccombine.VAYU
 bin/calendar.VAYU
 
 # Object Code
-submodels/oasis3/prism/Linux/
-submodels/oasis3/prism/compile/COMP.err
-submodels/oasis3/prism/compile/COMP.log
+submodels/oasis3-mct/Linux/
+submodels/oasis3-mct/compile/COMP.err
+submodels/oasis3-mct/compile/COMP.log
 submodels/cice4.1/compile/build_MPI1_6p
 submodels/matm/compile/build_MPI1_nt62/
 submodels/mom4p1/compile/build_MPI1/

@@ -16,6 +16,10 @@ echo ""
 echo COUPLE = $COUPLE
 echo ""
 
+# ARCHDIR       : directory created when compiling
+setenv ARCHDIR $COUPLE/Linux
+echo ARCHDIR = $ARCHDIR
+
 # Set path to AusCOM home
 setenv AusCOMHOME $cwd:h:h:h
 echo "" 
@@ -38,6 +42,4 @@ echo ""
 echo Compiling OASIS3 ...
 echo ""
 cd  $COUPLE/util/make_dir
-make realclean -f TopMakefileOasis3
 make oasis3_psmile -j4 -f TopMakefileOasis3
-

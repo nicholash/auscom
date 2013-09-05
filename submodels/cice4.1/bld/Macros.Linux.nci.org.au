@@ -33,7 +33,7 @@ endif
 #FFLAGS     := -r8 -i4 -align all -w -ftz -convert big_endian -assume byterecl -fpe0 -CB -g
 MOD_SUFFIX := mod
 LD         := $(FC)
-LDFLAGS    := $(FFLAGS) -v
+LDFLAGS    := $(FFLAGS) -v -static-intel
 #LDFLAGS    := -Wl.stack,64m -g 
 
     CPPDEFS :=  $(CPPDEFS) -DNXGLOB=$(NXGLOB) -DNYGLOB=$(NYGLOB) -DN_ILYR=$(N_ILYR) \
@@ -65,13 +65,9 @@ ifeq ($(AusCOM), yes)
    CPPDEFS := $(CPPDEFS) -DAusCOM -Dcoupled
    INCLDIR := $(INCLDIR) $(CPL_INCS)
    SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lpsmile.${CHAN}
-#   SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lanaisg
-#   SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lanaism
-#   SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lclim.MPI2
-#   SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lfscint
-   SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lmpp_io
-   SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lmpi
-   SLIBS   := $(SLIBS) -L$(NETCDF_ROOT)/lib -lnetcdf -lnetcdff
+   SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lmct
+   SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lmpeu
+   SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lscrip
 endif
 
 ifeq ($(ACCESS), yes)
@@ -84,4 +80,7 @@ endif
 # no MOM just CICE+UM
 ifeq ($(NOMOM), yes)
    CPPDEFS := $(CPPDEFS) -DNOMOM
+endif
+ifeq ($(OASIS3_MCT), yes)
+   CPPDEFS := $(CPPDEFS) -DOASIS3_MCT
 endif

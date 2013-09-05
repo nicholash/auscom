@@ -11,7 +11,7 @@ function check {
 }
 
 BASEDIR=$(pwd)
-cd submodels/oasis3/prism/compile
+cd submodels/oasis3-mct/compile
 check ./comp_oasis3.sh
 cd ${BASEDIR}
 
@@ -24,6 +24,6 @@ check ./comp_auscom_matm.sh
 cd ${BASEDIR}
 
 cd submodels/mom4p1/compile
-check ./comp_auscom_mom4p1_cfc.sh
+check ./comp_auscom_mom4p1.sh
 cd ${BASEDIR}
 
