@@ -62,7 +62,7 @@ endif
  
 ### Location and name of the generated exectuable
 setenv BINDIR $SYSTEMDIR/bin
-setenv EXE cice_${CHAN}.${nproc}p.exe
+setenv EXE cice_${CHAN}_${nproc}p.exe
 
 ### Where this model is compiled
 setenv OBJDIR $SRCDIR/compile/build_${CHAN}_{$nproc}p

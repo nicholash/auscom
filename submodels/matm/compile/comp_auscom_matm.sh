@@ -54,7 +54,7 @@ setenv RES 192x94
 
 ### Location and name of the generated exectuable 
 setenv BINDIR $AusCOMHOME/bin
-setenv EXE matm_${CHAN}.${GRID}
+setenv EXE matm_${CHAN}_${GRID}.exe
 
 ### Where this model is compiled
 setenv OBJDIR $SRCDIR/compile/build_MPI1_${GRID}

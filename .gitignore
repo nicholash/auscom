@@ -10,12 +10,12 @@ exp/cnyf2-sw1/Running.dir
 exp/cnyf2-sw1/.swp
 
 # Binaries
-bin/oasis3_MPI1.VAYU
-bin/cice_MPI1.VAYU_*
+bin/oasis3_MPI1.*
+bin/cice_MPI1.*
 bin/matm_MPI1.*
-bin/mom4_MPI1.VAYU
-bin/mppnccombine.VAYU
-bin/calendar.VAYU
+bin/mom4_MPI1.exe
+bin/mppnccombine.exe
+bin/calendar.exe
 
 # Object Code
 submodels/oasis3-mct/Linux/
@@ -24,3 +24,6 @@ submodels/oasis3-mct/compile/COMP.log
 submodels/cice4.1/compile/build_MPI1_6p
 submodels/matm/compile/build_MPI1_nt62/
 submodels/mom4p1/compile/build_MPI1/
+
+# Error output.
+submodels/oasis3-mct/util/make_dir/COMP.*

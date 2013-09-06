@@ -45,9 +45,7 @@ fi
 # combine netcdf files
 for histfile in `ls *.nc.0000`; do
   newfile=${histfile%.*}              #drop the appendix '.0000'!
-  #SJM#$bindir/mppnccombine.exe -v -r $newfile ${newfile}.????
-  #/home/599/sjm599/AusCOM1.0/bin/mppnccombine.exe -v -r $newfile ${newfile}.????
-  $bindir/mppnccombine.VAYU -v -r $newfile ${newfile}.????
+  $bindir/mppnccombine.exe -v -r $newfile ${newfile}.????
 done
 for histfile in `ls ocean*.nc`; do
   mv $histfile ${histfile}-${enddate}

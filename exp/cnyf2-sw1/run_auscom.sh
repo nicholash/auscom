@@ -35,12 +35,9 @@
 #PBS -P v45
 #PBS -W group_list=v45
 #PBS -q normal
-##PBS -l walltime=4:00:00
-#PBS -l walltime=0:10:00
-#PBS -l mem=64GB
+#PBS -l walltime=4:00:00
+#PBS -l mem=128Gb
 #PBS -l ncpus=128
-#PBS -l software=vampir
-#PBS -l other=rms
 #PBS -l wd
 #PBS -N cnyf2-sw1
 
@@ -380,9 +377,9 @@ if [ $jobnum = 1 ]; then	#initial run
         cp -f $bindir/cice_$chan.20110907.debug.VAYU_${nproc_ice}p	$ice_exe
         cp -f $bindir/matm_MPI1.VAYU_nt62_debug		$atm_exe
     else 
-        cp -f $bindir/mom4_MPI1.VAYU    $ocn_exe
-        cp -f $bindir/cice_$chan.VAYU_${nproc_ice}p	$ice_exe
-        cp -f $bindir/matm_MPI1.VAYU_nt62		$atm_exe
+        cp -f $bindir/mom4_MPI1.exe    $ocn_exe
+        cp -f $bindir/cice_${chan}_${nproc_ice}p.exe	$ice_exe
+        cp -f $bindir/matm_MPI1_nt62.exe		$atm_exe
     fi
 
     # get input files for oasis3:
