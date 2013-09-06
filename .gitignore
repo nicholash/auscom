@@ -10,9 +10,9 @@ exp/cnyf2-sw1/Running.dir
 exp/cnyf2-sw1/.swp
 
 # Binaries
-bin/oasis3_MPI1.*
-bin/cice_MPI1.*
-bin/matm_MPI1.*
+bin/oasis3_MPI1*
+bin/cice_MPI1*
+bin/matm_MPI1*
 bin/mom4_MPI1.exe
 bin/mppnccombine.exe
 bin/calendar.exe
@@ -27,3 +27,6 @@ submodels/mom4p1/compile/build_MPI1/
 
 # Error output.
 submodels/oasis3-mct/util/make_dir/COMP.*
+
+# Runtime setup.
+RUNNING
