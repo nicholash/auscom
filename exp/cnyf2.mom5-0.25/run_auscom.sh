@@ -1,37 +1,8 @@
 #!/bin/ksh
-#############################################################################
-#                            run_auscom.VAYU                                #
-#############################################################################
-# *** Set up the running environment and run the auscom coupled model  ***  #
-#
-#   'AusCOM' is a coupled ocean and sea ice model consisting of 3 components
-#      1. matm    (a data atmospheric model, providing atmospheric forcing)
-#      2. cice4.1 (LANL sea ice model) 
-#      3. mom4p1  (GFDL ocean model)
-#      built under the OASIS3 PRISM_2-5 framework
-#
-#   This sample run is set up on the NCI VAYU platform for 128 processes: 
-#   1 for cpl, 1 for matm, 6 for cice, and 120 for mom4 (mono-cpu cpling) 
-#   if DEBUG=yes:
-#     *This debug run is set up on the NCI VAYU platform for 4 processes: 
-#      1 for cpl, 1 for matm, 1 for cice, and 1 for mom4 (mono-cpu cpling) 
-#     *Change ncpus=4
-#     *Do qsub -I -q normal -v DISPLAY -p 1023 -l ncpus=4 -l walltime=100:00 \
-#      -lvmem=24gb -l software=totalview/10
-#      and run this script
-#############################################################################
-#
-# New setup
-# Each component now runs in its own work directory
-# This avoids namespace pollution and renders many of the AusCOM changes to the
-# submodels obsolete.
-#
-# Russ Fiedler
-#############################################################################
+
 #
 # 0. Prologue
 #
-#############################################################################
 #PBS -P v45
 #PBS -W group_list=v45
 #PBS -q normal
@@ -48,7 +19,7 @@ ulimit -s unlimited
 ulimit -a
 
 #
-#-- Export System depending variables
+# Export System depending variables
 #
 export MPIPROGINF=DETAIL;
 export F_PROGINF=detail;
@@ -75,16 +46,12 @@ export MPI_BUFFER_MAX=5000000
 #
 ## 1.1 Define experiment ID etc.
 #
-project=v45	        # /short disk 'owned' by project (e.g., p66)
 jobid=$PBS_JOBID    # job-id assigned by PBS (the queue sys)
 job=$PBS_JOBNAME	# name of this script
 chan=MPI1		# Message Passage (MPI1/MPI2)
 
 mom_version=mom5
-expid=cnyf2-sw1		# change expid for each new experiment
-atmdata=core2		# choose the atmospheric forcing dataset
-atm_forcing="'${atmdata}'"   # (ncep2, era40, core2, or um96 etc.)
-datatype=NY		# NY/IA: Normal Year/Interannual Annual
+expid=cnyf2.mom5-0.25 # change expid for each new experiment
 year_data_end=2007	# data NOT available after this year
 
 #
@@ -94,24 +61,20 @@ year_data_end=2007	# data NOT available after this year
 # Location where jobs are submitted (and this script is located):
 cd `pwd`/../..
 AusCOMHOME=`pwd`
-model=${AusCOMHOME##*/}		#the model name, i.e., AusCOM1.0
 jobdir=$AusCOMHOME/exp/$expid
 
 # Location of preprocessed input files for the coupled model:
-inputdir=$AusCOMHOME/input
+inputdir=/short/v45/auscom/$expid
 
 # Location where the model exectuables are stored:
 bindir=$AusCOMHOME/bin
 
 # Location where outputs are to be stored:
-datahome=/short/$project/$USER/auscom/OUTPUT
-outputdir=$datahome/$model/$expid
-restdir=${outputdir}/restart
-histdir=${outputdir}/history
+restdir=$jobdir/OUTPUT/restart
+histdir=$jobdir/OUTPUT/history
 
 # Location where the sub-models and coupler are actually runing:
-workhome=/short/$project/$USER/auscom
-rundir=$workhome/RUNNING/$model/$expid         
+rundir=$jobdir/RUNNING
 
 ocnrundir=$rundir/OCN_RUNDIR
 atmrundir=$rundir/ATM_RUNDIR
@@ -124,7 +87,7 @@ cplrundir=$rundir/CPL_RUNDIR
 #
 #############################################################################
 # 
-## 2.1 Runtime control for the whole exp and this segment run 
+# 2.1 Runtime control for the whole exp and this segment run 
 #
 # if DEBUG=yes run with totalview on a interactive qsub job
 DEBUG=no
@@ -191,23 +154,11 @@ fi
 # Total number of procs for this job (must <= requested in the #PSB line):
 (( ntproc = nproc_atm + nproc_ice + nproc_oce ))
 
-# Currently AusCOM is hardwired for mono-cpu coupling:
-ncplproc_atm=1
-ncplproc_ice=1
-ncplproc_oce=1
-
-# Decide ocean domain MPI partitioning pattern:
-#if [[ $DEBUG = "yes" ]]; then
-#    oce_nx=4; oce_ny=6	#oce_nx x oce_ny = nproc_oce
-#else
-#    oce_nx=12; oce_ny=10	#oce_nx x oce_ny = nproc_oce
-#fi
-
 #
 ## 2.3 Names of the 4 executables 
 #
 
-atm_exe=matmxx		#These 3 sub-model exe names much be same as
+atm_exe=matmxx		#These 3 sub-model exe names must be same as
 ice_exe=cicexx		#defined in namcouple and model code
 ocn_exe=mom4xx		#(character*6)
 
@@ -219,15 +170,9 @@ ocn_exe=mom4xx		#(character*6)
 #     1   : Gregorian (365/366 days per year)
 #     n   : Equal months of "n" days (30 for 30 day months)
 
-# Default set as below (for era40 and ncep2 forcing)
-caltype=1               #0, 1 or n (eg, 30 for 30 day months)
-cal_type="'julian'"     #for caltype=1; "'thirty_day'" for caltype=30. 
-
 # For core and core2 forcing we must use below:
-if [[ $atm_forcing = "'core'" || $atm_forcing = "'core2'" ]]; then
-    caltype=0
-    cal_type="'NOLEAP'"
-fi
+caltype=0
+cal_type="'NOLEAP'"
 
 # Dates in format YYYYMMDD:
 inidate=${iniyear}${inimonth}${iniday}
@@ -312,31 +257,7 @@ echo "duration of this run in seconds:	${runtime}"
 ## 3.1 Grids, IC, forcing, exectuables and some preprocessed auxilary files
 #
 
-# following setup needs two things be decided first:
-
-boundary_layer=gfdl	# <==how to calculte surface fluxes decided here
-runoff_data=core	# <==regrided core rundoff instead of that interpolated by oasis
 cold_start=1		# 1/0, this experiment starts from 'scratch'/spinup 
-if [ $cold_start = 0 ]; then	#ie, warm start
-    # use existing AusCOM run restart to initialise this experiment (for jobnum=1)
-    # * next 4-5 lines specify the restart location -----------#
-    owner=pju565
-    expname=sis2-cnyf2-14
-    ic_year=15
-    access=~$owner	#if run under $HOME
-    #access=/short/p66/$owner	#if run under /short/p66 disk
-    #----------------------------------------------------------#
-    typeset -Z4 ic_year
-    (( ic_yearp1 = $ic_year + 1 ))
-    typeset -Z4 ic_yearp1
-    rest_date_oasis=${ic_year}1231
-    rest_date_mom4=${ic_year}1231
-    rest_date_cice=${ic_yearp1}0101
-    ic_location=$access/$model/output/$expname/restart
-    mom4_ic=$ic_location/mom4
-    cice_ic=$ic_location/cice
-    oasis_ic=$ic_location/oasis3
-fi
 
 #subdirs for CICE
 INPUT=INPUT
@@ -347,178 +268,91 @@ MOM4_input=INPUT
 MOM4_restart=RESTART
 MOM4_hist=HISTORY
 
+rm -rf $restdir 
+rm -rf $histdir
+rm -rf $AusCOMHOME/output/$expid
+mkdir -p $restdir/ice $restdir/ocn $restdir/cpl
+mkdir -p $histdir/ice $histdir/ocn
+ln -fs $outputdir $AusCOMHOME/output/.
 
-if [ $jobnum = 1 ]; then	#initial run
+# Make work directories
+rm -fr $rundir; 
+mkdir -p $rundir
+cd $rundir
 
-    rm -rf $restdir 
-    rm -rf $histdir
-    rm -rf $AusCOMHOME/output/$expid
-    mkdir -p $restdir/ice $restdir/ocn $restdir/cpl
-    mkdir -p $histdir/ice $histdir/ocn
-    ln -fs $outputdir $AusCOMHOME/output/.
+# Individual RUNDIRS RASF
+mkdir -p $atmrundir/INPUT				#subdirs for MATM
+mkdir -p $icerundir/$INPUT -p $icerundir/$RESTART -p $icerundir/$HISTORY 	#subdirs for CICE
+mkdir -p $ocnrundir/$MOM4_input $ocnrundir/$MOM4_restart $ocnrundir/$MOM4_hist	#subdirs for MOM4
+mkdir -p $cplrundir
 
-    # Make work directories
-    rm -fr $rundir; 
-    mkdir -p $rundir
-    ln -s $rundir $jobdir/Running.dir
-    cd $rundir
+cd $ocnrundir
 
-    # Individual RUNDIRS RASF
-    mkdir -p $atmrundir/INPUT				#subdirs for MATM
-    mkdir -p $icerundir/$INPUT -p $icerundir/$RESTART -p $icerundir/$HISTORY 	#subdirs for CICE
-    mkdir -p $ocnrundir/$MOM4_input $ocnrundir/$MOM4_restart $ocnrundir/$MOM4_hist	#subdirs for MOM4
-    mkdir -p $cplrundir
+# get the executables:
 
-    cd $ocnrundir
+cd $rundir
+cp -f $bindir/fms_MOM_ACCESS.x $ocn_exe
+cp -f $bindir/cice_${chan}_${nproc_ice}p.exe	$ice_exe
+cp -f $bindir/matm_MPI1_nt62.exe		$atm_exe
 
-    # get the executables:
-    cd $rundir
-    if [[ $DEBUG = "yes" ]]; then
-        cp -f $bindir/fms_MOM_ACCESS.x $ocn_exe
-        cp -f $bindir/cice_${chan}_${nproc_ice}p.exe	$ice_exe
-        cp -f $bindir/matm_MPI1_nt62.exe		$atm_exe
-    else 
-        cp -f $bindir/fms_MOM_ACCESS.x $ocn_exe
-        cp -f $bindir/cice_${chan}_${nproc_ice}p.exe	$ice_exe
-        cp -f $bindir/matm_MPI1_nt62.exe		$atm_exe
-    fi
+# get input files for oasis3:
 
-    # get input files for oasis3:
+# a. ref and grids data
+cd $cplrundir
+cp -f $inputdir/oasis3/cf_name_table.txt	.
+cp -f $inputdir/oasis3/oasis3_grids_.nc grids.nc
+cp -f $inputdir/oasis3/oasis3_masks_20130116-mct.nc masks.nc
+cp -f $inputdir/oasis3/oasis3_areas_20101208.nc areas.nc
 
-    # a. ref and grids data
-    cd $cplrundir
-    cp -f $inputdir/oasis3/cf_name_table.txt	.
-    cp -f $inputdir/oasis3/oasis3_grids_20101208.nc grids.nc
-    cp -f $inputdir/oasis3/oasis3_masks_20130116-mct.nc masks.nc
-    cp -f $inputdir/oasis3/oasis3_areas_20101208.nc areas.nc
+# b. restart
+if [ $cold_start = 1 ]; then       #cold start
+    # the pre-processed coupling restart files:
+    cp -f $inputdir/oasis3/AusCOM3.0_a2i_10fields_T0.nc	a2i.nc
+    cp -f $inputdir/oasis3/AusCOM3.0_o2i_7fields_T0.nc	o2i.nc
+    cp -f $inputdir/oasis3/AusCOM3.0_i2o_15fields_T0.nc	i2o.nc
+    cp -f $inputdir/oasis3/AusCOM3.0_i2a_1fields_T0.nc	i2a.nc
+else					#warm start
+    # rstart from an existing run (spinup)
+    cp -f $oasis_ic/a2i.nc-$rest_date_oasis	a2i.nc
+    cp -f $oasis_ic/o2i.nc-$rest_date_oasis	o2i.nc
+    cp -f $oasis_ic/i2o.nc-$rest_date_oasis	i2o.nc
+    cp -f $oasis_ic/i2a.nc-$rest_date_oasis	i2a.nc
+fi
 
-    # b. restart
-    if [ $cold_start = 1 ]; then       #cold start
-        # the pre-processed coupling restart files:
-        cp -f $inputdir/oasis3/AusCOM3.0_a2i_10fields_T0.nc	a2i.nc
-        cp -f $inputdir/oasis3/AusCOM3.0_o2i_7fields_T0.nc	o2i.nc
-        cp -f $inputdir/oasis3/AusCOM3.0_i2o_15fields_T0.nc	i2o.nc
-        cp -f $inputdir/oasis3/AusCOM3.0_i2a_1fields_T0.nc	i2a.nc
-    else					#warm start
-        # rstart from an existing run (spinup)
-        cp -f $oasis_ic/a2i.nc-$rest_date_oasis	a2i.nc
-        cp -f $oasis_ic/o2i.nc-$rest_date_oasis	o2i.nc
-        cp -f $oasis_ic/i2o.nc-$rest_date_oasis	i2o.nc
-        cp -f $oasis_ic/i2a.nc-$rest_date_oasis	i2a.nc
-    fi
+# get input files for matm (to be done in section 4)
+cd $atmrundir
+ln -sf $cplrundir/*.nc .
 
-    #ln -sf /short/p66/dhb599/AusCOM3.0/exp/rmp_save/rmp* .
+# input files for cice:
+cd $icerundir
+cp -f $inputdir/cice/AusCOM3.0_core_runoff_regrid.nc $INPUT/core_runoff_regrid.nc 
 
-    # get input files for matm (to be done in section 4)
-    cd $atmrundir
-    ln -sf $cplrundir/*.nc .
+# a. grid data and surface 
+cp -f $inputdir/cice/cice_grid_20101208.nc		$INPUT/grid.nc
+cp -f $inputdir/cice/cice_kmt_20101208.nc		$INPUT/kmt.nc
 
-    # input files for cice:
-    cd $icerundir
-    if [ $runoff_data = core ]; then
-        cp -f $inputdir/cice/AusCOM3.0_core_runoff_regrid.nc $INPUT/core_runoff_regrid.nc 
-    fi
+# b. IC/restart 
+runtype="'initial'"; Lrestart=.false.; ice_ic="'default'"
+cp -f $inputdir/cice/SSTS_12Jans.nc 	$INPUT/monthly_sstsss.nc 
+cp -f $inputdir/cice/uu_star_t0.nc	$INPUT/u_star.nc
+ln -sf $cplrundir/*.nc .
 
-    # a. grid data and surface 
-    cp -f $inputdir/cice/cice_grid_20101208.nc		$INPUT/grid.nc
-    cp -f $inputdir/cice/cice_kmt_20101208.nc		$INPUT/kmt.nc
-
-    # b. IC/restart 
-    if [ $cold_start = 1 ]; then       #cold start
-        runtype="'initial'"; Lrestart=.false.; ice_ic="'default'"
-        cp -f $inputdir/cice/SSTS_12Jans.nc 	$INPUT/monthly_sstsss.nc 
-        if [ $boundary_layer = gfdl ]; then
-            cp -f $inputdir/cice/uu_star_t0.nc	$INPUT/u_star.nc
-        fi
-    else	#warm start
-        runtype="'continue'"; Lrestart=.true.; ice_ic="'default'"
-        ice_restart=${cice_ic}/iced.$rest_date_cice
-        # instead of just copying the CICE restart dump, also reset time
-        $bindir/cicedumpdatemodify.py -v -i $ice_restart -o $RESTART/iced
-        echo iced  >  				$RESTART/ice.restart_file
-        if [ $boundary_layer = gfdl ]; then
-            cp -f ${cice_ic}/u_star.nc-$rest_date_oasis	$INPUT/u_star.nc
-        fi
-    fi 
-    ln -sf $cplrundir/*.nc .
-
-    # get input files for mom4:
-    cd $ocnrundir
-    ln -sf $cplrundir/*.nc .
-    cd $MOM4_input
-    cp -f $inputdir/$mom_version/field_table_20110404	field_table
-    cp -f $inputdir/$mom_version/data_table		data_table	
-    cp -f $inputdir/$mom_version/grid_spec.auscom.20110618.nc grid_spec.nc 
-    cp -f $inputdir/$mom_version/geothermal_heating_auscom_20080605.nc geothermal_heating.nc
-    cp -f $inputdir/$mom_version/tides_auscom_20080605.nc     tideamp.nc
-    cp -f $inputdir/$mom_version/roughness_auscom_20080605_roughness_amp.nc roughness_amp.nc
-    cp -f $inputdir/$mom_version/seawifs_auscom_20111118_edit_time.nc	ssw_atten_depth.nc
-    cp -f $inputdir/$mom_version/salt_sfc_restore_20110829.nc 	salt_sfc_restore.nc
-    cp -f $inputdir/$mom_version/temp_sfc_restore_20110829.nc 	temp_sfc_restore.nc
-    cp -f $inputdir/$mom_version/basin_mask_20111103.nc		basin_mask.nc
-    if [ $cold_start = 1 ]; then 
-        #get ocean initial condition (only T-S)
-        cp -f $inputdir/$mom_version/ocean_temp_salt.20110518.nc	ocean_temp_salt.res.nc
-    else
-        for restfile in `ls ${mom4_ic}/ocean_*-${rest_date_mom4}`; do
-            newfile=${restfile##*/}
-            cp ${restfile} ${newfile%-*}
-        done
-        ystart=$ic_yearp1
-        if [ $ystart -lt 10 ]; then
-            typeset -Z1 ystart
-        elif [ $ystart -lt 100 ]; then
-            typeset -Z2 ystart
-        elif [ $ystart -lt 1000 ]; then
-            typeset -Z3 ystart
-        elif [ $ystart -lt 10000 ]; then
-            typeset -Z4 ystart
-        fi
-        ed ocean_solo.res <<eof
-g/$ystart/s/$ystart/${iniyear}/
-w
-q
-eof
-    fi	#cold_start
-
-else	#for continue runs
-
-    cd $rundir
-    rm -f *out* ?weights *.prt* 	#clean up 
-    cd $atmrundir
-    rm -f *out* ?weights *.prt* 	#clean up 
-    cd $icerundir
-    rm -f *out* ?weights *.prt* 	#clean up 
-    cd $cplrundir
-    rm -f *out* ?weights *.prt* 	#clean up 
-
-    #prepare restart files:
-
-    # for oasis3:  
-    cd $cplrundir
-    for resfile in `ls $restdir/cpl/?2?.nc-${prevdate}`; do
-        sresfile=${resfile##*/}		#take away the front path name
-        cp $resfile ${sresfile%-*}		#take away the appendix '-YYYYMMDD'
-    done
-
-    # for cice: 
-    cd $icerundir
-    runtype="'continue'"; Lrestart=.true.; ice_ic="'default'"
-    cp $restdir/ice/ice.restart_file-${prevdate} $RESTART/ice.restart_file
-    cp $restdir/ice/`cat $RESTART/ice.restart_file` $RESTART/.
-    cp $restdir/ice/u_star.nc-${prevdate} $INPUT/u_star.nc
-    if [ -f $restdir/ice/sicemass.nc-${prevdate} ]; then
-        cp $restdir/ice/sicemass.nc-${prevdate} $INPUT/sicemass.nc
-    fi
-
-    # for mom4: 
-    cd $ocnrundir
-    for restfile in `ls $restdir/ocn/ocean*-${prevdate}`; do
-        ncfile=${restfile##*/}
-        cp $restfile $MOM4_input/${ncfile%-*}
-    done
-
-fi	#initial or continue run 
+# get input files for mom4:
+cd $ocnrundir
+ln -sf $cplrundir/*.nc .
+cd $MOM4_input
+cp -f $inputdir/$mom_version/field_table_20110404	field_table
+cp -f $inputdir/$mom_version/data_table		data_table	
+cp -f $inputdir/$mom_version/grid_spec.auscom.20110618.nc grid_spec.nc 
+cp -f $inputdir/$mom_version/geothermal_heating_auscom_20080605.nc geothermal_heating.nc
+cp -f $inputdir/$mom_version/tides_auscom_20080605.nc     tideamp.nc
+cp -f $inputdir/$mom_version/roughness_auscom_20080605_roughness_amp.nc roughness_amp.nc
+cp -f $inputdir/$mom_version/seawifs_auscom_20111118_edit_time.nc	ssw_atten_depth.nc
+cp -f $inputdir/$mom_version/salt_sfc_restore_20110829.nc 	salt_sfc_restore.nc
+cp -f $inputdir/$mom_version/temp_sfc_restore_20110829.nc 	temp_sfc_restore.nc
+cp -f $inputdir/$mom_version/basin_mask_20111103.nc		basin_mask.nc
+#get ocean initial condition (only T-S)
+cp -f $inputdir/$mom_version/ocean_temp_salt.20110518.nc	ocean_temp_salt.res.nc
 
 # prepare the atm_forcing dataset needed for this run:
 cd $atmrundir/INPUT
@@ -526,19 +360,16 @@ cd $atmrundir/INPUT
 typeset -Z4 y1 y2
 y1=$endyear
 y2=$endyear
-if [ $datatype = NY ]; then
+if [ NY = NY ]; then
     y1=1                  #for 'NY' forcing, y1 should be always '0001' !
 fi
-$inputdir/matm/get_${atmdata}_${datatype}.ksh $y1 $y2 $AusCOMHOME
+$inputdir/matm/get_core2_NY.ksh $y1 $y2 $AusCOMHOME
 y2=`expr $endyear + 1`
-y1=$y2
-if [ $datatype = NY ]; then
-    y1=1
-fi
+y1=1
 if [ $endyear = $year_data_end ]; then
     y1=$endyear
 fi
-$inputdir/matm/get_${atmdata}_${datatype}.ksh $y1 $y2 $AusCOMHOME
+$inputdir/matm/get_core2_NY.ksh $y1 $y2 $AusCOMHOME
 
 #
 ## 3.2 Adapting or creating configuration files
@@ -547,9 +378,9 @@ $inputdir/matm/get_${atmdata}_${datatype}.ksh $y1 $y2 $AusCOMHOME
 # 3.2.1 namelist for oasis3:
 
 nlogprt=2 	#cplout writing control: 0-no, 1-medium, 2-full output
-npt1=${nproc_ice}; npc1=${ncplproc_ice}; arg1=$ice_exe; nam1=$ice_exe
-npt2=${nproc_atm}; npc2=${ncplproc_atm}; arg2=$atm_exe; nam2=$atm_exe
-npt3=${nproc_oce}; npc3=${ncplproc_oce}; arg3=$ocn_exe; nam3=$ocn_exe
+arg1=$ice_exe; nam1=$ice_exe
+arg2=$atm_exe; nam2=$atm_exe
+arg3=$ocn_exe; nam3=$ocn_exe
 
 #-- buffered MPI Send for coupling communication
 #      yes: buffered send   (for MPI, or MPI2 without 'mailbox')
@@ -607,8 +438,8 @@ truntime0=$truntime0
 runtime=$runtime
 dt_cpl=$dt_cpl_ai
 dt_atm=$dt_atm
-dataset=$atm_forcing
-runtype='${datatype}'
+dataset=core2
+runtype=NY
 caltype=$caltype
 days_per_year=$days_this_year
 chk_a2i_fields=.false.
@@ -617,7 +448,7 @@ chk_i2a_fields=.false.
 eof
 
 # get and adapt the forcing pointer file:
-cp -f $inputdir/matm/${atmdata}_fields_$datatype.table data_4_matm.table
+cp -f $inputdir/matm/core2_fields_NY.table data_4_matm.table
 ed data_4_matm.table <<eof
 g/#YEAR/s/#YEAR/$endyear/
 g/#FORCING/s/#FORCING/INPUT/
@@ -746,7 +577,7 @@ eof
 
 POP_ICEDIAG='.true.'		#use POP approach for ice formation/melting
 GFDL_FLUXES='.false.'
-if [ $boundary_layer = gfdl ]; then
+if [ gfdl = gfdl ]; then
     GFDL_FLUXES='.true.'		#use GFDL code for surface flux calculation
     cat > input_ice_gfdl.nml << eof
 &surface_flux_nml
@@ -998,7 +829,7 @@ export PATH=/opt/anumpirun/2.1.16a/bin:$PATH
 
 module load openmpi ipm
 export IPM_LOGDIR=/short/v45/nah599/ 
-export IPM_LOGFILE=$PBS_JOBNAME.$PBS_JOBID.$USER.$PROJECT.`date +%s`
+export IPM_LOGFILE=$PBS_JOBNAME.$PBS_JOBID.$USER.`date +%s`
 echo "IPM_LOGDIR=" $IPM_LOGDIR
 echo "IPM_LOGFILE=" $IPM_LOGFILE
 
@@ -1094,45 +925,4 @@ done
 fi
 done
 
-#############################################################################
-#
-# 6. Submission of the next job
-#
-#############################################################################
-
-cd  ${jobdir}
-
-#
-# Number of the next job
-#
-(( nextjob = ${jobnum} + 1 ))
-
-#
-# update .date and .log file
-#
-#if [ -f ${expid}.date ]; then
-#  mv ${expid}.date  ${expid}.date_${jobnum}
-#fi
-truntime0=`expr ${truntime0} + ${runtime}` 
-echo "${nextyear} ${nextmonth} ${nextday} ${nextjob} ${truntime0}" >> ${expid}.date
-echo "`date` :  ${jobnum} ${enddate} - done post-processing!" >> ${expid}.log
-
-#
-# Check whether final date is reached. If not, keep going
-# 
-if [[ $nextdate -gt $finaldate ]]; then
-  echo "Experiment over"
-  echo "`date` :  Experiment over" >> ${expid}.log
-else
-  next_jobid=`qsub run_auscom.VAYU`
-  echo "`date` :  New run is submitted."
-fi
-
-#############################################################################
-#
-# 7. Epilogue 
-#
-#############################################################################
-
-date
 exit
