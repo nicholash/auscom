@@ -36,7 +36,7 @@
 #PBS -W group_list=v45
 #PBS -q normal
 #PBS -l walltime=4:00:00
-#PBS -l mem=128Gb
+#PBS -l mem=255Gb
 #PBS -l ncpus=128
 #PBS -l wd
 #PBS -N cnyf2-sw1
@@ -80,6 +80,7 @@ jobid=$PBS_JOBID    # job-id assigned by PBS (the queue sys)
 job=$PBS_JOBNAME	# name of this script
 chan=MPI1		# Message Passage (MPI1/MPI2)
 
+mom_version=mom5
 expid=cnyf2-sw1		# change expid for each new experiment
 atmdata=core2		# choose the atmospheric forcing dataset
 atm_forcing="'${atmdata}'"   # (ncep2, era40, core2, or um96 etc.)
@@ -136,7 +137,7 @@ if [[ $DEBUG = "yes" ]]; then
     iniday=1;	finalday=4;		typeset -Z2 iniday   finalday
 else
     iniyear=1;	finalyear=1;		typeset -Z4 iniyear  finalyear
-    inimonth=1;	finalmonth=12;		typeset -Z2 inimonth finalmonth
+    inimonth=1;	finalmonth=1;		typeset -Z2 inimonth finalmonth
     iniday=1;	finalday=31;		typeset -Z2 iniday   finalday
 fi
 
@@ -147,7 +148,7 @@ if [[ $DEBUG = "yes" ]]; then
     nday=1			# number of days
 else
     nyear=0  		# number of years (ALWAYS 0 ! change nmonth etc...)
-    nmonth=12		# number of months
+    nmonth=1		# number of months
     nday=0			# number of days
 fi
 
@@ -180,7 +181,7 @@ fi
 if [[ $DEBUG = "yes" ]]; then
     nproc_atm=1		#       1
     nproc_ice=6		#changable
-    nproc_oce=28	#changable 
+    nproc_oce=24	#changable 
 else
     nproc_atm=1		#       1
     nproc_ice=6		#changable
@@ -196,11 +197,11 @@ ncplproc_ice=1
 ncplproc_oce=1
 
 # Decide ocean domain MPI partitioning pattern:
-if [[ $DEBUG = "yes" ]]; then
-    oce_nx=4; oce_ny=7	#oce_nx x oce_ny = nproc_oce
-else
-    oce_nx=12; oce_ny=10	#oce_nx x oce_ny = nproc_oce
-fi
+#if [[ $DEBUG = "yes" ]]; then
+#    oce_nx=4; oce_ny=6	#oce_nx x oce_ny = nproc_oce
+#else
+#    oce_nx=12; oce_ny=10	#oce_nx x oce_ny = nproc_oce
+#fi
 
 #
 ## 2.3 Names of the 4 executables 
@@ -373,11 +374,11 @@ if [ $jobnum = 1 ]; then	#initial run
     # get the executables:
     cd $rundir
     if [[ $DEBUG = "yes" ]]; then
-        cp -f $bindir/mom4_MPI1.debug.20110907.VAYU 	$ocn_exe
-        cp -f $bindir/cice_$chan.20110907.debug.VAYU_${nproc_ice}p	$ice_exe
-        cp -f $bindir/matm_MPI1.VAYU_nt62_debug		$atm_exe
+        cp -f $bindir/fms_MOM_ACCESS.x $ocn_exe
+        cp -f $bindir/cice_${chan}_${nproc_ice}p.exe	$ice_exe
+        cp -f $bindir/matm_MPI1_nt62.exe		$atm_exe
     else 
-        cp -f $bindir/mom4_MPI1.exe    $ocn_exe
+        cp -f $bindir/fms_MOM_ACCESS.x $ocn_exe
         cp -f $bindir/cice_${chan}_${nproc_ice}p.exe	$ice_exe
         cp -f $bindir/matm_MPI1_nt62.exe		$atm_exe
     fi
@@ -445,19 +446,19 @@ if [ $jobnum = 1 ]; then	#initial run
     cd $ocnrundir
     ln -sf $cplrundir/*.nc .
     cd $MOM4_input
-    cp -f $inputdir/mom4p1/field_table_20110404	field_table
-    cp -f $inputdir/mom4p1/data_table		data_table	
-    cp -f $inputdir/mom4p1/grid_spec.auscom.20110618.nc grid_spec.nc 
-    cp -f $inputdir/mom4p1/geothermal_heating_auscom_20080605.nc geothermal_heating.nc
-    cp -f $inputdir/mom4p1/tides_auscom_20080605.nc     tideamp.nc
-    cp -f $inputdir/mom4p1/roughness_auscom_20080605_roughness_amp.nc roughness_amp.nc
-    cp -f $inputdir/mom4p1/seawifs_auscom_20111118_edit_time.nc	ssw_atten_depth.nc
-    cp -f $inputdir/mom4p1/salt_sfc_restore_20110829.nc 	salt_sfc_restore.nc
-    cp -f $inputdir/mom4p1/temp_sfc_restore_20110829.nc 	temp_sfc_restore.nc
-    cp -f $inputdir/mom4p1/basin_mask_20111103.nc		basin_mask.nc
+    cp -f $inputdir/$mom_version/field_table_20110404	field_table
+    cp -f $inputdir/$mom_version/data_table		data_table	
+    cp -f $inputdir/$mom_version/grid_spec.auscom.20110618.nc grid_spec.nc 
+    cp -f $inputdir/$mom_version/geothermal_heating_auscom_20080605.nc geothermal_heating.nc
+    cp -f $inputdir/$mom_version/tides_auscom_20080605.nc     tideamp.nc
+    cp -f $inputdir/$mom_version/roughness_auscom_20080605_roughness_amp.nc roughness_amp.nc
+    cp -f $inputdir/$mom_version/seawifs_auscom_20111118_edit_time.nc	ssw_atten_depth.nc
+    cp -f $inputdir/$mom_version/salt_sfc_restore_20110829.nc 	salt_sfc_restore.nc
+    cp -f $inputdir/$mom_version/temp_sfc_restore_20110829.nc 	temp_sfc_restore.nc
+    cp -f $inputdir/$mom_version/basin_mask_20111103.nc		basin_mask.nc
     if [ $cold_start = 1 ]; then 
         #get ocean initial condition (only T-S)
-        cp -f $inputdir/mom4p1/ocean_temp_salt.20110518.nc	ocean_temp_salt.res.nc
+        cp -f $inputdir/$mom_version/ocean_temp_salt.20110518.nc	ocean_temp_salt.res.nc
     else
         for restfile in `ls ${mom4_ic}/ocean_*-${rest_date_mom4}`; do
             newfile=${restfile##*/}
@@ -817,7 +818,7 @@ eof
 cd $ocnrundir
 
 # a. standalone mode input namelist file
-cp -f $inputdir/mom4p1/mom4_in_20121207_dhb599.nml	input.nml
+cp -f $inputdir/$mom_version/input_20121207_dhb599.nml	input.nml
 
 alap=1.0e5
 truncate_velocity='.true.'  
@@ -836,11 +837,9 @@ sss_restore_under_ice='.true.'	#SSS restoration under ice. ??????
 #----------- CHECK the SSS restoration under ice! WHY use it? ---------!
 use_waterflux='.true.'
 layout=$oce_nx,$oce_ny		#mpi partitioning pattern
-Simple_frazil='.false.'		#simple temp frazil. if '.f.' use complicated scheme
-# and allow multi-layer frazil.
-Accurate_frazil='.true.'        #accurate temp frazil. must be .t. if Simple_frazil=.f. 
+Simple_frazil='.true.'		#simple temp frazil. if '.f.' use complicated scheme
 #		     vice versa.	
-TL_frazil='.false.'		#top layer frazil. if '.f.' multi-layer frazil 
+TL_frazil='.true.'		#top layer frazil. if '.f.' multi-layer frazil 
 
 #explicit convection turned off (using implicit convection determined by KPP mixing)
 convection='.false.'
@@ -902,7 +901,6 @@ g/#SST_restoring/s/#SST_restoring/${temp_restore_tscale}/
 g/#SSS_restoring/s/#SSS_restoring/${salt_restore_tscale}/
 g/#SSS_relax_under_ice/s/#SSS_relax_under_ice/${sss_restore_under_ice}/
 g/#Freezing_simple/s/#Freezing_simple/${Simple_frazil}/
-g/#Freezing_accurate/s/#Freezing_accurate/${Accurate_frazil}/
 g/#TL_frazil_only/s/#TL_frazil_only/${TL_frazil}/
 g/#VISC_CBU_IW/s/#VISC_CBU_IW/${visc_cbu_iw}/
 g/#CONVECTION/s/#CONVECTION/${convection}/
@@ -936,7 +934,7 @@ fi
 
 #'base_time' is read in from diag_table, and must NOT be changed during the exp.
 if [ $jobnum = 1 ]; then
-    cp -f $inputdir/mom4p1/diag_table_20110901-dailymean  $MOM4_input/diag_table
+    cp -f $inputdir/$mom_version/diag_table  $MOM4_input/diag_table
     ed $MOM4_input/diag_table <<eof
 g/#SYEAR/s/#SYEAR/${year}/
 g/#SMON/s/#SMON/${month}/
