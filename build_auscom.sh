@@ -11,8 +11,8 @@ function check {
 }
 
 BASEDIR=$(pwd)
-cd submodels/oasis3-mct/compile
-check ./comp_oasis3.sh
+cd submodels/oasis3-mct/util/make_dir
+check make -j 4 -f TopMakefileOasis3
 cd ${BASEDIR}
 
 cd submodels/cice4.1/compile
