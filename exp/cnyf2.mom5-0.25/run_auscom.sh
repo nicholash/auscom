@@ -202,83 +202,27 @@ echo "duration of this run in seconds:	${runtime}"
 #
 
 # Individual RUNDIRS
-mkdir -p $atmrundir/INPUT				#subdirs for MATM
-mkdir -p $icerundir/INPUT -p $icerundir/RESTART -p $icerundir/HISTORY 	#subdirs for CICE
-mkdir -p $ocnrundir/INPUT $ocnrundir/RESTART $ocnrundir/HISTORY	#subdirs for MOM4
-mkdir -p $cplrundir
+mkdir -p $icerundir/RESTART -p $icerundir/HISTORY 	#subdirs for CICE
+mkdir -p $ocnrundir/RESTART $ocnrundir/HISTORY	#subdirs for MOM4
 
 # get input files for oasis3:
 
 # a. ref and grids data
-cd $cplrundir
-cp -f $inputdir/oasis3/cf_name_table.txt	.
-cp -f $inputdir/oasis3/oasis3_grids_.nc grids.nc
-cp -f $inputdir/oasis3/oasis3_masks_20130116-mct.nc masks.nc
-cp -f $inputdir/oasis3/oasis3_areas_20101208.nc areas.nc
-
-# the pre-processed coupling restart files:
-cp -f $inputdir/oasis3/AusCOM3.0_a2i_10fields_T0.nc	a2i.nc
-cp -f $inputdir/oasis3/AusCOM3.0_o2i_7fields_T0.nc	o2i.nc
-cp -f $inputdir/oasis3/AusCOM3.0_i2o_15fields_T0.nc	i2o.nc
-cp -f $inputdir/oasis3/AusCOM3.0_i2a_1fields_T0.nc	i2a.nc
-
-# get input files for matm (to be done in section 4)
-cd $atmrundir
-ln -sf $cplrundir/*.nc .
+ln -s $inputdir/oasis3 $cplrundir/INPUT
 
 # input files for cice:
-cd $icerundir
-cp -f $inputdir/cice/AusCOM3.0_core_runoff_regrid.nc $INPUT/core_runoff_regrid.nc 
-
-# a. grid data and surface 
-cp -f $inputdir/cice/cice_grid_20101208.nc		$INPUT/grid.nc
-cp -f $inputdir/cice/cice_kmt_20101208.nc		$INPUT/kmt.nc
-
-# b. IC/restart 
-runtype="'initial'"; Lrestart=.false.; ice_ic="'default'"
-cp -f $inputdir/cice/SSTS_12Jans.nc 	$INPUT/monthly_sstsss.nc 
-cp -f $inputdir/cice/uu_star_t0.nc	$INPUT/u_star.nc
-ln -sf $cplrundir/*.nc .
+ln -s $inputdir/cice $icerundir/INPUT
 
 # get input files for mom4:
-cd $ocnrundir
-ln -sf $cplrundir/*.nc .
-cd $MOM4_input
-cp -f $inputdir/$mom_version/field_table_20110404	field_table
-cp -f $inputdir/$mom_version/data_table		data_table	
-cp -f $inputdir/$mom_version/grid_spec.auscom.20110618.nc grid_spec.nc 
-cp -f $inputdir/$mom_version/geothermal_heating_auscom_20080605.nc geothermal_heating.nc
-cp -f $inputdir/$mom_version/tides_auscom_20080605.nc     tideamp.nc
-cp -f $inputdir/$mom_version/roughness_auscom_20080605_roughness_amp.nc roughness_amp.nc
-cp -f $inputdir/$mom_version/seawifs_auscom_20111118_edit_time.nc	ssw_atten_depth.nc
-cp -f $inputdir/$mom_version/salt_sfc_restore_20110829.nc 	salt_sfc_restore.nc
-cp -f $inputdir/$mom_version/temp_sfc_restore_20110829.nc 	temp_sfc_restore.nc
-cp -f $inputdir/$mom_version/basin_mask_20111103.nc		basin_mask.nc
-#get ocean initial condition (only T-S)
-cp -f $inputdir/$mom_version/ocean_temp_salt.20110518.nc	ocean_temp_salt.res.nc
+ln -s $inputdir/mom5 $ocnrundir/INPUT
 
 # prepare the atm_forcing dataset needed for this run:
-cd $atmrundir/INPUT
+ln -s $inputdir/matm $atmrundir/INPUT
 
-typeset -Z4 y1 y2
-y1=$endyear
-y2=$endyear
-if [ NY = NY ]; then
-    y1=1                  #for 'NY' forcing, y1 should be always '0001' !
-fi
-$inputdir/matm/get_core2_NY.ksh $y1 $y2 $AusCOMHOME
-y2=`expr $endyear + 1`
-y1=1
-if [ $endyear = $year_data_end ]; then
-    y1=$endyear
-fi
-$inputdir/matm/get_core2_NY.ksh $y1 $y2 $AusCOMHOME
-
-#
-## 3.2 Adapting or creating configuration files
-#
-
-# 3.2.1 namelist for oasis3:
+# The oasis files need to be in the rundirs for all other models.
+ln -s cplrundir/INPUT/* $icerundir/
+ln -s cplrundir/INPUT/* $ocnrundir/
+ln -s cplrundir/INPUT/* $atmrundir/
 
 nlogprt=2 	#cplout writing control: 0-no, 1-medium, 2-full output
 nam1=$ice_exe
