@@ -55,6 +55,15 @@ cplrundir=$expdir/CPL_RUNDIR
 #
 #############################################################################
 
+mkdir -p $ocnrundir
+mkdir -p $atmrundir
+mkdir -p $icerundir
+mkdir -p $cplrundir
+
+cp $bindir/fms_MOM_ACCESS.x $ocnrundir/mom5xx
+cp $bindir/matm_MPI1_nt62.exe $atmrundir/matmxx
+cp $bindir/cice_MPI1_6p.exe $icerundir/cicexx
+
 # Individual RUNDIRS
 mkdir -p $icerundir/RESTART -p $icerundir/HISTORY 	#subdirs for CICE
 mkdir -p $ocnrundir/RESTART $ocnrundir/HISTORY	#subdirs for MOM4
@@ -62,16 +71,16 @@ mkdir -p $ocnrundir/RESTART $ocnrundir/HISTORY	#subdirs for MOM4
 # get input files for oasis3:
 
 # a. ref and grids data
-ln -s $inputdir/oasis3 $cplrundir/INPUT
+ln -snf $inputdir/oasis3 $cplrundir/INPUT
 
 # input files for cice:
-ln -s $inputdir/cice $icerundir/INPUT
+ln -snf $inputdir/cice $icerundir/INPUT
 
 # get input files for mom4:
-ln -s $inputdir/mom5 $ocnrundir/INPUT
+ln -snf $inputdir/mom5 $ocnrundir/INPUT
 
 # prepare the atm_forcing dataset needed for this run:
-ln -s $inputdir/matm $atmrundir/INPUT
+ln -snf $inputdir/matm $atmrundir/INPUT
 
 #############################################################################
 #
@@ -79,7 +88,8 @@ ln -s $inputdir/matm $atmrundir/INPUT
 #
 #############################################################################
 
-mpirun --mca mpi_paffinity_alone 1 -wd $icerundir -n 6 cicexx : -wd $atmrundir -n 1 matmxx : -wd $ocnrundir -n 120 mom5xx 
+#mpirun --mca mpi_paffinity_alone 1 -wd $icerundir -n 6 $icerundir/cicexx : -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $ocnrundir -n 120 $ocnrundir/mom5xx 
+mpirun --mca mpi_paffinity_alone 1 -wd $icerundir -n 1 $icerundir/cicexx : -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $ocnrundir -n 4 $ocnrundir/mom5xx 
 
 echo
 echo "*** job completed  at: " `date` "***" 
