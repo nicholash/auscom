@@ -68,19 +68,17 @@ cp $bindir/cice_MPI1_6p.exe $icerundir/cicexx
 mkdir -p $icerundir/RESTART -p $icerundir/HISTORY 	#subdirs for CICE
 mkdir -p $ocnrundir/RESTART $ocnrundir/HISTORY	#subdirs for MOM4
 
-# get input files for oasis3:
-
 # a. ref and grids data
-ln -snf $inputdir/oasis3 $cplrundir/INPUT
+ln -sf $inputdir/oasis3/* $cplrundir/
 
 # input files for cice:
-ln -snf $inputdir/cice $icerundir/INPUT
+ln -sf $inputdir/cice/* $icerundir/
 
 # get input files for mom4:
-ln -snf $inputdir/mom5 $ocnrundir/INPUT
+ln -sf $inputdir/mom5/* $ocnrundir/
 
-# prepare the atm_forcing dataset needed for this run:
-ln -snf $inputdir/matm $atmrundir/INPUT
+# matm
+ln -sf $inputdir/matm/* $atmrundir/
 
 #############################################################################
 #
