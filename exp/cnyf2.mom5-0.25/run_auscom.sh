@@ -55,11 +55,6 @@ cplrundir=$expdir/CPL_RUNDIR
 #
 #############################################################################
 
-mkdir -p $ocnrundir
-mkdir -p $atmrundir
-mkdir -p $icerundir
-mkdir -p $cplrundir
-
 cp $bindir/fms_MOM_ACCESS.x $ocnrundir/mom5xx
 cp $bindir/matm_MPI1_nt62.exe $atmrundir/matmxx
 cp $bindir/cice_MPI1_6p.exe $icerundir/cicexx
