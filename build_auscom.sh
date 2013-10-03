@@ -1,5 +1,4 @@
 #!/bin/bash
-# TODO: Create a makefile
 
 function check {
     "$@"
@@ -23,7 +22,7 @@ cd submodels/matm/compile
 check ./comp_auscom_matm.sh
 cd ${BASEDIR}
 
-cd submodels/mom4p1/compile
-check ./comp_auscom_mom4p1.sh
+cd submodels/mom5/exp
+check ./MOM_compile.csh --platform nci --type MOM_ACCESS
 cd ${BASEDIR}
 
