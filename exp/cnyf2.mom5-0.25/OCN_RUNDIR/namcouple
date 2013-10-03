@@ -31,7 +31,7 @@
 # their names (character*6, exactly!) + , in option, the maximum Fortran unit
 # number used by each model; 1024 will be used if none are given.
 #
-  3  cicexx atmxx ocnxx  99  99  99
+  3  cicexx matmxx momxx  99  99  99
  $END
 ###########################################################################
  $RUNTIME

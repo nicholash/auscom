@@ -55,7 +55,7 @@ cplrundir=$expdir/CPL_RUNDIR
 #
 #############################################################################
 
-cp $bindir/fms_MOM_ACCESS.x $ocnrundir/mom5xx
+cp $bindir/fms_MOM_ACCESS.x $ocnrundir/momxx
 cp $bindir/matm_MPI1_nt62.exe $atmrundir/matmxx
 cp $bindir/cice_MPI1_6p.exe $icerundir/cicexx
 
@@ -82,7 +82,8 @@ ln -sf $inputdir/matm/* $atmrundir/
 #############################################################################
 
 #mpirun --mca mpi_paffinity_alone 1 -wd $icerundir -n 6 $icerundir/cicexx : -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $ocnrundir -n 120 $ocnrundir/mom5xx 
-mpirun --mca mpi_paffinity_alone 1 -wd $icerundir -n 1 $icerundir/cicexx : -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $ocnrundir -n 4 $ocnrundir/mom5xx 
+#mpirun --debug --mca mpi_paffinity_alone 1 -wd $icerundir -n 6 $icerundir/cicexx : -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $ocnrundir -n 4 $ocnrundir/mom5xx 
+mpirun --debug --mca orte_base_help_aggregate 0 --mca mpi_paffinity_alone 1 -wd $icerundir -n 6 $icerundir/cicexx : -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $ocnrundir -n 8 $ocnrundir/mom5xx 
 
 echo
 echo "*** job completed  at: " `date` "***" 
