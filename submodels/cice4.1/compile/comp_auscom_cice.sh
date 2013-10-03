@@ -42,6 +42,7 @@ setenv DITTO    no        # reproducible diagnostics
 setenv AusCOM   yes       # set to yes for AusCOM
 setenv OASIS3_MCT yes	  # oasis3-mct version
 setenv CHAN     MPI1	  # MPI1 or MPI2 (always MPI1!)
+setenv DEBUG yes
  
 ### Location of ACCESS system
 setenv SYSTEMDIR $AusCOMHOME

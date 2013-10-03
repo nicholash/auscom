@@ -10,7 +10,7 @@ ULIBS      :=
 CPP        := /usr/bin/cpp
 CPPFLAGS   := -P -traditional
 CPPDEFS    := -DLINUX -DPAROPT
-ifeq ($(DEBUG), yes)
+ifeq (${DEBUG}, yes)
     CFLAGS     := -c -g -O0
 else
     CFLAGS     := -c -O2
@@ -23,8 +23,8 @@ FC         := mpif90
 #FFLAGS     := -g -heap-arrays 5120 -convert big_endian -r8 -i4 -check -ftrapuv -assume byterecl -fpe0 -CB
 #FFLAGS     := -v -g -convert big_endian -r8 -i4 -check -ftrapuv -assume byterecl -gen-interfaces
 
-ifeq ($(DEBUG), yes)
-    FFLAGS     := -r8 -i4 -O0 -g -align all -w -ftz -convert big_endian -assume byterecl -no-vec -mcmodel=medium
+ifeq (${DEBUG}, yes)
+    FFLAGS     := -r8 -i4 -O0 -g -debug all -align all -w -ftz -convert big_endian -assume byterecl -no-vec -mcmodel=medium
 else
     FFLAGS     := -r8 -i4 -O2 -align all -w -ftz -convert big_endian -assume byterecl -no-vec -mcmodel=medium
 endif
