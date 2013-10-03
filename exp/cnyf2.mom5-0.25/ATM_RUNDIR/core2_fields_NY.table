@@ -1,0 +1,47 @@
+10     # num of input fields listed below: #
+#FORCING/ncar_rad.#YEAR.nc
+SWDN_MOD
+#FORCING/ncar_rad.#YEAR.nc
+LWDN_MOD
+#FORCING/u_10.#YEAR.nc
+U_10_MOD
+#FORCING/v_10.#YEAR.nc
+V_10_MOD
+#FORCING/ncar_precip.#YEAR.nc
+RAIN
+#FORCING/ncar_precip.#YEAR.nc
+SNOW
+#FORCING/slp.#YEAR.nc
+SLP
+#FORCING/mean_runof.#YEAR.nc
+RUNOF
+#FORCING/t_10.#YEAR.nc
+T_10_MOD
+#FORCING/q_10.#YEAR.nc
+Q_10_MOD
+
+
+#
+# this forcing is COREv1 Normal Year (NY) forcing.
+#
+
+
+# --- the above list MUST be in the correct order --- #
+#             as shown in code matm.F90!	      # 
+#
+# now we use the relocated runoff data (by Steve Phipps) instead of
+# the original ncep2 at
+#/cs/data/ofa001/auscom/CORE/runof.sfc.gauss.r-2.#YEAR.nc
+#
+# 20/07/2007 
+#-------------------------------------------------------------------
+#
+# *** for the spinup run we use "normal year" (NY) CORE forcing. 
+#     all data marked as year #YEAR are actually multi-year mean.
+#     mean_cloud and mean_runof are generated using the NCEP2 r-2 
+#     data (1979-2006 excluding leap years)  
+#     (see cherax:~/333 and ~/444, very inefficient approach)
+#
+# 16/10/2008
+#------------------------------------------------------------------- 
+
