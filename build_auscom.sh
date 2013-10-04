@@ -9,6 +9,9 @@ function check {
     fi
 }
 
+# Export this to do a debug build.
+#export DEBUG=yes
+
 BASEDIR=$(pwd)
 cd submodels/oasis3-mct/util/make_dir
 check make -j 4 -f TopMakefileOasis3
