@@ -1,32 +1,19 @@
-# Input fields
-forcing
-input
-
-# Default experiment
-exp/cnyf2-sw1/cnyf2-sw1.[oe]*
-exp/cnyf2-sw1/cnyf2-sw1.date
-exp/cnyf2-sw1/cnyf2-sw1.log
-exp/cnyf2-sw1/Running.dir
-exp/cnyf2-sw1/.swp
 
 # Binaries
 bin/oasis3_MPI1*
 bin/cice_MPI1*
 bin/matm_MPI1*
 bin/mom4_MPI1.exe
+bin/fms_MOM_ACCESS*
 bin/mppnccombine.exe
 bin/calendar.exe
 
-# Object Code
-submodels/oasis3-mct/Linux/
-submodels/oasis3-mct/compile/COMP.err
-submodels/oasis3-mct/compile/COMP.log
+# Other repos
+submodels/oasis3-mct
+submodels/mom5
+
+submodels/tags
+
 submodels/cice4.1/compile/build_MPI1_6p
 submodels/matm/compile/build_MPI1_nt62/
 submodels/mom4p1/compile/build_MPI1/
-
-# Error output.
-submodels/oasis3-mct/util/make_dir/COMP.*
-
-# Runtime setup.
-RUNNING
