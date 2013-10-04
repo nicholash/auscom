@@ -13,6 +13,7 @@ date
 set -e
 set -xv
 ulimit -s unlimited
+ulimit -a
 
 #############################################################################
 #
@@ -55,7 +56,7 @@ cplrundir=$expdir/CPL_RUNDIR
 #
 #############################################################################
 
-cp $bindir/fms_MOM_ACCESS.x $ocnrundir/momxx
+cp $bindir/fms_MOM_ACCESS.x $ocnrundir/mom5xx
 cp $bindir/matm_MPI1_nt62.exe $atmrundir/matmxx
 cp $bindir/cice_MPI1_6p.exe $icerundir/cicexx
 
@@ -64,16 +65,16 @@ mkdir -p $icerundir/RESTART -p $icerundir/HISTORY 	#subdirs for CICE
 mkdir -p $ocnrundir/RESTART $ocnrundir/HISTORY	#subdirs for MOM4
 
 # a. ref and grids data
-ln -sf $inputdir/oasis3/* $cplrundir/
+ln -snf $inputdir/oasis3 $cplrundir/INPUT
 
 # input files for cice:
-ln -sf $inputdir/cice/* $icerundir/
+ln -snf $inputdir/cice $icerundir/INPUT
 
 # get input files for mom4:
-ln -sf $inputdir/mom5/* $ocnrundir/
+ln -snf $inputdir/mom5 $ocnrundir/INPUT
 
 # matm
-ln -sf $inputdir/matm/* $atmrundir/
+ln -snf $inputdir/matm $atmrundir/INPUT
 
 #############################################################################
 #
@@ -83,7 +84,8 @@ ln -sf $inputdir/matm/* $atmrundir/
 
 #mpirun --mca mpi_paffinity_alone 1 -wd $icerundir -n 6 $icerundir/cicexx : -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $ocnrundir -n 120 $ocnrundir/mom5xx 
 #mpirun --debug --mca mpi_paffinity_alone 1 -wd $icerundir -n 6 $icerundir/cicexx : -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $ocnrundir -n 4 $ocnrundir/mom5xx 
-mpirun --debug --mca orte_base_help_aggregate 0 --mca mpi_paffinity_alone 1 -wd $icerundir -n 6 $icerundir/cicexx : -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $ocnrundir -n 8 $ocnrundir/mom5xx 
+#mpirun --debug --mca orte_base_help_aggregate 0 --mca mpi_paffinity_alone 1 -wd $icerundir -n 6 $icerundir/cicexx : -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $ocnrundir -n 8 $ocnrundir/mom5xx 
+mpirun --mca orte_base_help_aggregate 0 --mca mpi_paffinity_alone 1 -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $icerundir -n 6 $icerundir/cicexx : -wd $ocnrundir -n 8 $ocnrundir/mom5xx 
 
 echo
 echo "*** job completed  at: " `date` "***" 
