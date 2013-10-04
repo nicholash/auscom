@@ -575,6 +575,8 @@ fi
 cd $cplrundir
 cp -f $inputdir/oasis3/namcouple_33fields_mom4p1_pubrel_07dec2012-mct	namcouple
 
+chmod +w namcouple
+
 ed namcouple <<eof
 g/#Mod1_name/s/#Mod1_name/ $nam1 /
 g/#Mod2_name/s/#Mod2_name/ $nam2 /
@@ -598,7 +600,6 @@ cp namcouple $ocnrundir/
 # 3.2.2 namelist for matm coupling 
 
 cd $atmrundir
-
 cat > input_atm.nml << eof
 &coupling
 init_date=${iniyear}${inimonth}${iniday}
@@ -618,6 +619,8 @@ eof
 
 # get and adapt the forcing pointer file:
 cp -f $inputdir/matm/${atmdata}_fields_$datatype.table data_4_matm.table
+chmod +w data_4_matm.table
+
 ed data_4_matm.table <<eof
 g/#YEAR/s/#YEAR/$endyear/
 g/#FORCING/s/#FORCING/INPUT/
@@ -696,6 +699,7 @@ chio=0.004
 iceruf=0.0005
 
 cp $inputdir/cice/cice4.1_in.nml.sis2_daily	cice_in.nml
+chmod +w cice_in.nml
 
 ed cice_in.nml <<eof
 g/#DAYS_per_year/s/#DAYS_per_year/${days_this_year}/
@@ -774,6 +778,7 @@ zcoh1 = 0.0
 zcoq1 = 0.0
 /
 eof
+
 cat > input_ice_monin.nml << eof
 &monin_obukhov_nml
 neutral=.true.
@@ -819,6 +824,7 @@ cd $ocnrundir
 
 # a. standalone mode input namelist file
 cp -f $inputdir/$mom_version/input_20121207_dhb599.nml	input.nml
+chmod +w input.nml
 
 alap=1.0e5
 truncate_velocity='.true.'  
@@ -938,6 +944,7 @@ fi
 #'base_time' is read in from diag_table, and must NOT be changed during the exp.
 if [ $jobnum = 1 ]; then
     cp -f $inputdir/$mom_version/diag_table_20110901-dailymean  $MOM4_input/diag_table
+    chmod +w $MOM4_input/diag_table
     ed $MOM4_input/diag_table <<eof
 g/#SYEAR/s/#SYEAR/${year}/
 g/#SMON/s/#SMON/${month}/
@@ -955,6 +962,7 @@ frazil_factor=0.5	#mom4 uses two-level frog time stepping but cice
 #uses forward time-stepping (see comments in code)
 frazil_factor=1.0	#CH: MOM4 and CICE use same (two-timelevel) stepping!
 
+chmod +w input.nml
 cat >> input.nml << eof
 &auscom_ice_nml
 dt_cpl=$dt_cpl_io
