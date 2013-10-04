@@ -13,7 +13,6 @@ date
 set -e
 set -xv
 ulimit -s unlimited
-ulimit -a
 
 #############################################################################
 #
@@ -48,7 +47,6 @@ bindir=$AusCOMHOME/bin
 ocnrundir=$expdir/OCN_RUNDIR
 atmrundir=$expdir/ATM_RUNDIR
 icerundir=$expdir/ICE_RUNDIR
-cplrundir=$expdir/CPL_RUNDIR
 
 #############################################################################
 #
@@ -63,9 +61,6 @@ cp $bindir/cice_MPI1_6p.exe $icerundir/cicexx
 # Individual RUNDIRS
 mkdir -p $icerundir/RESTART -p $icerundir/HISTORY 	#subdirs for CICE
 mkdir -p $ocnrundir/RESTART $ocnrundir/HISTORY	#subdirs for MOM4
-
-# a. ref and grids data
-ln -snf $inputdir/oasis3 $cplrundir/INPUT
 
 # input files for cice:
 ln -snf $inputdir/cice $icerundir/INPUT
@@ -82,9 +77,6 @@ ln -snf $inputdir/matm $atmrundir/INPUT
 #
 #############################################################################
 
-#mpirun --mca mpi_paffinity_alone 1 -wd $icerundir -n 6 $icerundir/cicexx : -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $ocnrundir -n 120 $ocnrundir/mom5xx 
-#mpirun --debug --mca mpi_paffinity_alone 1 -wd $icerundir -n 6 $icerundir/cicexx : -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $ocnrundir -n 4 $ocnrundir/mom5xx 
-#mpirun --debug --mca orte_base_help_aggregate 0 --mca mpi_paffinity_alone 1 -wd $icerundir -n 6 $icerundir/cicexx : -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $ocnrundir -n 8 $ocnrundir/mom5xx 
 mpirun --mca orte_base_help_aggregate 0 --mca mpi_paffinity_alone 1 -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $icerundir -n 6 $icerundir/cicexx : -wd $ocnrundir -n 8 $ocnrundir/mom5xx 
 
 echo
