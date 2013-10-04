@@ -143,19 +143,19 @@
  &ocean_increment_eta_nml
       use_this_module=.false.
       days_to_increment=0
-      secs_to_increment=3600
+      secs_to_increment=1800
       fraction_increment=1.0 /
 
  &ocean_increment_tracer_nml
   use_this_module=.false. 
       days_to_increment=0
-      secs_to_increment=3600
+      secs_to_increment=1800
       fraction_increment=1.0 /
 
  &ocean_increment_velocity_nml
   use_this_module=.false. 
       days_to_increment=0
-      secs_to_increment=3600
+      secs_to_increment=1800
       fraction_increment=1.0 /
 
 
