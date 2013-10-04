@@ -3,7 +3,7 @@
 #PBS -P v45
 #PBS -W group_list=v45
 #PBS -q normal
-#PBS -l walltime=4:00:00
+#PBS -l walltime=3:00:00
 #PBS -l mem=255Gb
 #PBS -l ncpus=128
 #PBS -l wd
@@ -52,7 +52,7 @@ ln -snf $inputdir/matm $atmrundir/INPUT
 #
 #############################################################################
 
-mpirun --mca orte_base_help_aggregate 0 --mca mpi_paffinity_alone 1 -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $icerundir -n 6 $icerundir/cicexx : -wd $ocnrundir -n 8 $ocnrundir/mom5xx 
+mpirun --mca orte_base_help_aggregate 0 --mca mpi_paffinity_alone 1 -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $icerundir -n 6 $icerundir/cicexx : -wd $ocnrundir -n 120 $ocnrundir/mom5xx 
 
 echo
 echo "*** job completed  at: " `date` "***" 
