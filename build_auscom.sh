@@ -25,4 +25,5 @@ cd ${BASEDIR}
 cd submodels/mom5/exp
 check ./MOM_compile.csh --platform nci --type MOM_ACCESS
 cd ${BASEDIR}
+cp ./submodels/mom5/exec/nci/MOM_ACCESS/fms_MOM_ACCESS.x bin/
 
