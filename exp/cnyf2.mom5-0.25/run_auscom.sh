@@ -25,7 +25,6 @@ ulimit -s unlimited
 jobid=$PBS_JOBID    # job-id assigned by PBS (the queue sys)
 job=$PBS_JOBNAME	# name of this script
 
-mom_version=mom5
 expid=cnyf2.mom5-0.25 # change expid for each new experiment
 year_data_end=2007	# data NOT available after this year
 
