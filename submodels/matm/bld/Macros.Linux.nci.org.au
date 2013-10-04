@@ -16,8 +16,8 @@ FREEFLAGS  :=
 #FC         := ifort
 FC         := mpif90
 
-#FFLAGS     := -g -r8 -i4 -O2 -align all -w -ftz -convert big_endian -assume byterecl
-FFLAGS     := -r8 -i4 -O2 -align all -w -ftz -convert big_endian -assume byterecl -no-vec
+FFLAGS     := -g -r8 -i4 -O0 -traceback -debug all -align all -w -ftz -convert big_endian -assume byterecl
+#FFLAGS     := -r8 -i4 -O2 -align all -w -ftz -convert big_endian -assume byterecl -no-vec
 
 #08/01/09: try FFLAGS used by toyclim (which works for toyclim model)
 #FFLAGS	:= -g  -heap-arrays 1m -convert big_endian -r8 $(PSMILE_INCDIR) $(CPPDEF) -I$(NETCDF_INCLUDE)

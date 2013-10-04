@@ -24,7 +24,7 @@ FC         := mpif90
 #FFLAGS     := -v -g -convert big_endian -r8 -i4 -check -ftrapuv -assume byterecl -gen-interfaces
 
 ifeq (${DEBUG}, yes)
-    FFLAGS     := -r8 -i4 -O0 -g -debug all -align all -w -ftz -convert big_endian -assume byterecl -no-vec -mcmodel=medium
+    FFLAGS     := -r8 -i4 -O0 -traceback -g -debug all -align all -w -ftz -convert big_endian -assume byterecl -no-vec -mcmodel=medium
 else
     FFLAGS     := -r8 -i4 -O2 -align all -w -ftz -convert big_endian -assume byterecl -no-vec -mcmodel=medium
 endif
