@@ -7,7 +7,7 @@
 #PBS -l mem=255Gb
 #PBS -l ncpus=128
 #PBS -l wd
-#PBS -N cnyf2-sw1
+#PBS -N cnyf.mom5-0.25
 
 set -e
 set -xv
