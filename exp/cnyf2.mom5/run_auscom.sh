@@ -1,7 +1,7 @@
 #!/bin/ksh
 
-#PBS -P v45
-#PBS -W group_list=v45
+#PBS -P x77
+#PBS -W group_list=x77
 #PBS -q normal
 #PBS -l walltime=3:00:00
 #PBS -l mem=255Gb
