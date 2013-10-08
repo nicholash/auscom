@@ -1,9 +1,9 @@
 #!/bin/ksh
 
-#PBS -P v45
-#PBS -W group_list=v45
+#PBS -P x77
+#PBS -W group_list=x77
 #PBS -q normal
-#PBS -l walltime=4:00:00
+#PBS -l walltime=1:00:00
 #PBS -l mem=255Gb
 #PBS -l ncpus=128
 #PBS -l wd
@@ -26,9 +26,6 @@ cd `pwd`/../..
 AusCOMHOME=`pwd`
 expdir=$AusCOMHOME/exp/$expid
 
-# Location of preprocessed input files for the coupled model:
-inputdir=/short/v45/auscom/$expid
-
 ocnrundir=$expdir/OCN_RUNDIR
 atmrundir=$expdir/ATM_RUNDIR
 icerundir=$expdir/ICE_RUNDIR
@@ -42,17 +39,13 @@ icerundir=$expdir/ICE_RUNDIR
 mkdir -p $icerundir/RESTART -p $icerundir/HISTORY 	#subdirs for CICE
 mkdir -p $ocnrundir/RESTART $ocnrundir/HISTORY	#subdirs for MOM4
 
-ln -snf $inputdir/cice $icerundir/INPUT
-ln -snf $inputdir/mom5 $ocnrundir/INPUT
-ln -snf $inputdir/matm $atmrundir/INPUT
-
 #############################################################################
 #
 # Run the AusCOM model
 #
 #############################################################################
 
-mpirun --mca orte_base_help_aggregate 0 --mca mpi_paffinity_alone 1 -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $icerundir -n 6 $icerundir/cicexx : -wd $ocnrundir -n 8 $ocnrundir/mom5xx 
+mpirun --mca orte_base_help_aggregate 0 --mca mpi_paffinity_alone 1 -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $icerundir -n 6 $icerundir/cicexx : -wd $ocnrundir -n 120 $ocnrundir/mom5xx 
 
 echo
 echo "*** job completed  at: " `date` "***" 
