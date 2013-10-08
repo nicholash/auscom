@@ -17,13 +17,9 @@ def main():
 
     # Make a copy of the files that will be changed.
     shutil.copy('grid.nc', 'grid.ext.nc')
-    shutil.copy('u_star.nc', 'u_star.ext.nc')
-    shutil.copy('monthly_sstsss.nc', 'monthly_sstsss.ext.nc')
 
     # Read in the grid and field files. 
     grid = nc.Dataset('grid.ext.nc', 'r+')
-    u_star = nc.Dataset('u_star.ext.nc', 'r+')
-    temp_salt = nc.Dataset('monthly_sstsss.ext.nc', 'r+')
 
     # Extend Southern u points
     ulat = grid.variables['ulat']
@@ -54,13 +50,17 @@ def main():
     latt_bonds = grid.variables['latt_bonds']
     latt_bonds[0,0,:] = latt_bonds[0, 0, :] + tlat_diff
     latt_bonds[2,0,:] = latt_bonds[2, 0, :] + tlat_diff
+    grid.close()
 
     # Change the min u_start latitude. 
+    shutil.copy('u_star.nc', 'u_star.ext.nc')
+    u_star = nc.Dataset('u_star.ext.nc', 'r+')
     u_star.variables['GRID_Y_T'][0] = np.rad2deg(-1.41506061219264)
-    temp_salt.variables['GRID_Y_T'][0] = np.rad2deg(-1.41506061219264)
-
-    grid.close()
     u_star.close()
+
+    shutil.copy('monthly_sstsss.nc', 'monthly_sstsss.ext.nc')
+    temp_salt = nc.Dataset('monthly_sstsss.ext.nc', 'r+')
+    temp_salt.variables['GRID_Y_T'][0] = np.rad2deg(-1.41506061219264)
     temp_salt.close()
 
 if __name__ == "__main__":
