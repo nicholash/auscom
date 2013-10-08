@@ -53,15 +53,15 @@ def main():
     grid.close()
 
     # Change the min u_start latitude. 
-    shutil.copy('u_star.nc', 'u_star.ext.nc')
-    u_star = nc.Dataset('u_star.ext.nc', 'r+')
-    u_star.variables['GRID_Y_T'][0] = np.rad2deg(-1.41506061219264)
-    u_star.close()
+    #shutil.copy('u_star.nc', 'u_star.ext.nc')
+    #u_star = nc.Dataset('u_star.ext.nc', 'r+')
+    #u_star.variables['GRID_Y_T'][0] = np.rad2deg(-1.41506061219264)
+    #u_star.close()
 
-    shutil.copy('monthly_sstsss.nc', 'monthly_sstsss.ext.nc')
-    temp_salt = nc.Dataset('monthly_sstsss.ext.nc', 'r+')
-    temp_salt.variables['GRID_Y_T'][0] = np.rad2deg(-1.41506061219264)
-    temp_salt.close()
+    #shutil.copy('monthly_sstsss.nc', 'monthly_sstsss.ext.nc')
+    #temp_salt = nc.Dataset('monthly_sstsss.ext.nc', 'r+')
+    #temp_salt.variables['GRID_Y_T'][0] = np.rad2deg(-1.41506061219264)
+    #temp_salt.close()
 
 if __name__ == "__main__":
     sys.exit(main())
