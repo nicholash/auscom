@@ -19,24 +19,23 @@ def make_masks(ocean_mask, oasis_mask):
     """
 
     # Copy over mask from ocean. 
-    cmd = \
-"""
-ncks -v nt62.msk %s masks.nc &&
-echo "a" | ncks -v mask %s masks.nc &&
-echo "y" | ncrename -v mask,cice.msk masks.nc masks.nc
-""" % (oasis_mask, ocean_mask)
-    os.system(cmd)
+    os.system('ncks -v nt62.msk %s masks.nc' % (oasis_mask))
 
-    # Invert the mask for OASIS.
-    f = nc.Dataset('masks.nc', 'r+')
+    # Get the mask from ocean and invert for OASIS.
+    f = nc.Dataset(ocean_mask, 'r')
 
-    tmp = f.variables['cice.msk'][:]
+    tmp = f.variables['mask'][:]
     tmp = tmp.astype(bool)
     tmp = ~tmp
     tmp = tmp.astype(int)
+    f.close()
 
-    f.variables['cice.msk'][:] = tmp[:]
-    # Fix up units.
+    f = nc.Dataset('masks.nc', 'r+')
+    f.createDimension('nyo', tmp.shape[0])
+    f.createDimension('nxo', tmp.shape[1])
+    cice_msk = f.createVariable('cice.msk', 'i4', ('nyo','nxo'))
+
+    cice_msk[:] = tmp[:]
     f.variables['cice.msk'].units = f.variables['nt62.msk'].units
 
     f.close()
