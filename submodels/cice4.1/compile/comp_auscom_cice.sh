@@ -72,7 +72,7 @@ if !(-d $OBJDIR) mkdir -p $OBJDIR
 #setenv GRID gx3 ; setenv RES 100x116
 #setenv GRID gx1 ; setenv RES 320x384
 #setenv GRID tx1 ; setenv RES 360x240
-setenv GRID tp1 ; setenv RES 360x300
+setenv GRID tp1 ; setenv RES 1440x1080
                                                                                 
 set NXGLOB = `echo $RES | sed s/x.\*//`
 set NYGLOB = `echo $RES | sed s/.\*x//`
