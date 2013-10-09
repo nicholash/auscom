@@ -36,6 +36,8 @@ echo "y" | ncrename -v mask,cice.msk masks.nc masks.nc
     tmp = tmp.astype(int)
 
     f.variables['cice.msk'][:] = tmp[:]
+    # Fix up units.
+    f.variables['cice.msk'].units = f.variables['nt62.msk'].units
 
     f.close()
 
@@ -108,7 +110,7 @@ echo "a" | ncks -v nt62.clo %s grids.nc
     os.system(cmd)
 
     # Split up the double density grid into t anc c points.
-    f = nc.Dataset(ocean_grid, 'r+')
+    f = nc.Dataset(ocean_grid, 'r')
 
     # Copy netcdf variables, otherwise access is very slow.
     x = np.copy(f.variables['x'])
