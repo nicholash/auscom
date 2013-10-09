@@ -368,19 +368,19 @@
       restore_mask_OFAM=.false. /
 
  &ocean_shortwave_csiro_nml
-      use_this_module=.true.
+      use_this_module=.false.
       read_depth=.true.
       zmax_pen=7000 
 /
 
  &ocean_shortwave_gfdl_nml
-      use_this_module=.false.
+      use_this_module=.true.
       debug_this_module=.false.
-      read_chl=.false.
-      zmax_pen=200.0
-      enforce_sw_frac=.true.
-      sw_pen_fixed_depths=.false.
+      optics_morel_antoine = .false.
       optics_manizza=.true.
+      read_chl=.false.
+      zmax_pen=300.0
+      enforce_sw_frac=.true.
 /
 
  &ocean_shortwave_jerlov_nml
@@ -392,8 +392,8 @@
 
  &ocean_shortwave_nml
       use_this_module=.true.
-      use_shortwave_gfdl=.false.
-      use_shortwave_csiro=.true.
+      use_shortwave_gfdl=.true.
+      use_shortwave_csiro=.false.
       use_shortwave_jerlov=.false.
 /
 
