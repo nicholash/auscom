@@ -417,8 +417,8 @@
 /
 
  &ocean_solo_nml
-            months = 1
-            days   = 0
+            months = 0
+            days   = 1
             date_init = 0001,01,01,0,0,0
             hours = 0
             minutes = 0
