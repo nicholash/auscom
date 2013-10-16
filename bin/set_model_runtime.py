@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 """
 Modify atmosphere, ice, ocean and coupler namelists files to set experiment runtime.
 
-It depends on the the experiments directory being at ../exp
+Relies on the the experiments directory being at ../exp
 """
 
 input_atm = "../exp/%s/ATM_RUNDIR/input_atm.nml"

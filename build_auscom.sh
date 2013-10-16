@@ -10,15 +10,20 @@ function check {
 }
 
 # Export this to do a debug build.
-#export DEBUG=yes
+export DEBUG=yes
 
 BASEDIR=$(pwd)
 cd submodels/oasis3-mct/util/make_dir
+module load intel-mpi
+module load intel-itac
+module load intel-fc
+module load intel-cc
+module load netcdf
 check make -j 4 -f TopMakefileOasis3
 cd ${BASEDIR}
 
 cd submodels/cice4.1/compile
-check ./comp_auscom_cice.sh 6
+check ./comp_auscom_cice.sh 48
 cd ${BASEDIR}
 
 cd submodels/matm/compile

@@ -43,7 +43,7 @@
 /
 
 &domain_nml
-    nprocs = 6
+    nprocs = 48
   , processor_shape   = 'slenderX2'
   , distribution_type = 'cartesian'
   , distribution_wght = 'latitude'
