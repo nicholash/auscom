@@ -374,7 +374,7 @@
 /
 
  &ocean_shortwave_gfdl_nml
-      use_this_module=.true.
+      use_this_module=.false.
       debug_this_module=.false.
       optics_morel_antoine = .false.
       optics_manizza=.true.
@@ -391,7 +391,7 @@
  /
 
  &ocean_shortwave_nml
-      use_this_module=.true.
+      use_this_module=.false.
       use_shortwave_gfdl=.true.
       use_shortwave_csiro=.false.
       use_shortwave_jerlov=.false.
