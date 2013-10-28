@@ -14,7 +14,7 @@
 
  &ocean_adv_vel_diag_nml
       diag_step=120
-      verbose_cfl=.false.
+      verbose_cfl=.true.
       max_cfl_value=100.0
       large_cfl_value=10.0
 /
@@ -24,7 +24,8 @@
 /
 
  &diag_manager_nml
-      issue_oor_warnings=.FALSE.
+      debug_diag_manager=.true.
+      issue_oor_warnings=.true.
 /
 
  &ocean_barotropic_nml
@@ -204,15 +205,16 @@
 /
 
  &ocean_model_nml
-      layout = ,
+      dt_ocean = 1800
       time_tendency='twolevel'
       vertical_coordinate='zstar'
-      dt_ocean = 1800
       baroclinic_split = 1
       surface_height_split = 1
       barotropic_split = 80
       cmip_units=.true.
       debug=.false.
+	  layout = 32, 30
+	  io_layout = 32, 30
 /
 
  &ocean_momentum_source_nml
@@ -443,7 +445,8 @@
  /
 
  &ocean_sponges_eta_nml
-      use_this_module=.false. /
+      use_this_module=.false. 
+ /
 
  &ocean_sponges_eta_OFAM_nml
  /
@@ -454,31 +457,46 @@
       use_hblt_equal_mld=.true.
       min_kblt=4
       smooth_hblt=.false.
-      front_length_deform_radius=.true.
-      front_length_const=5e3
+      use_psi_legacy=.false.
       limit_psi=.true.
       limit_psi_velocity_scale=0.50
-      submeso_limit_flux=.true.
+      smooth_psi=.true.
+      smooth_psi_num=3
+      front_length_deform_radius=.true.
+      front_length_const=5e3
+      coefficient_ce=0.05
+      submeso_skew_flux=.true.
+      submeso_advect_flux=.false.
+      submeso_diffusion=.false.
+      submeso_diffusion_biharmonic=.true.
+      submeso_diffusion_scale=10.0
+      submeso_advect_zero_bdy=.true.
+      submeso_advect_limit=.true.
+      smooth_advect_transport=.true.
+      smooth_advect_transport_num=4
+      submeso_advect_upwind=.true.
  /
 
  &ocean_tempsalt_nml
-      temperature_variable='conservative_temp'
+	  debug_this_module=.false.
+      temperature_variable='potential_temp'
       pottemp_2nd_iteration=.true.
-      t_min=-5.0
+	  pottemp_equal_contemp=.true.
+      t_min=-20.0
       t_max = 55.0
-      s_min = -1.0
-      s_max = 55.0
-      t_min_limit =-2.0
+      s_min = 0.0
+      s_max = 70.0
+      t_min_limit =-5.0
       t_max_limit =32.0
-      s_min_limit =0.0
+      s_min_limit =2.0
       s_max_limit =42.0
 /
  
  &ocean_thickness_nml
       debug_this_module=.false.
       debug_this_module_detail=.false.
-      thickness_dzt_min_init=2.0
-      thickness_dzt_min=1.0
+      thickness_dzt_min_init=10.0
+      thickness_dzt_min=2.0
       thickness_method='energetic'
       initialize_zero_eta=.false.
       read_rescale_rho0_mask=.false.
@@ -502,7 +520,7 @@
 
  &ocean_tracer_diag_nml
       tracer_conserve_days=1.0
-      diag_step=120
+	  diag_step=1
       do_bitwise_exact_sum=.false.
 /
 
@@ -627,24 +645,25 @@
       send_before_ocean_update=.false.
       send_after_ocean_update=.true.
 /
-&auscom_ice_nml
-dt_cpl=1800
-do_ice_once=.false.
-pop_icediag=.true.
-kmxice=5 
-fixmeltT=.false.
-Tmelt=-.216
-use_ioaice=.true.
-aice_cutoff=0.15
-icemlt_factor=1.0
-frazil_factor=1.0 
-iceform_adj_salt=.false.
-sign_stflx=1.0
-chk_i2o_fields=.false.
-chk_o2i_fields=.false.
+
+ &auscom_ice_nml
+    dt_cpl=1800
+    do_ice_once=.false.
+    pop_icediag=.true.
+    kmxice=5 
+    fixmeltT=.false.
+    Tmelt=-.216
+    use_ioaice=.true.
+    aice_cutoff=0.15
+    icemlt_factor=1.0
+    frazil_factor=1.0 
+    iceform_adj_salt=.false.
+    sign_stflx=1.0
+    chk_i2o_fields=.true.
+    chk_o2i_fields=.true.
 /
 
-&bg_diff_lat_dependence_nml
-lat_low_bgdiff=20.
-bg_diff_eq=1.0e-6
+ &bg_diff_lat_dependence_nml
+    lat_low_bgdiff=20.
+    bg_diff_eq=1.0e-6
 /
