@@ -25,7 +25,7 @@ expid=cnyf2.mom5 # change expid for each new experiment
 cd `pwd`/../..
 AusCOMHOME=`pwd`
 expdir=$AusCOMHOME/exp/$expid
-inputdir=/short/v45/auscom/$exp
+inputdir=/short/v45/auscom/$expid
 
 ocnrundir=$expdir/OCN_RUNDIR
 atmrundir=$expdir/ATM_RUNDIR
