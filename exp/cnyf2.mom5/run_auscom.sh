@@ -2,12 +2,12 @@
 
 #PBS -P x77
 #PBS -W group_list=x77
-#PBS -q normal
+#PBS -q express
 #PBS -l walltime=0:30:00
-#PBS -l mem=255Gb
+#PBS -l mem=128Gb
 #PBS -l ncpus=128
 #PBS -l wd
-#PBS -N cnyf2.mom5
+#PBS -N mom5.cnyf2
 
 set -e
 set -xv
@@ -25,9 +25,6 @@ expid=cnyf2.mom5 # change expid for each new experiment
 cd `pwd`/../..
 AusCOMHOME=`pwd`
 expdir=$AusCOMHOME/exp/$expid
-
-# Location of preprocessed input files for the coupled model:
-inputdir=/short/v45/auscom/$expid
 
 ocnrundir=$expdir/OCN_RUNDIR
 atmrundir=$expdir/ATM_RUNDIR
@@ -48,9 +45,8 @@ mkdir -p $ocnrundir/RESTART $ocnrundir/HISTORY	#subdirs for MOM4
 #
 #############################################################################
 
-module load ipm
-
-mpirun --mca orte_base_help_aggregate 0 --mca mpi_paffinity_alone 1 -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $icerundir -n 6 $icerundir/cicexx : -wd $ocnrundir -n 120 $ocnrundir/mom5xx 
+module load openmpi
+mpirun --mca orte_base_help_aggregate 0 -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $icerundir -n 48 $icerundir/cicexx : -wd $ocnrundir -n 64 $ocnrundir/mom5xx 
 
 echo
 echo "*** job completed  at: " `date` "***" 
