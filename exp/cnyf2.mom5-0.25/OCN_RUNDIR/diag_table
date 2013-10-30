@@ -1,10 +1,10 @@
 MOM4p1_CORE_IAF_v20120531_0849_noRestore_runoff_fix
 1 1 1 0 0 0
 #output files
-"ocean",            5,  "days", 1, "days", "time",
+"ocean",            0,  "days", 1, "seconds", "time",
 "ocean_daily",     24,  "hours",  1, "days", "time",
 "ocean_grid",      -1,  "months", 1, "days", "time",
-"ocean_scalar",     1,  "days", 1, "days", "time",
+"ocean_scalar",     0,  "days", 1, "seconds", "time",
 "ncar",            -1,  "days", 1, "days", "time"
 "ocean_model","geolon_t","geolon_t", "ocean_grid","all",.false.,"none",2
 "ocean_model","geolat_t","geolat_t", "ocean_grid","all",.false.,"none",2
@@ -24,11 +24,11 @@ MOM4p1_CORE_IAF_v20120531_0849_noRestore_runoff_fix
 "ocean_model","geolat_t","geolat_t", "ocean","all",.false.,"none",2
 "ocean_model","geolon_c","geolon_c", "ocean","all",.false.,"none",2
 "ocean_model","geolat_c","geolat_c", "ocean","all",.false.,"none",2
-"ocean_model","temp","temp",            "ocean","all",.true.,"none",2
-"ocean_model","salt","salt",            "ocean","all",.true.,"none",2
-"ocean_model","age_global","age_global","ocean","all",.true.,"none",2
-"ocean_model","u","u",                  "ocean","all",.true.,"none",2
-"ocean_model","v","v",                  "ocean","all",.true.,"none",2
+"ocean_model","temp","temp",            "ocean","all",.false.,"none",2
+"ocean_model","salt","salt",            "ocean","all",.false.,"none",2
+"ocean_model","age_global","age_global","ocean","all",.false.,"none",2
+"ocean_model","u","u",                  "ocean","all",.false.,"none",2
+"ocean_model","v","v",                  "ocean","all",.false.,"none",2
 #
 # 2d fields
 "ocean_model","eta_t","eta_t",          "ocean","all",.true.,"none",2
