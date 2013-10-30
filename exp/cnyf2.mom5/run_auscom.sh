@@ -25,6 +25,7 @@ expid=cnyf2.mom5 # change expid for each new experiment
 cd `pwd`/../..
 AusCOMHOME=`pwd`
 expdir=$AusCOMHOME/exp/$expid
+inputdir=/short/v45/auscom/$exp
 
 ocnrundir=$expdir/OCN_RUNDIR
 atmrundir=$expdir/ATM_RUNDIR
@@ -39,6 +40,11 @@ icerundir=$expdir/ICE_RUNDIR
 mkdir -p $icerundir/RESTART -p $icerundir/HISTORY 	#subdirs for CICE
 mkdir -p $ocnrundir/RESTART $ocnrundir/HISTORY	#subdirs for MOM4
 
+# Copy in OASIS restart files.
+cp $inputdir/oasis3/* $atmrundir/
+cp $inputdir/oasis3/* $ocnrundir/
+cp $inputdir/oasis3/* $icerundir/
+
 #############################################################################
 #
 # Run the AusCOM model
@@ -46,7 +52,9 @@ mkdir -p $ocnrundir/RESTART $ocnrundir/HISTORY	#subdirs for MOM4
 #############################################################################
 
 module load openmpi
-mpirun --mca orte_base_help_aggregate 0 -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $icerundir -n 48 $icerundir/cicexx : -wd $ocnrundir -n 64 $ocnrundir/mom5xx 
+#module load totalview 
+#mpirun --debug --mca orte_base_help_aggregate 0 -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $icerundir -n 48 $icerundir/cicexx : -wd $ocnrundir -n 64 $ocnrundir/mom5xx 
+mpirun --mca orte_base_help_aggregate 0 -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $icerundir -n 6 $icerundir/cicexx : -wd $ocnrundir -n 112 $ocnrundir/mom5xx 
 
 echo
 echo "*** job completed  at: " `date` "***" 
