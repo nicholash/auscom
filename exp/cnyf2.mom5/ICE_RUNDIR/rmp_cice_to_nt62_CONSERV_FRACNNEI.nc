@@ -1,0 +1,1 @@
+/short/v45/auscom/cnyf2.mom5/oasis3/rmp_cice_to_nt62_CONSERV_FRACNNEI.nc
