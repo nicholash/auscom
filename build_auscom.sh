@@ -14,11 +14,11 @@ export DEBUG=yes
 
 BASEDIR=$(pwd)
 cd submodels/oasis3-mct/util/make_dir
-module load intel-mpi
-module load intel-itac
+module purge
 module load intel-fc
 module load intel-cc
 module load netcdf
+module load openmpi
 check make -j 4 -f TopMakefileOasis3
 cd ${BASEDIR}
 
@@ -34,4 +34,3 @@ cd submodels/mom5/exp
 check ./MOM_compile.csh --platform nci --type MOM_ACCESS
 cd ${BASEDIR}
 cp ./submodels/mom5/exec/nci/MOM_ACCESS/fms_MOM_ACCESS.x bin/
-
