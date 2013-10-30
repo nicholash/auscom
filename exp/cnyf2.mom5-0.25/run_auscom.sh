@@ -45,7 +45,9 @@ mkdir -p $ocnrundir/RESTART $ocnrundir/HISTORY	#subdirs for MOM4
 #
 #############################################################################
 
-mpirun --mca orte_base_help_aggregate 0 --mca mpi_paffinity_alone 1 -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $icerundir -n 48 $icerundir/cicexx : -wd $ocnrundir -n 960 $ocnrundir/mom5xx 
+module load openmpi
+
+mpirun --mca orte_base_help_aggregate 0 -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $icerundir -n 48 $icerundir/cicexx : -wd $ocnrundir -n 960 $ocnrundir/mom5xx 
 
 echo
 echo "*** job completed  at: " `date` "***" 

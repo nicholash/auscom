@@ -2,9 +2,9 @@
 
 #PBS -P x77
 #PBS -W group_list=x77
-#PBS -q express
+#PBS -q normal
 #PBS -l walltime=0:30:00
-#PBS -l mem=128Gb
+#PBS -l mem=240Gb
 #PBS -l ncpus=128
 #PBS -l wd
 #PBS -N mom5.cnyf2
