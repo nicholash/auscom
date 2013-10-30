@@ -370,7 +370,7 @@
 /
 
  &ocean_shortwave_nml
-      use_this_module=.true.
+      use_this_module=.false.
       use_shortwave_gfdl=.true.
       use_shortwave_csiro=.false.
       use_shortwave_jerlov=.false.
