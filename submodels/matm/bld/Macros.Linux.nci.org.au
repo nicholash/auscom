@@ -17,7 +17,7 @@ FC         := mpif90
 ifeq ($(DEBUG), yes)
     FFLAGS     := -g -r8 -i4 -O0 -traceback -debug all -no-vec -align all -w -fpe0 -ftz -convert big_endian -assume byterecl -assume buffered_io
 else
-    FFLAGS     := -r8 -i4 -O2 -align all -w -ftz -convert big_endian -assume byterecl -assume buffered_io
+    FFLAGS     := -r8 -i4 -O2 -align all -w -ftz -convert big_endian -assume byterecl -assume buffered_io -check noarg_temp_created
 endif
 
 #08/01/09: try FFLAGS used by toyclim (which works for toyclim model)
