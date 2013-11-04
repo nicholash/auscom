@@ -3,7 +3,7 @@
 #PBS -P x77
 #PBS -W group_list=x77
 #PBS -q normal
-#PBS -l walltime=1:00:00
+#PBS -l walltime=00:30:00
 #PBS -l mem=2000Gb
 #PBS -l ncpus=1024
 #PBS -l wd
@@ -45,9 +45,10 @@ mkdir -p $ocnrundir/RESTART $ocnrundir/HISTORY	#subdirs for MOM4
 #
 #############################################################################
 
-module load openmpi
+module load openmpi/1.6.5-mlx
+module load ipm
 
-mpirun --mca orte_base_help_aggregate 0 -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $icerundir -n 48 $icerundir/cicexx : -wd $ocnrundir -n 960 $ocnrundir/mom5xx 
+mpirun --mca orte_base_help_aggregate 0 -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $icerundir -n 48 $icerundir/cicexx : -wd $ocnrundir -n 960 $ocnrundir/mom5xx
 
 echo
 echo "*** job completed  at: " `date` "***" 

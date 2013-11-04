@@ -24,7 +24,7 @@ FREEFLAGS  :=
 ifeq ($(DEBUG), yes)
     FFLAGS     := -r8 -i4 -O0 -traceback -g -debug all -no-vec -align all -w -fpe0 -ftz -convert big_endian -assume byterecl -no-vec -mcmodel=medium -assume buffered_io
 else
-    FFLAGS     := -r8 -i4 -O2 -align all -w -ftz -convert big_endian -assume byterecl -mcmodel=medium -assume buffered_io -check noarg_temp_created
+    FFLAGS     := -r8 -i4 -O2 -align all -fpe0 -w -ftz -convert big_endian -assume byterecl -mcmodel=medium -assume buffered_io -check noarg_temp_created
 endif
 #FFLAGS     := -r8 -i4 -O2 -align all -w -ftz -convert big_endian -assume byterecl -mp -g
 #FFLAGS     := -r8 -i4 -O2 -align all -w -ftz -convert big_endian -assume byterecl -fpe0 -CB -g
