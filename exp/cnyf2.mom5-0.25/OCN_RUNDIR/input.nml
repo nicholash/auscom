@@ -630,8 +630,8 @@
     frazil_factor=1.0 
     iceform_adj_salt=.false.
     sign_stflx=1.0
-    chk_i2o_fields=.true.
-    chk_o2i_fields=.true.
+    chk_i2o_fields=.false.
+    chk_o2i_fields=.false.
 /
 
 &ocean_solo_nml
