@@ -1,1 +1,0 @@
-/short/v45/auscom/cnyf2.mom5-0.25/oasis3/i2o.nc
