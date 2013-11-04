@@ -435,7 +435,7 @@
  /
 
  &ocean_tempsalt_nml
-	  debug_this_module=.false.
+	  debug_this_module=.true.
       temperature_variable='potential_temp'
       pottemp_2nd_iteration=.true.
 	  pottemp_equal_contemp=.true.
@@ -479,7 +479,7 @@
 /
 
  &ocean_tracer_nml
-      debug_this_module=.false.
+      debug_this_module=.true.
       zero_tendency=.false.
       remap_depth_to_s_init=.false.
       zero_tracer_source=.false.
