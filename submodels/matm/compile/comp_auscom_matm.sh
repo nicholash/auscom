@@ -24,7 +24,7 @@ module purge
 module load intel-cc
 module load intel-fc
 module load netcdf
-module load openmpi
+module load openmpi/1.6.5-mlx
 
 #endif
 #-------------------------------------------------------------------------------

@@ -10,7 +10,7 @@ function check {
 }
 
 # Export this to do a debug build.
-export DEBUG=yes
+# export DEBUG=yes
 
 BASEDIR=$(pwd)
 cd submodels/oasis3-mct/util/make_dir
@@ -18,7 +18,7 @@ module purge
 module load intel-fc
 module load intel-cc
 module load netcdf
-module load openmpi
+module load openmpi/1.6.5-mlx
 check make -j 4 -f TopMakefileOasis3
 cd ${BASEDIR}
 
