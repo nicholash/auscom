@@ -6,7 +6,7 @@ import re
 from datetime import datetime, timedelta
 
 """
-Modify atmosphere, ice, ocean and coupler namelists files to set experiment runtime.
+Modify atmosphere, ice, ocean and coupler namelists files to set a configuration option.
 
 Relies on the the experiments directory being at ../exp
 """
@@ -14,6 +14,7 @@ Relies on the the experiments directory being at ../exp
 input_atm = "../exp/%s/ATM_RUNDIR/input_atm.nml"
 namcouple = ["../exp/%s/ATM_RUNDIR/namcouple", "../exp/%s/OCN_RUNDIR/namcouple", "../exp/%s/ICE_RUNDIR/namcouple"]
 input_ice = "../exp/%s/ICE_RUNDIR/input_ice.nml"
+cice_in = "../exp/%s/ICE_RUNDIR/cice_in.nml"
 input_ocn = "../exp/%s/OCN_RUNDIR/input.nml"
 
 class FortranNamelist:
@@ -62,42 +63,104 @@ class Namcouple:
         assert(m is not None)
         self.str = self.str[:m.start(1)] + runtime + self.str[m.end(1):]
 
+    def set_ocean_timestep(self, timestep):
+
+        def substitute_timestep(regex):
+            """
+            Make one change at a time, each change affects subsequent matches.
+            """
+            while True:
+                matches = re.finditer(regex, self.str, re.MULTILINE | re.DOTALL)
+                none_updated = True
+                for m in matches:
+                    if m.group(1) == timestep:
+                        continue
+                    else:
+                        self.str = self.str[:m.start(1)] + timestep + self.str[m.end(1):]
+                        none_updated = False
+                        break
+
+                if none_updated:
+                    break
+
+        substitute_timestep(r"nt62 cice LAG=\+(\d+) ")
+        substitute_timestep(r"cice nt62 LAG=\+(\d+) ")
+        substitute_timestep(r"\d+ (\d+) \d+ i2o.nc EXPORTED")
+        substitute_timestep(r"\d+ (\d+) \d+ o2i.nc EXPORTED")
+
     def write(self):
         with open(self.filename, 'w') as f:
             f.write(self.str)
 
-def main():
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("experiment", help="The experiment on which to change the runtime.")
-    parser.add_argument("runtime", help="The runtime in seconds.")
-
-    args = parser.parse_args()
+def set_runtime(experiment, runtime):
 
     # Change runtime in the namcouple files.
     for n in namcouple:
-        nc = Namcouple(n % (args.experiment))
-        nc.set_runtime(args.runtime)
+        nc = Namcouple(n % (experiment))
+        nc.set_runtime(runtime)
         nc.write()
 
-    nml = FortranNamelist(input_atm % (args.experiment))
-    nml.set_value('runtime', args.runtime)
+    nml = FortranNamelist(input_atm % (experiment))
+    nml.set_value('runtime', runtime)
     nml.write()
 
-    nml = FortranNamelist(input_ice % (args.experiment))
-    nml.set_value('runtime', args.runtime)
+    nml = FortranNamelist(input_ice % (experiment))
+    nml.set_value('runtime', runtime)
     nml.write()
 
-    sec = timedelta(seconds=int(args.runtime))
+    sec = timedelta(seconds=int(runtime))
     d = datetime(1, 1, 1) + sec
 
-    nml = FortranNamelist(input_ocn % (args.experiment))
+    nml = FortranNamelist(input_ocn % (experiment))
     nml.set_value('months', d.month - 1, record='ocean_solo_nml')
     nml.set_value('days', d.day - 1, record='ocean_solo_nml')
     nml.set_value('hours', d.hour, record='ocean_solo_nml')
     nml.set_value('minutes', d.minute, record='ocean_solo_nml')
     nml.set_value('seconds', d.second, record='ocean_solo_nml')
     nml.write()
+
+def set_ocean_timestep(experiment, timestep):
+
+    # Change runtime in the namcouple files.
+    for n in namcouple:
+        nc = Namcouple(n % (experiment))
+        nc.set_ocean_timestep(timestep)
+        nc.write()
+
+    nml = FortranNamelist(input_atm % (experiment))
+    nml.set_value('dt_atm', timestep)
+    nml.write()
+
+    nml = FortranNamelist(input_ice % (experiment))
+    nml.set_value('dt_cpl_io', timestep)
+    nml.set_value('dt_cice', timestep)
+    nml.write()
+
+    nml = FortranNamelist(cice_in % (experiment))
+    nml.set_value('dt', timestep)
+    # FIXME: calculate this number.
+    nml.set_value('npt', 8928)
+    nml.write()
+
+    nml = FortranNamelist(input_ocn % (experiment))
+    nml.set_value('dt_ocean', timestep)
+    nml.set_value('dt_cpl', timestep)
+    nml.set_value('dt_cpld', timestep)
+    nml.write()
+
+def main():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("experiment", help="The experiment on which to change the runtime.")
+    parser.add_argument("--runtime", dest="runtime", help="The runtime in seconds.")
+    parser.add_argument("--ocean_timestep", dest="ocean_timestep", help="The ocean timestep in seconds.")
+
+    args = parser.parse_args()
+
+    if args.runtime:
+        set_runtime(args.experiment, args.runtime)
+    if args.ocean_timestep:
+        set_ocean_timestep(args.experiment, args.ocean_timestep)
 
 if __name__ == "__main__":
     sys.exit(main())
