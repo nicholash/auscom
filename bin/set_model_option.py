@@ -29,7 +29,10 @@ class FortranNamelist:
         with open(filename, 'r') as f:
             self.str = f.read()
 
-    def set_value(self, variable, value, record=None):
+    def get_value(self, variable, record=None):
+        """
+        Return the value, start index and end index.
+        """
         regex = r"%s[ \t]*=[ \t]*(\S*),?[ \t]*$"
         if record is None:
             m = re.search(regex % (variable), self.str, re.MULTILINE | re.DOTALL)
@@ -37,7 +40,13 @@ class FortranNamelist:
             m = re.search((r"&%s.*?" + regex) % (record, variable), self.str, re.MULTILINE | re.DOTALL)
         assert(m is not None)
 
-        self.str = self.str[:m.start(1)] + str(value) + self.str[m.end(1):]
+        return (m.group(1), m.start(1), m.end(1))
+
+    def set_value(self, variable, value, record=None):
+
+        (_, start, end) = self.get_value_match(variable, record)
+
+        self.str = self.str[:start] + str(value) + self.str[m.end(1):]
 
     def write(self):
         with open(self.filename, 'w') as f:
@@ -137,9 +146,15 @@ def set_ocean_timestep(experiment, timestep):
     nml.write()
 
     nml = FortranNamelist(cice_in % (experiment))
+
+    # Read in the current timestep and runtime, needed to calculate new runtime (in units of timestep). 
+    (dt, _, _) = nml.get_value('dt')
+    (npt, _, _) =  nml.get_value('npt')
+    runtime = dt*npt
+    new_npt = runtime // timestep
+
     nml.set_value('dt', timestep)
-    # FIXME: calculate this number.
-    nml.set_value('npt', 8928)
+    nml.set_value('npt', new_npt)
     nml.write()
 
     nml = FortranNamelist(input_ocn % (experiment))
