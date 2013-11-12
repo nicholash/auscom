@@ -44,9 +44,9 @@ class FortranNamelist:
 
     def set_value(self, variable, value, record=None):
 
-        (_, start, end) = self.get_value_match(variable, record)
+        (_, start, end) = self.get_value(variable, record)
 
-        self.str = self.str[:start] + str(value) + self.str[m.end(1):]
+        self.str = self.str[:start] + str(value) + self.str[end:]
 
     def write(self):
         with open(self.filename, 'w') as f:
@@ -150,8 +150,8 @@ def set_ocean_timestep(experiment, timestep):
     # Read in the current timestep and runtime, needed to calculate new runtime (in units of timestep). 
     (dt, _, _) = nml.get_value('dt')
     (npt, _, _) =  nml.get_value('npt')
-    runtime = dt*npt
-    new_npt = runtime // timestep
+    runtime = int(dt)*int(npt)
+    new_npt = runtime // int(timestep)
 
     nml.set_value('dt', timestep)
     nml.set_value('npt', new_npt)
