@@ -4,7 +4,7 @@ MOM4p1_CORE_IAF_v20120531_0849_noRestore_runoff_fix
 "ocean",            1,  "days", 1, "seconds", "time",
 "ocean_daily",     24,  "hours",  1, "days", "time",
 "ocean_grid",      -1,  "months", 1, "days", "time",
-"ocean_scalar",     0,  "days", 1, "seconds", "time",
+"ocean_scalar",     1,  "months", 1, "days", "time",
 "ncar",            -1,  "days", 1, "days", "time"
 "ocean_model","geolon_t","geolon_t", "ocean_grid","all",.false.,"none",2
 "ocean_model","geolat_t","geolat_t", "ocean_grid","all",.false.,"none",2

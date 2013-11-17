@@ -140,8 +140,9 @@
  &ocean_frazil_nml
       use_this_module=.true.
       debug_this_module=.false.
-      freezing_temp_simple=.true.
-      frazil_only_in_surface=.true.
+      freezing_temp_simple=.false.
+      freezing_temp_preteos10=.true.
+      frazil_only_in_surface=.false.
 /
 
  &ocean_grids_nml
@@ -191,7 +192,7 @@
       barotropic_split = 80
       debug=.false.
       cmip_units=.true.
-	  layout = 32, 30
+      layout = 32, 30
 /
 
  &ocean_momentum_source_nml
@@ -353,14 +354,15 @@
 
  &ocean_shortwave_csiro_nml
       use_this_module=.false.
+      debug_this_module=.true.
 /
 
  &ocean_shortwave_gfdl_nml
       use_this_module=.true.
-      debug_this_module=.false.
+      debug_this_module=.true.
       optics_morel_antoine = .false.
       optics_manizza=.true.
-      read_chl=.false.
+      read_chl=.true.
       zmax_pen=300.0
       enforce_sw_frac=.true.
 /
@@ -370,7 +372,7 @@
 /
 
  &ocean_shortwave_nml
-      use_this_module=.false.
+      use_this_module=.true.
       use_shortwave_gfdl=.true.
       use_shortwave_csiro=.false.
       use_shortwave_jerlov=.false.
@@ -485,8 +487,8 @@
       zero_tracer_source=.false.
       limit_age_tracer=.true.
       age_tracer_max_init=0.
-      frazil_heating_after_vphysics=.false.
-      frazil_heating_before_vphysics=.true.
+      frazil_heating_after_vphysics=.true.
+      frazil_heating_before_vphysics=.false.
 /
 
  &ocean_velocity_advect_nml
@@ -630,8 +632,8 @@
     frazil_factor=1.0 
     iceform_adj_salt=.false.
     sign_stflx=1.0
-    chk_i2o_fields=.false.
-    chk_o2i_fields=.false.
+    chk_i2o_fields=.true.
+    chk_o2i_fields=.true.
 /
 
 &ocean_solo_nml
