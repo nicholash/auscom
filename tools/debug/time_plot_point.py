@@ -2,7 +2,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.io.netcdf as nc
+import netCDF4 as nc
 import sys
 import argparse
 import ast
@@ -21,7 +21,7 @@ def main():
         field_list = ast.literal_eval(args.fields)
 
     if args.all:
-        file = nc.netcdf_file(args.all)
+        file = nc.Dataset(args.all)
         for name in file.variables.keys():
             if name != 'time':
                 field_list.append((args.all, name))
@@ -32,7 +32,7 @@ def main():
     fignum = 1
     for filename, field in field_list:
 
-        file = nc.netcdf_file(filename)
+        file = nc.Dataset(filename)
         v = file.variables[field][:]
 
         t = range(v.shape[0])
@@ -42,7 +42,6 @@ def main():
         fignum = fignum + 1
         p, = plt.plot(t, y)
         plt.legend([p], [field])
-
 
     plt.show()
 
