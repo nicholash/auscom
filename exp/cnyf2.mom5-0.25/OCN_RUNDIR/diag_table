@@ -1,10 +1,10 @@
 MOM4p1_CORE_IAF_v20120531_0849_noRestore_runoff_fix
 1 1 1 0 0 0
 #output files
-"ocean",            1,  "days", 1, "seconds", "time",
+"ocean",            1,  "months", 1, "days", "time",
 "ocean_daily",     24,  "hours",  1, "days", "time",
 "ocean_grid",      -1,  "months", 1, "days", "time",
-"ocean_scalar",     1,  "months", 1, "days", "time",
+"ocean_scalar",     1,  "days", 1, "hours", "time",
 "ncar",            -1,  "days", 1, "days", "time"
 "ocean_model","geolon_t","geolon_t", "ocean_grid","all",.false.,"none",2
 "ocean_model","geolat_t","geolat_t", "ocean_grid","all",.false.,"none",2
@@ -41,14 +41,14 @@ MOM4p1_CORE_IAF_v20120531_0849_noRestore_runoff_fix
 # 3d fields
  "ocean_model","wt","wt",                            "ocean","all",.true.,"none",2
 #
- "ocean_model","pot_rho_0","pot_rho_0",              "ocean","all",.true.,"none",2
- "ocean_model","pot_rho_2k","pot_rho_2k",              "ocean","all",.true.,"none",2
- "ocean_model","dzt","dzt",                          "ocean","all",.true.,"none",2
+# "ocean_model","pot_rho_0","pot_rho_0",              "ocean","all",.true.,"none",2
+# "ocean_model","pot_rho_2k","pot_rho_2k",              "ocean","all",.true.,"none",2
+# "ocean_model","dzt","dzt",                          "ocean","all",.true.,"none",2
 #
 # 2d fields
- "ocean_model","hblt","hblt",                        "ocean","all",.true.,"none",2
- "ocean_model","mld","mld",                          "ocean","all",.true.,"none",2
- "ocean_model","mld_dtheta","mld_dtheta",            "ocean","all",.true.,"none",2
+# "ocean_model","hblt","hblt",                        "ocean","all",.true.,"none",2
+# "ocean_model","mld","mld",                          "ocean","all",.true.,"none",2
+# "ocean_model","mld_dtheta","mld_dtheta",            "ocean","all",.true.,"none",2
 #
  "ocean_model","tau_x","tau_x"     , "ocean_daily","all",.false.,"none",2
  "ocean_model","tau_y","tau_y"     , "ocean_daily","all",.false.,"none",2
@@ -75,16 +75,16 @@ MOM4p1_CORE_IAF_v20120531_0849_noRestore_runoff_fix
  "ocean_model","ty_trans","ty_trans",        "ocean","all",.true.,"none",2
 #
 # 2d fields
-  "ocean_model","salt_xflux_adv_int_z","salt_xflux_adv_int_z","ocean","all",.true.,"none",2
-  "ocean_model","salt_yflux_adv_int_z","salt_yflux_adv_int_z","ocean","all",.true.,"none",2
-  "ocean_model","temp_xflux_adv_int_z","temp_xflux_adv_int_z","ocean","all",.true.,"none",2
-  "ocean_model","temp_yflux_adv_int_z","temp_yflux_adv_int_z","ocean","all",.true.,"none",2
-  "ocean_model","tx_trans_int_z","tx_trans_int_z","ocean","all",.true.,"none",2
-  "ocean_model","ty_trans_int_z","ty_trans_int_z","ocean","all",.true.,"none",2
+#  "ocean_model","salt_xflux_adv_int_z","salt_xflux_adv_int_z","ocean","all",.true.,"none",2
+#  "ocean_model","salt_yflux_adv_int_z","salt_yflux_adv_int_z","ocean","all",.true.,"none",2
+#  "ocean_model","temp_xflux_adv_int_z","temp_xflux_adv_int_z","ocean","all",.true.,"none",2
+#  "ocean_model","temp_yflux_adv_int_z","temp_yflux_adv_int_z","ocean","all",.true.,"none",2
+#  "ocean_model","tx_trans_int_z","tx_trans_int_z","ocean","all",.true.,"none",2
+#  "ocean_model","ty_trans_int_z","ty_trans_int_z","ocean","all",.true.,"none",2
 #
 # volume transport streamfunction
- "ocean_model","psiu","psiu",                "ocean","all",.true.,"none",2
- "ocean_model","psiv","psiv",                "ocean","all",.true.,"none",2
+# "ocean_model","psiu","psiu",                "ocean","all",.true.,"none",2
+# "ocean_model","psiv","psiv",                "ocean","all",.true.,"none",2
 #
 # mixing coefficients
  "ocean_model","diff_cbt_t","diff_cbt_t",          "ocean","all",.true.,"none",2
