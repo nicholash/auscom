@@ -3,7 +3,7 @@
 #PBS -P v45
 #PBS -W group_list=v45
 #PBS -q normal
-#PBS -l walltime=02:00:00
+#PBS -l walltime=05:00:00
 #PBS -l mem=2000Gb
 #PBS -l ncpus=1024
 #PBS -l wd

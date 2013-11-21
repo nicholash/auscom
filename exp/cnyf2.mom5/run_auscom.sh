@@ -1,11 +1,11 @@
 #!/bin/ksh
 
-#PBS -P x77
-#PBS -W group_list=x77
+#PBS -P v45
+#PBS -W group_list=v45
 #PBS -q normal
-#PBS -l walltime=0:30:00
-#PBS -l mem=240Gb
-#PBS -l ncpus=128
+#PBS -l walltime=1:00:00
+#PBS -l mem=400Gb
+#PBS -l ncpus=256
 #PBS -l wd
 #PBS -N mom5.cnyf2
 
@@ -45,6 +45,10 @@ cp $inputdir/oasis3/* $atmrundir/
 cp $inputdir/oasis3/* $ocnrundir/
 cp $inputdir/oasis3/* $icerundir/
 
+chmod +w $atmrundir/*.nc
+chmod +w $ocnrundir/*.nc
+chmod +w $icerundir/*.nc
+
 #############################################################################
 #
 # Run the AusCOM model
@@ -54,7 +58,7 @@ cp $inputdir/oasis3/* $icerundir/
 module load openmpi
 #module load totalview 
 #mpirun --debug --mca orte_base_help_aggregate 0 -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $icerundir -n 48 $icerundir/cicexx : -wd $ocnrundir -n 64 $ocnrundir/mom5xx 
-mpirun --mca orte_base_help_aggregate 0 -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $icerundir -n 6 $icerundir/cicexx : -wd $ocnrundir -n 112 $ocnrundir/mom5xx 
+mpirun --mca orte_base_help_aggregate 0 -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $icerundir -n 6 $icerundir/cicexx : -wd $ocnrundir -n 240 $ocnrundir/mom5xx 
 
 echo
 echo "*** job completed  at: " `date` "***" 

@@ -1,5 +1,5 @@
 # Delete executables
-rm -f bin/cice_MPI1_*p.exe
+rm -f bin/cice_MPI1_48p.exe
 rm -f bin/matm_MPI1_nt62.exe
 rm -f bin/mppnccombine.exe
 rm -f bin/calendar.exe
