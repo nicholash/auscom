@@ -9,19 +9,38 @@ import numpy as np
 Make a new CICE grid based on a MOM5 ocean grid.
 """
 
+def calc_t_and_u_areas(ocn_area):
+
+    tarea = np.zeros((ocn_area.shape[0]/2, ocn_area.shape[1]/2))
+    uarea = np.zeros((ocn_area.shape[0]/2, ocn_area.shape[1]/2))
+
+    tarea = tarea + ocn_area[0::2, 0::2]
+    tarea = tarea + ocn_area[1::2, 0::2]
+    tarea = tarea + ocn_area[1::2, 1::2]
+    tarea = tarea + ocn_area[0::2, 1::2]
+
+    # These need to wrap around the globe. Copy ocn_area and add an extra column at the end.
+    ocn_area_ext = np.append(ocn_area[:], ocn_area[:, 0:1], axis=1)
+    uarea = uarea + ocn_area_ext[0::2, 1::2]
+    uarea = uarea + ocn_area_ext[1::2, 1::2]
+    uarea = uarea + ocn_area_ext[1::2, 2::2]
+    uarea = uarea + ocn_area_ext[0::2, 2::2]
+
+    return tarea, uarea
+
 def main():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("ocean_grid", help="The input ocean grid.")
-    parser.add_argument("ice_grid", help="The output ice grid.")
+    parser.add_argument("--ocean", help="The input ocean grid.", default='ocean_hgrid.nc')
+    parser.add_argument("--ice", help="The output ice grid.", default='ice_grid.nc') 
 
     args = parser.parse_args()
 
     # Ocean grid. The new CICE grid is based on this.
-    f_ocn = nc.Dataset(args.ocean_grid, 'r')
+    f_ocn = nc.Dataset(args.ocean, 'r')
 
     # New grid.
-    f_ice_w = nc.Dataset(args.ice_grid, 'w')
+    f_ice_w = nc.Dataset(args.ice, 'w')
 
     # The ocean grid is double density.
     f_ice_w.createDimension('nx', len(f_ocn.dimensions['nx']) / 2)
@@ -79,6 +98,7 @@ def main():
     dx = np.copy(f_ocn.variables['dx'])
     angle_dx = np.copy(f_ocn.variables['angle_dx'])
     ocn_tarea = np.copy(f_ocn.variables['tarea'])
+    ocn_area = np.copy(f_ocn.variables['area'])
 
     # Select points from double density grid. In some cases the Southern most U points are excluded.
     # Also the last (Eastern) U points, they are duplicates of the first. 
@@ -93,9 +113,9 @@ def main():
     angle[:,:] = angle_dx[2::2,0:-1:2]
     angleT[:,:] = angle_dx[1::2,1::2]
 
-    # FIXME: need to add this to MOM grid.
-    #uarea[:,:] = area[0::2,0::2]
-    tarea[:,:] = ocn_tarea[:,:]
+    tarea[:], uarea[:] = calc_t_and_u_areas(ocn_area)
+    # Check that calculated areas are the same as that found in the ocean grid.
+    assert(np.allclose(tarea[:], ocn_tarea[:]))
 
     # Corner lons of T cells.
     lont_bonds[0,:,:] = x[0:-1:2,0:-1:2]
