@@ -13,7 +13,7 @@
 /
 
  &ocean_adv_vel_diag_nml
-      diag_step=120
+      diag_step=1
       verbose_cfl=.false.
       max_cfl_value=100.0
       large_cfl_value=10.0
@@ -44,7 +44,7 @@
       eta_max=8.0
       verbose_truncate=.true.
       frac_crit_cell_height=0.20
-      diag_step=120
+      diag_step=1
 /
 
  &ocean_bbc_nml
@@ -418,7 +418,7 @@
 
  &ocean_solo_nml
             months = 0
-            days   = 1
+            days   = 4
             date_init = 0001,01,01,0,0,0
             hours = 0
             minutes = 0
@@ -502,12 +502,12 @@
 
  &ocean_tracer_diag_nml
       tracer_conserve_days=1.0
-      diag_step=120
+      diag_step=1
       do_bitwise_exact_sum=.false.
 /
 
  &ocean_tracer_nml
-      debug_this_module=.false.
+      debug_this_module=.true.
       zero_tendency=.false.
       remap_depth_to_s_init=.false.
       zero_tracer_source=.false.
@@ -523,8 +523,8 @@
 
  &ocean_velocity_diag_nml
       debug_this_module=.false.
-      diag_step=120
-      energy_diag_step=120
+      diag_step=1
+      energy_diag_step=1
       max_cfl_value=100.0
       large_cfl_value=10.0
 /
@@ -640,8 +640,8 @@ icemlt_factor=1.0
 frazil_factor=1.0 
 iceform_adj_salt=.false.
 sign_stflx=1.0
-chk_i2o_fields=.false.
-chk_o2i_fields=.false.
+chk_i2o_fields=.true.
+chk_o2i_fields=.true.
 /
 
 &bg_diff_lat_dependence_nml
