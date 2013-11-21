@@ -16,7 +16,7 @@
 /
 
  &ocean_adv_vel_diag_nml
-      diag_step=120
+      diag_step=1
       verbose_cfl=.true.
       max_cfl_value=100.0
       large_cfl_value=10.0
@@ -37,6 +37,7 @@
 
  &ocean_barotropic_nml
       debug_this_module=.false.
+      zero_tendency=.false.
       barotropic_time_stepping_A=.true.
       barotropic_time_stepping_B=.false.
       pred_corr_gamma=0.20
@@ -52,7 +53,7 @@
       eta_max=8.0
       verbose_truncate=.true.
       frac_crit_cell_height=0.20
-      diag_step=120
+      diag_step=1
 	  barotropic_halo = 10
       use_legacy_barotropic_halos=.false.
 /
@@ -95,6 +96,7 @@
       equatorial_zonal=.false.
       bottom_5point=.false.
       ncar_boundary_scaling=.true.
+      ncar_boundary_scaling_read=.true.
       ncar_rescale_power=2
       ncar_vconst_4=2.e-8
       ncar_vconst_5=5
@@ -184,14 +186,14 @@
 /
 
  &ocean_model_nml
-      dt_ocean = 1800
+      dt_ocean = 900
       time_tendency='twolevel'
       vertical_coordinate='zstar'
       baroclinic_split = 1
       surface_height_split = 1
       barotropic_split = 80
-      debug=.false.
       cmip_units=.true.
+      debug=.false.
       layout = 32, 30
 /
 
@@ -282,7 +284,7 @@
        frac_exchange_src=1.0        
        max_vol_trans_ofp=10.e6
        do_mass_ofp=.true.
-       diag_step=4320
+       diag_step=1
        do_entrainment_para_ofp=.false.
 /
 
@@ -481,7 +483,7 @@
 /
 
  &ocean_tracer_nml
-      debug_this_module=.true.
+      debug_this_module=.false.
       zero_tendency=.false.
       remap_depth_to_s_init=.false.
       zero_tracer_source=.false.
@@ -497,8 +499,8 @@
 
  &ocean_velocity_diag_nml
       debug_this_module=.false.
-      diag_step=120
-      energy_diag_step=120
+      diag_step=1
+      energy_diag_step=1
       max_cfl_value=100.0
       large_cfl_value=10.0
 /
@@ -620,7 +622,7 @@
 /
 
  &auscom_ice_nml
-    dt_cpl=1800
+    dt_cpl=900
     do_ice_once=.false.
     pop_icediag=.true.
     kmxice=5 
@@ -632,8 +634,8 @@
     frazil_factor=1.0 
     iceform_adj_salt=.false.
     sign_stflx=1.0
-    chk_i2o_fields=.true.
-    chk_o2i_fields=.true.
+    chk_i2o_fields=.false.
+    chk_o2i_fields=.false.
 /
 
 &ocean_solo_nml
@@ -644,5 +646,5 @@
             minutes = 0
             seconds = 0
             calendar = 'NOLEAP'
-            dt_cpld  = 1800
+            dt_cpld  = 900
 /
