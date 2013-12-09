@@ -6,7 +6,6 @@ if ( $1 == '') then
   echo '*** Please issue the command like ***'
   echo '     > ./comp_auscom_cice.VAYU.nP #nproc    ' 
   echo 'here #proc is the number of cpu to be used for CICE4 (e.g. 1, 2, 4, 6...)'
-  exit
 else
   set nproc = $1
   echo *** $nproc processors will be used to run CICE4... ***
@@ -93,19 +92,16 @@ set N_ILYR = 4
 #setenv BLCKX     25       # x-dimension of blocks ( not including )
 #setenv BLCKY     29       # y-dimension of blocks (  ghost cells  )
 setenv NTASK      $nproc
-#setenv BLCKX     45       # x-dimension of blocks ( not including )
-setenv BLCKX     `expr $NXGLOB / $nproc`
+setenv BLCKX      `expr $NXGLOB / 48`       # x-dimension of blocks ( not including )
 echo BLCKX: $BLCKX
-#setenv BLCKY     38       # y-dimension of blocks (  ghost cells  )
-setenv BLCKY     `expr $NYGLOB` 
+setenv BLCKY      `expr $NYGLOB / 1`        # y-dimension of blocks (  ghost cells  )
 echo BLCKY: $BLCKY
-
-echo
 
 # may need to increase MXBLCKS with rake distribution or padding
 @ a = $NXGLOB * $NYGLOB ; @ b = $BLCKX * $BLCKY * $NTASK
 @ m = $a / $b ; setenv MXBLCKS $m ; if ($MXBLCKS == 0) setenv MXBLCKS 1
 echo Autimatically generated: MXBLCKS = $MXBLCKS
+#setenv MXBLCKS 1
                                                                                 
 setenv CBLD   $SRCDIR/bld
                                                                                 
