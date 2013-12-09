@@ -3,9 +3,9 @@
 #PBS -P v45
 #PBS -W group_list=v45
 #PBS -q normal
-#PBS -l walltime=05:00:00
+#PBS -l walltime=01:00:00
 #PBS -l mem=2000Gb
-#PBS -l ncpus=1024
+#PBS -l ncpus=1168
 #PBS -l wd
 #PBS -N cnyf.mom5-0.25
 
@@ -49,6 +49,10 @@ chmod +w $atmrundir/*.nc
 chmod +w $ocnrundir/*.nc
 chmod +w $icerundir/*.nc
 
+export VT_PFORM_GDIR=/short/v45/nah599/auscom/prof
+export VT_PFORM_LDIR=/short/v45/nah599/tmp
+export VT_MODE=STAT
+
 #############################################################################
 #
 # Run the AusCOM model
@@ -57,9 +61,8 @@ chmod +w $icerundir/*.nc
 
 module load openmpi/1.6.5-mlx
 module load ipm
-export IPM_LOGDIR=$expdir/ipm_logs
 
-mpirun --mca orte_base_help_aggregate 0 -wd $atmrundir -n 1 $atmrundir/matmxx : -wd $icerundir -n 48 $icerundir/cicexx : -wd $ocnrundir -n 960 $ocnrundir/mom5xx
+mpirun -wdir $atmrundir -n 1 $atmrundir/matmxx : -wdir $icerundir -n 48 $icerundir/cicexx : -wdir $ocnrundir -n 960 $ocnrundir/mom5xx
 
 echo
 echo "*** job completed  at: " `date` "***" 
