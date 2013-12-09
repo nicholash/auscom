@@ -2,13 +2,13 @@
 init_date=00010101
 inidate=00010101
 truntime0=0
-runtime=345600
+runtime=864000
 dt_cpl=21600
 dt_atm=1800
 dataset='core2'
 runtype='NY'
 caltype=0
 days_per_year=365
-chk_a2i_fields=.true.
-chk_i2a_fields=.true.
+chk_a2i_fields=.false.
+chk_i2a_fields=.false.
 &end

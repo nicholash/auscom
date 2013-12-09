@@ -39,7 +39,7 @@
 #
 #   86400    ! 1  day
 # 2678400    ! 31 days
- 2678400
+ 864000
  $END
 ###########################################################################
 # $INIDATE
@@ -60,7 +60,7 @@
  $NLOGPRT
 # Index of printing level in output file cplout: 0 = no printing
 #  1 = main routines and field names when treated, 2 = complete output
- 1
+ 1 3
  $END
 ###########################################################################
 # $CALTYPE
