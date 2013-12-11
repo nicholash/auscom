@@ -1,20 +1,10 @@
 !============================================================================
   module cpl_interface
 !============================================================================
-! coupling interface between CICE and the oasis3_25 coupler (via MPI2) using 
-! the PRISM System Model Interface (PSMILe).
+! coupling interface between CICE and the oasis.
 !----------------------------------------------------------------------------
 
-  !prism stuff
-#ifdef OASIS3_MCT
   use mod_prism
-#else
-  use mod_kinds_model
-  use mod_prism_proto
-  use mod_prism_def_partition_proto
-  use mod_prism_put_proto
-  use mod_prism_get_proto
-#endif
 
   !cice stuff
   use ice_kinds_mod
@@ -24,7 +14,8 @@
   use ice_distribution, only : nprocsX, nprocsY, distrb
   use ice_gather_scatter
   use ice_constants
-  use ice_domain,      only : distrb_info,ew_boundary_type,ns_boundary_type
+  use ice_boundary, only : ice_HaloUpdate
+  use ice_domain,      only : distrb_info, ew_boundary_type, ns_boundary_type, halo_info
 
   !cpl stuff
   use cpl_parameters
@@ -54,7 +45,6 @@
 
   integer :: sendsubarray, recvsubarray , resizedrecvsubarray
   integer, dimension(:), allocatable :: counts, disps
-!  integer :: subgw_type
 
   integer(kind=int_kind) :: il_bufsize
   real(kind=dbl_kind), dimension(:,:), allocatable :: rla_array
@@ -82,7 +72,6 @@
   !-----------------------------------
   nt_cells = nx_global * ny_global
 
-  !allocate rla_array to be used below
   allocate (rla_array(nx_global,ny_global) )
 
   !-------------------
@@ -99,14 +88,10 @@
 
   call MPI_Initialized (mpiflag, ierror)
 
-  print *, 'CICE: (prism_init) calling prism_init_comp_proto...'
-
   call prism_init_comp_proto (il_comp_id, cp_modnam, ierror)
 
   if (ierror /= PRISM_Ok) then 
       call prism_abort_proto(il_comp_id, 'cice prism_init','STOP 1')
-  else
-      print *, 'CICE: (prism_init) called prism_init_comp_proto !'
   endif
 
   !B: the following part may not be really needed(?)
@@ -129,8 +114,6 @@
   if (ierror /= PRISM_Ok) then
       print *, 'CICE: (prism_init) Error in MPI_Buffer_Attach.'
       call prism_abort_proto(il_comp_id, 'cice prism_init','STOP 2')
-  else
-      print *, 'CICE: (prism_init) MPI_Buffer_Attach ok!'
   endif
   !
   ! PSMILe attribution of local communicator.
@@ -143,44 +126,31 @@
   if (ierror /= PRISM_Ok) then
       print *, 'CICE: Error in prism_get_localcomm_proto'
       call prism_abort_proto(il_comp_id, 'cice prism_init','STOP 3')
-  else
-      print *, 'CICE: _get_localcomm_ OK! il_commlocal= ',il_commlocal
   endif
   !
   ! Inquire if model is parallel or not and open the process log file
   !
-  print *, '* CICE: Entering init_cpl.....'
 
-  print *, '* CICE4 (init_cpl) calling MPI_Comm_Size ...'
   call MPI_Comm_Size(il_commlocal, il_nbtotproc, ierror)
-  print *, '* CICE4 (init_cpl) calling MPI_Comm_Rank ...'
   call MPI_Comm_Rank(il_commlocal, my_task, ierror)
-
   print *, '* CICE4 (init_cpl) il_commlocal, il_nbtotproc, my_task = ',&
                              il_commlocal, il_nbtotproc, my_task
 
-#ifdef OASIS3_MCT
   il_nbcplproc = il_nbtotproc   !multi-process coupling
   ll_comparal = .TRUE.           !hard-wired for Oasis3-mct coupling!
-#else
-  il_nbcplproc = 1               !mono process coupling
-  ll_comparal = .FALSE.                 !hard-wired for mono-cpl coupling!
-#endif
 
   ! Open the process log file
-  !if (my_task == 0 .or. ll_comparal) then
     il_out = 85 + my_task
     write(chout,'(I6.6)')il_out
     chiceout='iceout'//trim(chout)
     open(il_out,file=chiceout,form='formatted')
-  
+
     write(il_out,*) 'Number of processes:', il_nbtotproc
     write(il_out,*) 'Local process number:', my_task
     write(il_out,*) 'Local communicator is : ',il_commlocal
     write(il_out,*) 'Grid layout: nx_global,ny_global= ',nx_global,ny_global
     write(il_out,*) 'Grid decomposition: nx_block,ny_block,max_blocks= ',&
                      nx_block,ny_block,max_blocks
-  !endif
 
   print *, '* CICE: prism_init called OK!'  
 
@@ -195,15 +165,10 @@
 
   integer(kind=int_kind) :: jf
 
-!  logical :: ll_comparal                   ! paralell or mono-cpl coupling
-!  integer(kind=int_kind) :: il_nbtotproc   ! Total number of processes
-!  integer(kind=int_kind) :: il_nbcplproc   ! Number of processes involved in the coupling
   integer(kind=int_kind), dimension(2) :: il_var_nodims ! see below
   integer(kind=int_kind), dimension(4) :: il_var_shape  ! see below
   integer(kind=int_kind) :: il_part_id     ! Local partition ID
   integer(kind=int_kind) :: il_length      ! Size of partial field for each process
-
-!  integer,parameter :: nprocsX=3, nprocsY=2
 
   integer, dimension(2) :: starts,sizes,subsizes
   integer(kind=mpi_address_kind) :: start, extent
@@ -226,13 +191,10 @@
   write(il_out,*) '  2local partion, ilo, ihi, jlo, jhi=', l_ilo, l_ihi, l_jlo, l_jhi
   write(il_out,*) '  2partition x,y sizes:', l_ihi-l_ilo+1, l_jhi-l_jlo+1
 
-!#ifdef _SLOW___
   nprocs = il_nbtotproc
   allocate(vilo(nprocs))
   allocate(vjlo(nprocs))
 
-!  call mpi_type_vector(l_ihi-l_ilo+1, l_jhi-l_jlo+1, nx_global, mpi_real8, subgw_type, ierror)
-!  call mpi_type_commit(subgw_type, ierror)
   call mpi_gather(l_ilo, 1, mpi_integer, vilo, 1, mpi_integer, 0, MPI_COMM_ICE, ierror)
   call broadcast_array(vilo, 0)
   call mpi_gather(l_jlo, 1, mpi_integer, vjlo, 1, mpi_integer, 0, MPI_COMM_ICE, ierror)
@@ -261,14 +223,12 @@
     forall (jf=1:nprocs) counts(jf) = 1
     do jf=1, nprocs
       disps(jf) = ((vjlo(jf)-1)*nx_global + (vilo(jf)-1))
-      !disps(n) = ((vilo(n)-1)*ny_global + (vjlo(n)-1))
     end do
 
     write(il_out,*) ' vilo ', vilo
     write(il_out,*) ' vjlo ', vjlo
     write(il_out,*) ' counts ', counts
     write(il_out,*) ' disps ', disps
-!#endif
 
   if (my_task == 0 .or. ll_comparal) then
     !
@@ -302,11 +262,6 @@
     il_var_shape(3)= 1   
     il_var_shape(4)= ny_global 
     end if 
-    ! ?Does this help?
-    !il_var_shape(1)= 2       ! min index for the coupling field local dim
-    !il_var_shape(2)= nx_global+1 ! max index for the coupling field local dim
-    !il_var_shape(3)= 2  
-    !il_var_shape(4)= ny_global+1
 
     !
     ! Define name (as in namcouple) and declare each field sent by ice 
@@ -461,53 +416,24 @@
   integer(kind=int_kind), intent(in) :: isteps
 
   integer(kind=int_kind) :: jf, field_type
-!..............
-!character (len=2) ::ch_out
-!character (len=20):: ncfile;
-!integer(kind=int_kind) :: ncid,currstep,ll,ilout
-!data currstep/0/
-!save currstep
-!
-!currstep=currstep+1
-!
-!    write(ch_out,'(I2.2)') my_task
-!    ncfile='chk_a2i_out_'//ch_out//'.nc'
-!
-!if (.not. file_exist(trim(ncfile)) ) then
-!  call create_ncfile(trim(ncfile),ncid,nx_global,ny_global,ll=1,ilout=il_out)
-!else
-!  call ncheck( nf_open(trim(ncfile),nf_write,ncid) )
-!endif
-!call write_nc_1Dtime(real(isteps),currstep,'time',ncid)
-
-
-  if (my_task == 0 .or. ll_comparal) then
-    write(il_out,*) '(from_atm) receiving coupling fields at rtime= ', isteps
-  endif
-
 
   do jf = 1, n_a2i       !10, not jpfldin, only 10 fields from cpl (atm) 
 
     if (my_task==0 .or. ll_comparal) then
 
-      !jf-th field in
-      write(il_out,*) '*** receiving coupling field No. ', jf, cl_read(jf)
       if (ll_comparal) then
         call prism_get_proto (il_var_id_in(jf), isteps, vwork2d(l_ilo:l_ihi, l_jlo:l_jhi), ierror)
         gwork(l_ilo:l_ihi, l_jlo:l_jhi) = vwork2d(l_ilo:l_ihi, l_jlo:l_jhi)
-!!        call mpi_bcast(gwork(l_ilo,l_jlo), 1, subgw_type, my_task, MPI_COMM_ICE,ierror)
-!!        call mpi_barrier(MPI_COMM_ICE,ierror) 
         call mpi_gatherv(vwork2d(l_ilo:l_ihi, l_jlo:l_jhi),1,sendsubarray,gwork,counts,disps,resizedrecvsubarray, &
                      0,MPI_COMM_ICE,ierror)
         call broadcast_array(gwork, 0)
       else
         call prism_get_proto (il_var_id_in(jf), isteps, gwork, ierror)
       end if
+
       if ( ierror /= PRISM_Ok .and. ierror < PRISM_Recvd) then
         write(il_out,*) 'Err in _get_ sst at time with error: ', isteps, ierror
         call prism_abort_proto(il_comp_id, 'cice from_atm','stop 1') 
-      else 
-        write(il_out,*)'(from_atm) rcvd at time with err: ',cl_read(jf),isteps,ierror
       endif
 
     endif
@@ -531,19 +457,7 @@
     if (jf ==  8) qair0  = vwork
     if (jf ==  9) uwnd0  = vwork
     if (jf == 10) vwnd0  = vwork
-!........
-!call write_nc2D(ncid, cl_read(jf), gwork, 2, nx_global,ny_global,currstep,ilout=il_out)
   enddo
-!...........
-!call ncheck(nf_close(ncid))
-
-  ! need do t-grid to u-grid shift for vectors since all coupling occur on
-  ! t-grid points: <==No! actually CICE requires the input wind on T grid! 
-  ! (see comment in code ice_flux.F)
-  !call t2ugrid(uwnd1)
-  !call t2ugrid(vwnd1)
-  ! ...and, as we use direct o-i communication and o-i share the same grid, 
-  ! no need for any t2u and/or u2t shift before/after i-o coupling!
 
   if ( chk_a2i_fields ) then
     call check_a2i_fields('fields_a2i_in_ice.nc',isteps)
@@ -567,24 +481,18 @@
   
     if (my_task==0 .or. ll_comparal) then
 
-      !jf-th field in
-      write(il_out,*) '*** receiving coupling fields No. ', jf, cl_read(jf)
       if(ll_comparal) then
         call prism_get_proto (il_var_id_in(jf), isteps, vwork2d(l_ilo:l_ihi, l_jlo:l_jhi), ierror)
-         gwork(l_ilo:l_ihi, l_jlo:l_jhi) = vwork2d(l_ilo:l_ihi, l_jlo:l_jhi)
-!!        call mpi_bcast(gwork(l_ilo,l_jlo), 1, subgw_type, my_task, MPI_COMM_ICE,ierror) 
-!!        call mpi_barrier(MPI_COMM_ICE,ierror) 
-        call mpi_gatherv(vwork2d(l_ilo:l_ihi, l_jlo:l_jhi),1,sendsubarray,gwork,counts,disps,resizedrecvsubarray, &
-                     0,MPI_COMM_ICE,ierror)
-        call broadcast_array(gwork, 0)
+!         gwork(l_ilo:l_ihi, l_jlo:l_jhi) = vwork2d(l_ilo:l_ihi, l_jlo:l_jhi)
+!        call mpi_gatherv(vwork2d(l_ilo:l_ihi, l_jlo:l_jhi),1,sendsubarray,gwork,counts,disps,resizedrecvsubarray, &
+        !             0,MPI_COMM_ICE,ierror)
+        !call broadcast_array(gwork, 0)
       else
         call prism_get_proto (il_var_id_in(jf), isteps, gwork, ierror)
       end if
       if ( ierror /= PRISM_Ok .and. ierror < PRISM_Recvd) then
         write(il_out,*) 'Err in _get_ sst at time with error: ', isteps, ierror
         call prism_abort_proto(il_comp_id, 'cice from_atm','stop 1')
-      else
-        write(il_out,*)'(from_ocn) rcvd at time with err: ',cl_read(jf),isteps,ierror
       endif
 
     endif
@@ -594,13 +502,18 @@
        field_type=field_type_vector
     endif
 
-    if (.not. ll_comparal) then
-      call scatter_global(vwork, gwork, master_task, distrb_info, &
-                        field_loc_center, field_type)
-    else
-      call unpack_global_dbl(vwork, gwork, master_task, distrb_info, &
-                        field_loc_center, field_type)
-    endif
+    ! Copy over non-ghost part of coupled field.
+    vwork(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d(:,:)
+    ! Fill in ghost cells of coupled field.
+    call ice_HaloUpdate(vwork, halo_info, field_loc_center, field_type)
+
+    !if (.not. ll_comparal) then
+    !  call scatter_global(vwork_copy, gwork, master_task, distrb_info, &
+    !                    field_loc_center, field_type)
+    !else
+    !  call unpack_global_dbl(vwork_copy, gwork, master_task, distrb_info, &
+    !                    field_loc_center, field_type)
+    !endif
     if (jf == n_a2i+1) ssto = vwork
     if (jf == n_a2i+2) ssso = vwork
     if (jf == n_a2i+3) ssuo = vwork
@@ -628,10 +541,6 @@
   integer(kind=int_kind), intent(in) :: isteps
   real, intent(in) :: scale             !only 1 or 1/coef_ic allowed! 
   integer(kind=int_kind) :: jf
-
-  if (my_task == 0 .or. ll_comparal) then
-    write(il_out,*) '(into_ocn) sending coupling fields at stime= ', isteps
-  endif
 
   do jf = n_i2a+1, jpfldout       !no 2-14 are for the ocn
 
@@ -676,8 +585,6 @@
       if ( ierror /= PRISM_Ok .and. ierror < PRISM_Sent) then
         write(il_out,*) '(into_ocn) Err in _put_ ', cl_writ(jf), isteps, ierror
         call prism_abort_proto(il_comp_id, 'cice into_ocn','STOP 1') 
-      else
-        write(il_out,*)'(into_ocn) sent: ', cl_writ(jf), isteps, ierror
       endif
 
     endif !my_task == 0
@@ -697,10 +604,6 @@
   integer(kind=int_kind), intent(in) :: isteps
   integer(kind=int_kind) :: jf
 
-  if (my_task == 0 .or. ll_comparal) then
-    write(il_out,*) '(into_atm) sending coupling fields at stime= ', isteps
-  endif
-
   do jf = 1, n_i2a      !1
     
     if (jf ==  1) then
@@ -714,11 +617,6 @@
     end if 
     if (my_task == 0 .or. ll_comparal) then
   
-      write(il_out,*) '*** sending coupling field No. ', jf, cl_writ(jf)
-
-      !call prism_put_inquire_proto(il_var_id_out(jf),isteps,ierror)
-  
-      write(il_out,*) '(into_atm) what to do with this var==> Err= ',ierror
       if (ll_comparal) then
         call prism_put_proto(il_var_id_out(jf), isteps, vwork2d(l_ilo:l_ihi, l_jlo:l_jhi), ierror)
       else  
@@ -727,8 +625,6 @@
       if ( ierror /= PRISM_Ok .and. ierror < PRISM_Sent) then
         write(il_out,*) '(into_atm) Err in _put_ ', cl_writ(jf), isteps, ierror
         call prism_abort_proto(il_comp_id, 'cice into_atm','STOP 1')
-      else
-        write(il_out,*)'(into_atm) sent: ', cl_writ(jf), isteps, ierror
       endif
 
     endif 
@@ -748,7 +644,6 @@
   ! Detach from MPI buffer
   !
   call MPI_Buffer_Detach(rla_bufsend, il_bufsize, ierror) 
-  write(il_out,*) 'il_bufsize =', il_bufsize
   deallocate (rla_bufsend)
 
   deallocate (tair0, swflx0, lwflx0, uwnd0, vwnd0, qair0, rain0, snow0, runof0, press0)
@@ -1064,12 +959,6 @@
              this_block%jblock > 1         .and. &
              this_block%jblock < nblocks_y) then
 
-!            do j=1,ny_block
-!            do i=1,nx_block
-!               ARRAY(i,j,dst_block) = ARRAY_G(this_block%i_glob(i),&
-!                                              this_block%j_glob(j))
-!            end do
-!            end do
             ARRAY(1:nx_block,1:ny_block,dst_block) =                              &
                         ARRAY_G(this_block%i_glob(1):this_block%i_glob(nx_block), &
                                 this_block%j_glob(1):this_block%j_glob(ny_block))
@@ -1107,8 +996,6 @@
                   end do
 
                else if (this_block%j_glob(j) < 0) then  ! tripole
-                  ! for yoffset=0 or 1, yoffset2=0,0
-                  ! for yoffset=-1, yoffset2=0,1, for u-rows on T-fold grid
                   do yoffset2=0,max(yoffset,0)-yoffset
                     jsrc = ny_global + yoffset + yoffset2 + &
                          (this_block%j_glob(j) + ny_global)
@@ -1249,13 +1136,6 @@
 
          this_block = get_block(n,n)
 
-!         do j=this_block%jlo,this_block%jhi
-!         do i=this_block%ilo,this_block%ihi
-!           ARRAY_G(this_block%i_glob(i), &
-!                   this_block%j_glob(j)) = &
-!                  ARRAY(i,j,src_dist%blockLocalID(n))
-!         end do
-!         end do
           ARRAY_G(this_block%i_glob(this_block%ilo):this_block%i_glob(this_block%ihi), &
                  this_block%j_glob(this_block%jlo):this_block%j_glob(this_block%jhi)) = &
                  ARRAY(this_block%ilo:this_block%ihi,this_block%jlo:this_block%jhi,src_dist%blockLocalID(n))
@@ -1266,12 +1146,6 @@
 
          this_block = get_block(n,n)
 
-!         do j=this_block%jlo,this_block%jhi
-!         do i=this_block%ilo,this_block%ihi
-!           ARRAY_G(this_block%i_glob(i), &
-!                   this_block%j_glob(j)) = spval_dbl
-!         end do
-!         end do
          ARRAY_G(this_block%i_glob(this_block%ilo):this_block%i_glob(this_block%ihi), &
                  this_block%j_glob(this_block%jlo):this_block%j_glob(this_block%jhi)) = spval_dbl
        endif
