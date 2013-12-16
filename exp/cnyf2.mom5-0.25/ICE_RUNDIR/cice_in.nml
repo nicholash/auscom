@@ -3,7 +3,7 @@
   , year_init      = 0001
   , istep0         = 0
   , dt             = 900
-  , npt            = 2976
+  , npt            = 2973
   , ndyn_dt        = 1
   , runtype        = 'initial'
   , ice_ic         = 'default'
@@ -43,8 +43,8 @@
 /
 
 &domain_nml
-    nprocs = 48
-  , processor_shape   = 'slenderX1'
+    nprocs = 192
+  , processor_shape   = 'slenderX2'
   , distribution_type = 'cartesian'
   , distribution_wght = 'latitude'
   , ew_boundary_type  = 'cyclic'

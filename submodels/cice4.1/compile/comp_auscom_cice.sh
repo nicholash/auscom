@@ -92,9 +92,9 @@ set N_ILYR = 4
 #setenv BLCKX     25       # x-dimension of blocks ( not including )
 #setenv BLCKY     29       # y-dimension of blocks (  ghost cells  )
 setenv NTASK      $nproc
-setenv BLCKX      `expr $NXGLOB / 48`       # x-dimension of blocks ( not including )
+setenv BLCKX      `expr $NXGLOB / 96`       # x-dimension of blocks ( not including )
 echo BLCKX: $BLCKX
-setenv BLCKY      `expr $NYGLOB / 1`        # y-dimension of blocks (  ghost cells  )
+setenv BLCKY      `expr $NYGLOB / 2`        # y-dimension of blocks (  ghost cells  )
 echo BLCKY: $BLCKY
 
 # may need to increase MXBLCKS with rake distribution or padding

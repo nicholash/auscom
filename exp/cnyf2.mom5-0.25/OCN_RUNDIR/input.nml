@@ -186,7 +186,7 @@
 /
 
  &ocean_model_nml
-      dt_ocean = 900
+      dt_ocean = 1800
       time_tendency='twolevel'
       vertical_coordinate='zstar'
       baroclinic_split = 1
@@ -194,6 +194,7 @@
       barotropic_split = 80
       cmip_units=.true.
       debug=.false.
+      layout = 32,30
 /
 
  &ocean_momentum_source_nml
@@ -477,7 +478,7 @@
 
  &ocean_tracer_diag_nml
       tracer_conserve_days=30.0
-	  diag_step=48
+	  diag_step=4320
       do_bitwise_exact_sum=.false.
 /
 
@@ -621,7 +622,7 @@
 /
 
  &auscom_ice_nml
-    dt_cpl=900
+    dt_cpl=1800
     do_ice_once=.false.
     pop_icediag=.true.
     kmxice=5 
@@ -638,12 +639,13 @@
 /
 
 &ocean_solo_nml
-            months = 0
-            days   = 10
+            years = 0
+            months = 1
+            days   = 0
             date_init = 0001,01,01,0,0,0
             hours = 0
             minutes = 0
             seconds = 0
             calendar = 'NOLEAP'
-            dt_cpld  = 900
+            dt_cpld  = 1800
 /
