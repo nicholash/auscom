@@ -423,10 +423,6 @@
 
       if (ll_comparal) then
         call prism_get_proto (il_var_id_in(jf), isteps, vwork2d(l_ilo:l_ihi, l_jlo:l_jhi), ierror)
-        gwork(l_ilo:l_ihi, l_jlo:l_jhi) = vwork2d(l_ilo:l_ihi, l_jlo:l_jhi)
-        call mpi_gatherv(vwork2d(l_ilo:l_ihi, l_jlo:l_jhi),1,sendsubarray,gwork,counts,disps,resizedrecvsubarray, &
-                     0,MPI_COMM_ICE,ierror)
-        call broadcast_array(gwork, 0)
       else
         call prism_get_proto (il_var_id_in(jf), isteps, gwork, ierror)
       end if
@@ -438,26 +434,29 @@
 
     endif
 
-    field_type=field_type_scalar
-    if (jf == 9 .or. jf == 10) field_type=field_type_vector
-    if (.not. ll_comparal ) then
-      call scatter_global(vwork,gwork,master_task,distrb_info, &
-                        field_loc_center, field_type)
-    else
-       call unpack_global_dbl(vwork,gwork,master_task,distrb_info, &
-                        field_loc_center, field_type)
-    endif ! not ll_comparal
-    if (jf ==  1) swflx0 = vwork
-    if (jf ==  2) lwflx0 = vwork
-    if (jf ==  3) rain0  = vwork
-    if (jf ==  4) snow0  = vwork
-    if (jf ==  5) press0 = vwork
-    if (jf ==  6) runof0 = vwork
-    if (jf ==  7) tair0  = vwork
-    if (jf ==  8) qair0  = vwork
-    if (jf ==  9) uwnd0  = vwork
-    if (jf == 10) vwnd0  = vwork
+    ! Copy over non-ghost part of coupled field.
+    if (jf ==  1) swflx0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+    if (jf ==  2) lwflx0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+    if (jf ==  3) rain0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
+    if (jf ==  4) snow0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
+    if (jf ==  5) press0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+    if (jf ==  6) runof0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+    if (jf ==  7) tair0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
+    if (jf ==  8) qair0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
+    if (jf ==  9) uwnd0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
+    if (jf == 10) vwnd0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
   enddo
+
+    call ice_HaloUpdate(swflx0, halo_info, field_loc_center, field_type_scalar)
+    call ice_HaloUpdate(lwflx0, halo_info, field_loc_center, field_type_scalar)
+    call ice_HaloUpdate(rain0, halo_info, field_loc_center, field_type_scalar)
+    call ice_HaloUpdate(snow0, halo_info, field_loc_center, field_type_scalar)
+    call ice_HaloUpdate(press0, halo_info, field_loc_center, field_type_scalar)
+    call ice_HaloUpdate(runof0, halo_info, field_loc_center, field_type_scalar)
+    call ice_HaloUpdate(tair0, halo_info, field_loc_center, field_type_scalar)
+    call ice_HaloUpdate(qair0, halo_info, field_loc_center, field_type_scalar)
+    call ice_HaloUpdate(uwnd0, halo_info, field_loc_center, field_type_vector)
+    call ice_HaloUpdate(vwnd0, halo_info, field_loc_center, field_type_vector)
 
   if ( chk_a2i_fields ) then
     call check_a2i_fields('fields_a2i_in_ice.nc',isteps)
@@ -483,46 +482,35 @@
 
       if(ll_comparal) then
         call prism_get_proto (il_var_id_in(jf), isteps, vwork2d(l_ilo:l_ihi, l_jlo:l_jhi), ierror)
-!         gwork(l_ilo:l_ihi, l_jlo:l_jhi) = vwork2d(l_ilo:l_ihi, l_jlo:l_jhi)
-!        call mpi_gatherv(vwork2d(l_ilo:l_ihi, l_jlo:l_jhi),1,sendsubarray,gwork,counts,disps,resizedrecvsubarray, &
-        !             0,MPI_COMM_ICE,ierror)
-        !call broadcast_array(gwork, 0)
       else
         call prism_get_proto (il_var_id_in(jf), isteps, gwork, ierror)
       end if
       if ( ierror /= PRISM_Ok .and. ierror < PRISM_Recvd) then
         write(il_out,*) 'Err in _get_ sst at time with error: ', isteps, ierror
-        call prism_abort_proto(il_comp_id, 'cice from_atm','stop 1')
+        call prism_abort_proto(il_comp_id, 'cice from_ocn','stop 1')
       endif
 
     endif
 
-    field_type=field_type_scalar
-    if(jf == n_a2i+3 .or. jf == n_a2i+4 .or. jf == n_a2i+5 .or. jf == n_a2i+6) then
-       field_type=field_type_vector
-    endif
-
     ! Copy over non-ghost part of coupled field.
-    vwork(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d(:,:)
-    ! Fill in ghost cells of coupled field.
-    call ice_HaloUpdate(vwork, halo_info, field_loc_center, field_type)
-
-    !if (.not. ll_comparal) then
-    !  call scatter_global(vwork_copy, gwork, master_task, distrb_info, &
-    !                    field_loc_center, field_type)
-    !else
-    !  call unpack_global_dbl(vwork_copy, gwork, master_task, distrb_info, &
-    !                    field_loc_center, field_type)
-    !endif
-    if (jf == n_a2i+1) ssto = vwork
-    if (jf == n_a2i+2) ssso = vwork
-    if (jf == n_a2i+3) ssuo = vwork
-    if (jf == n_a2i+4) ssvo = vwork
-    if (jf == n_a2i+5) sslx = vwork
-    if (jf == n_a2i+6) ssly = vwork
-    if (jf == n_a2i+7) pfmice = vwork
+    if (jf == n_a2i+1) ssto(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+    if (jf == n_a2i+2) ssso(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+    if (jf == n_a2i+3) ssuo(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+    if (jf == n_a2i+4) ssvo(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+    if (jf == n_a2i+5) sslx(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+    if (jf == n_a2i+6) ssly(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+    if (jf == n_a2i+7) pfmice(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
 
   enddo
+
+  ! Now update the halos for each. FIXME: better to do this later, when they're actually needed.  
+  call ice_HaloUpdate(ssto, halo_info, field_loc_center, field_type_scalar)
+  call ice_HaloUpdate(ssso, halo_info, field_loc_center, field_type_scalar)
+  call ice_HaloUpdate(ssuo, halo_info, field_loc_center, field_type_vector)
+  call ice_HaloUpdate(ssvo, halo_info, field_loc_center, field_type_vector)
+  call ice_HaloUpdate(sslx, halo_info, field_loc_center, field_type_vector)
+  call ice_HaloUpdate(ssly, halo_info, field_loc_center, field_type_vector)
+  call ice_HaloUpdate(pfmice, halo_info, field_loc_center, field_type_scalar)
 
   if (chk_o2i_fields) then
     call check_o2i_fields('fields_o2i_in_ice.nc',isteps)
@@ -576,7 +564,6 @@
     end if
     if (my_task == 0 .or. ll_comparal) then   
 
-      write(il_out,*) '*** sending coupling field No. ', jf, cl_writ(jf)
       if(ll_comparal) then
         call prism_put_proto(il_var_id_out(jf), isteps, vwork2d(l_ilo:l_ihi, l_jlo:l_jhi), ierror)
       else
@@ -813,252 +800,6 @@
   endif
 
   end subroutine decomp_def
-
-!============================================================================
- subroutine unpack_global_dbl(ARRAY, ARRAY_G, src_task, dst_dist, &
-                               field_loc, field_type)
-
-! !DESCRIPTION:
-!  This subroutine scatters a global-sized array to a distributed array.
-!
-! !REVISION HISTORY:
-!  same as module
-!
-! !REMARKS:
-!  This is the specific interface for double precision arrays
-!  corresponding to the generic interface scatter_global.
-
-! !USES:
-
-   include 'mpif.h'
-
-! !INPUT PARAMETERS:
-
-   integer (int_kind), intent(in) :: &
-     src_task       ! task from which array should be scattered
-
-   type (distrb), intent(in) :: &
-     dst_dist       ! distribution of resulting blocks
-
-   real (dbl_kind), dimension(:,:), intent(in) :: &
-     ARRAY_G        ! array containing global field on src_task
-
-   integer (int_kind), intent(in) :: &
-      field_type,               &! id for type of field (scalar, vector, angle)
-      field_loc                  ! id for location on horizontal grid
-                                 !  (center, NEcorner, Nface, Eface)
-
-! !OUTPUT PARAMETERS:
-
-   real (dbl_kind), dimension(:,:,:), intent(inout) :: &
-     ARRAY          ! array containing distributed field
-!EOP
-!BOC
-!-----------------------------------------------------------------------
-!
-!  local variables
-!
-!-----------------------------------------------------------------------
-
-   integer (int_kind) :: &
-     i,j,n,bid,          &! dummy loop indices
-     nrecvs,             &! actual number of messages received
-     isrc, jsrc,         &! source addresses
-     dst_block,          &! location of block in dst array
-     xoffset, yoffset,   &! offsets for tripole boundary conditions
-     yoffset2,           &!
-     isign,              &! sign factor for tripole boundary conditions
-     ierr                 ! MPI error flag
-
-   type (block) :: &
-     this_block  ! block info for current block
-
-   integer (int_kind), dimension(MPI_STATUS_SIZE) :: &
-     status
-
-   integer (int_kind), dimension(:), allocatable :: &
-     rcv_request     ! request array for receives
-
-   integer (int_kind), dimension(:,:), allocatable :: &
-     rcv_status      ! status array for receives
-
-   real (dbl_kind), dimension(:,:), allocatable :: &
-     msg_buffer      ! buffer for sending blocks
-
-!-----------------------------------------------------------------------
-!
-!  initialize return array to zero and set up tripole quantities
-!
-!-----------------------------------------------------------------------
-   ARRAY = c0
-
-   this_block = get_block(1,1) ! for the tripoleTflag - all blocks have it
-   if (this_block%tripoleTFlag) then
-     select case (field_loc)
-     case (field_loc_center)   ! cell center location
-        xoffset = 2
-        yoffset = 0
-     case (field_loc_NEcorner) ! cell corner (velocity) location
-        xoffset = 1
-        yoffset = -1
-     case (field_loc_Eface)    ! cell face location
-        xoffset = 1
-        yoffset = 0
-     case (field_loc_Nface)    ! cell face location
-        xoffset = 2
-        yoffset = -1
-     case (field_loc_noupdate) ! ghost cells never used - use cell center
-        xoffset = 1
-        yoffset = 1
-     end select
-   else
-     select case (field_loc)
-     case (field_loc_center)   ! cell center location
-        xoffset = 1
-        yoffset = 1
-     case (field_loc_NEcorner) ! cell corner (velocity) location
-        xoffset = 0
-        yoffset = 0
-     case (field_loc_Eface)    ! cell face location
-        xoffset = 0
-        yoffset = 1
-     case (field_loc_Nface)    ! cell face location
-        xoffset = 1
-        yoffset = 0
-     case (field_loc_noupdate) ! ghost cells never used - use cell center
-        xoffset = 1
-        yoffset = 1
-     end select
-   endif
-   select case (field_type)
-   case (field_type_scalar)
-      isign =  1
-   case (field_type_vector)
-      isign = -1
-   case (field_type_angle)
-      isign = -1
-   case (field_type_noupdate) ! ghost cells never used - use cell center
-      isign =  1
-   case default
-      call abort_ice('Unknown field type in scatter')
-   end select
-
-
-     !*** copy any local blocks
-
-     do n=1,nblocks_tot
-       if (dst_dist%blockLocation(n) == my_task+1) then
-         dst_block = dst_dist%blockLocalID(n)
-         this_block = get_block(n,n)
-
-         !*** if this is an interior block, then there is no
-         !*** padding or update checking required
-
-         if (this_block%iblock > 1         .and. &
-             this_block%iblock < nblocks_x .and. &
-             this_block%jblock > 1         .and. &
-             this_block%jblock < nblocks_y) then
-
-            ARRAY(1:nx_block,1:ny_block,dst_block) =                              &
-                        ARRAY_G(this_block%i_glob(1):this_block%i_glob(nx_block), &
-                                this_block%j_glob(1):this_block%j_glob(ny_block))
-
-         !*** if this is an edge block but not a northern edge
-         !*** we only need to check for closed boundaries and
-         !*** padding (global index = 0)
-
-         else if (this_block%jblock /= nblocks_y) then
-
-            do j=1,ny_block
-               if (this_block%j_glob(j) /= 0) then
-                  do i=1,nx_block
-                     if (this_block%i_glob(i) /= 0) then
-                        ARRAY(i,j,dst_block) = ARRAY_G(this_block%i_glob(i),&
-                                                       this_block%j_glob(j))
-                     endif
-                  end do
-               endif
-            end do
-
-         !*** if this is a northern edge block, we need to check
-         !*** for and properly deal with tripole boundaries
-
-         else
-
-            do j=1,ny_block
-               if (this_block%j_glob(j) > 0) then ! normal boundary
-
-                  do i=1,nx_block
-                     if (this_block%i_glob(i) /= 0) then
-                        ARRAY(i,j,dst_block) = ARRAY_G(this_block%i_glob(i),&
-                                                       this_block%j_glob(j))
-                     endif
-                  end do
-
-               else if (this_block%j_glob(j) < 0) then  ! tripole
-                  do yoffset2=0,max(yoffset,0)-yoffset
-                    jsrc = ny_global + yoffset + yoffset2 + &
-                         (this_block%j_glob(j) + ny_global)
-                    do i=1,nx_block
-                      if (this_block%i_glob(i) /= 0) then
-                         isrc = nx_global + xoffset - this_block%i_glob(i)
-                         if (isrc < 1) isrc = isrc + nx_global
-                         if (isrc > nx_global) isrc = isrc - nx_global
-                         ARRAY(i,j-yoffset2,dst_block) &
-                           = isign * ARRAY_G(isrc,jsrc)
-                      endif
-                    end do
-                  end do
-
-               endif
-            end do
-
-         endif
-       endif
-     end do
-
-   !-----------------------------------------------------------------
-   ! Ensure unused ghost cell values are 0
-   !-----------------------------------------------------------------
-
-   if (field_loc == field_loc_noupdate) then
-      do n=1,nblocks_tot
-         dst_block = dst_dist%blockLocalID(n)
-         this_block = get_block(n,n)
-
-         if (dst_block > 0) then
-
-         ! north edge
-         do j = this_block%jhi+1,ny_block
-         do i = 1, nx_block
-            ARRAY (i,j,dst_block) = c0
-         enddo
-         enddo
-         ! east edge
-         do j = 1, ny_block
-         do i = this_block%ihi+1,nx_block
-            ARRAY (i,j,dst_block) = c0
-         enddo
-         enddo
-         ! south edge
-         do j = 1, this_block%jlo-1
-         do i = 1, nx_block
-            ARRAY (i,j,dst_block) = c0
-         enddo
-         enddo
-         ! west edge
-         do j = 1, ny_block
-         do i = 1, this_block%ilo-1
-            ARRAY (i,j,dst_block) = c0
-         enddo
-         enddo
-
-         endif
-      enddo
-   endif
-
- end subroutine unpack_global_dbl
-!============================================================================
 
 !============================================================================
  subroutine pack_global_dbl(ARRAY_G, ARRAY, dst_task, src_dist)
