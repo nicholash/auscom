@@ -3,6 +3,7 @@
 import argparse
 import sys
 import re
+from fnamelist import FortranNamelist, Namcouple
 from datetime import datetime, timedelta
 
 """
@@ -11,95 +12,12 @@ Modify atmosphere, ice, ocean and coupler namelists files to set a configuration
 Relies on the the experiments directory being at ../exp
 """
 
-input_atm = "../exp/%s/ATM_RUNDIR/input_atm.nml"
-namcouple = ["../exp/%s/ATM_RUNDIR/namcouple", "../exp/%s/OCN_RUNDIR/namcouple", "../exp/%s/ICE_RUNDIR/namcouple"]
-input_ice = "../exp/%s/ICE_RUNDIR/input_ice.nml"
-cice_in = "../exp/%s/ICE_RUNDIR/cice_in.nml"
-input_ocn = "../exp/%s/OCN_RUNDIR/input.nml"
+input_atm = "../exp/%s/input_atm.nml"
+namcouple = ["../exp/%s/namcouple"]
+input_ice = "../exp/%s/input_ice.nml"
+cice_in = "../exp/%s/cice_in.nml"
+input_ocn = "../exp/%s/input.nml"
 
-class FortranNamelist:
-    """
-    Class to represent a Fortran namelist file.
-
-    Can be used to modify fields.
-    """
-
-    def __init__(self, filename):
-        self.filename = filename
-        with open(filename, 'r') as f:
-            self.str = f.read()
-
-    def get_value(self, variable, record=None):
-        """
-        Return the value, start index and end index.
-        """
-        regex = r"%s[ \t]*=[ \t]*(\S*),?[ \t]*$"
-        if record is None:
-            m = re.search(regex % (variable), self.str, re.MULTILINE | re.DOTALL)
-        else:
-            m = re.search((r"&%s.*?" + regex) % (record, variable), self.str, re.MULTILINE | re.DOTALL)
-        assert(m is not None)
-
-        return (m.group(1), m.start(1), m.end(1))
-
-    def set_value(self, variable, value, record=None):
-
-        (_, start, end) = self.get_value(variable, record)
-
-        self.str = self.str[:start] + str(value) + self.str[end:]
-
-    def write(self):
-        with open(self.filename, 'w') as f:
-            f.write(self.str)
-
-class Namcouple:
-    """
-    Class to represent an OASIS namcouple file. 
-
-    Allows fields to be modified.
-
-    Presently only supports $RUNTIME
-    """
-
-    def __init__(self, filename):
-        self.filename = filename
-        with open(filename, 'r') as f:
-            self.str = f.read()
-
-    def set_runtime(self, runtime):
-
-        m = re.search(r"^[ \t]*\$RUNTIME.*?^[ \t]*(\d+)", self.str, re.MULTILINE | re.DOTALL)
-        assert(m is not None)
-        self.str = self.str[:m.start(1)] + runtime + self.str[m.end(1):]
-
-    def set_ocean_timestep(self, timestep):
-
-        def substitute_timestep(regex):
-            """
-            Make one change at a time, each change affects subsequent matches.
-            """
-            while True:
-                matches = re.finditer(regex, self.str, re.MULTILINE | re.DOTALL)
-                none_updated = True
-                for m in matches:
-                    if m.group(1) == timestep:
-                        continue
-                    else:
-                        self.str = self.str[:m.start(1)] + timestep + self.str[m.end(1):]
-                        none_updated = False
-                        break
-
-                if none_updated:
-                    break
-
-        substitute_timestep(r"nt62 cice LAG=\+(\d+) ")
-        substitute_timestep(r"cice nt62 LAG=\+(\d+) ")
-        substitute_timestep(r"\d+ (\d+) \d+ i2o.nc EXPORTED")
-        substitute_timestep(r"\d+ (\d+) \d+ o2i.nc EXPORTED")
-
-    def write(self):
-        with open(self.filename, 'w') as f:
-            f.write(self.str)
 
 def set_runtime(experiment, runtime):
 
