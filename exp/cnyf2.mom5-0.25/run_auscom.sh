@@ -3,7 +3,7 @@
 #PBS -P v45
 #PBS -W group_list=v45
 #PBS -q normal
-#PBS -l walltime=01:00:00
+#PBS -l walltime=05:00:00
 #PBS -l mem=2000Gb
 #PBS -l ncpus=1168
 #PBS -l wd
@@ -37,21 +37,20 @@ icerundir=$expdir/ICE_RUNDIR
 #
 #############################################################################
 
-mkdir -p $icerundir/RESTART -p $icerundir/HISTORY 	#subdirs for CICE
-mkdir -p $ocnrundir/RESTART $ocnrundir/HISTORY	#subdirs for MOM4
+rm -rf $icerundir/INPUT $ocnrundir/INPUT $atmrundir/INPUT
 
-# Copy in OASIS restart files and change mode. These will be overwritten at the end of the run.
-cp $inputdir/oasis3/* $atmrundir/
-cp $inputdir/oasis3/* $ocnrundir/
-cp $inputdir/oasis3/* $icerundir/
+mkdir -p $icerundir/RESTART $icerundir/HISTORY $icerundir/INPUT	#subdirs for CICE
+mkdir -p $ocnrundir/RESTART $ocnrundir/HISTORY $ocnrundir/INPUT	#subdirs for MOM4
+mkdir -p $atmrundir/RESTART $atmrundir/HISTORY $atmrundir/INPUT	#subdirs for MOM4
 
-chmod +w $atmrundir/*.nc
-chmod +w $ocnrundir/*.nc
-chmod +w $icerundir/*.nc
+# Copy in input files and change mode. These will be overwritten at the end of the run.
+cp $inputdir/matm/* $atmrundir/INPUT/
+cp $inputdir/mom5/* $ocnrundir/INPUT/
+cp $inputdir/cice/* $icerundir/INPUT/
 
-export VT_PFORM_GDIR=/short/v45/nah599/auscom/prof
-export VT_PFORM_LDIR=/short/v45/nah599/tmp
-export VT_MODE=STAT
+chmod +w $atmrundir/INPUT/*.nc
+chmod +w $ocnrundir/INPUT/*.nc
+chmod +w $icerundir/INPUT/*.nc
 
 #############################################################################
 #
@@ -62,7 +61,7 @@ export VT_MODE=STAT
 module load openmpi/1.6.5-mlx
 module load ipm
 
-mpirun -wdir $atmrundir -n 1 $atmrundir/matmxx : -wdir $icerundir -n 48 $icerundir/cicexx : -wdir $ocnrundir -n 960 $ocnrundir/mom5xx
+mpirun -wdir $atmrundir -n 1 $atmrundir/matmxx : -wdir $icerundir -n 192 $icerundir/cicexx : -wdir $ocnrundir -n 960 $ocnrundir/mom5xx
 
 echo
 echo "*** job completed  at: " `date` "***" 
