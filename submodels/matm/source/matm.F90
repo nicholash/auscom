@@ -235,9 +235,10 @@ PROGRAM datm
           !------------------------------------------------------------------------!
           if (imonth == 12) then
             if (icpl == num_cpl) then           !the last cpl interval
-              if ( (jf-1)*(jf-2)*(jf-5)*(jf-6) /= 0 ) then
-                call nextyear_forcing(cfile(jf))  
-              endif
+              ! Comment out below to re-use the same file year after year.    
+              !if ( (jf-1)*(jf-2)*(jf-5)*(jf-6) /= 0 ) then
+              !  call nextyear_forcing(cfile(jf))  
+              !endif
               nt_read = 1
             endif
           endif
