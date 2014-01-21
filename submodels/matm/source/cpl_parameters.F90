@@ -46,6 +46,9 @@ character(len=10) :: dataset = 'core'	! currently 'ncep2', 'era40', 'core', 'cor
 character(len=2)  :: runtype = 'IA'  	! 'IA' for inter-annual, 'NY' for normal year
 logical :: chk_a2i_fields = .false.
 logical :: chk_i2a_fields = .false.
+! How often to dump the coupling fields if any of the chk_*_fields options are .true.
+! The unit of time is seconds. By default fields are dumped every timestep.
+integer(kind=int_kind) :: chk_fields_period = 1
 
 namelist/coupling/ &
    init_date, &
@@ -59,7 +62,8 @@ namelist/coupling/ &
    caltype,   &
    days_per_year, &
    chk_a2i_fields, &   
-   chk_i2a_fields
+   chk_i2a_fields, &
+   chk_fields_period 
 
 !====================================================================================
 end module cpl_parameters

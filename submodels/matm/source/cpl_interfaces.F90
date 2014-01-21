@@ -309,7 +309,7 @@ contains
 
   endif   !if (my_task == 0 .OR. ll_comparal)
 
-  if (chk_i2a_fields) then
+  if (chk_i2a_fields .and. mod(istep1, chk_fields_period) == 0) then
     call check_i2a_fields(istep1)
   endif
 
@@ -364,7 +364,7 @@ contains
 
   endif    !if(my_task .eq. 0 .or. ll_comparal)
 
-  if (chk_a2i_fields) then
+  if (chk_a2i_fields .and. mod(istep1, chk_fields_period) == 0) then
     call check_a2i_fields(istep1)
   endif
 

@@ -54,6 +54,10 @@ logical :: &                         !pop_icediag is as that for ocn model, if t
    gfdl_surface_flux = .true., &     !.t. use gfdl ocean surface flux calculation (dec2009)
    chk_gfdl_roughness = .false.      !.t. output u_star & roughness once a cpl interval (jan2010)
 
+! How often to dump the coupling fields if any of the chk_*_fields options are .true.
+! The unit of time is seconds. By default fields are dumped every timestep.
+integer(kind=int_kind) :: chk_fields_period = 1
+
 integer(kind=int_kind) :: dt_cice = 3600       !time step of this model      (seconds) 
 integer(kind=int_kind) :: dt_cpl_ai = 21600    !atm<==>ice coupling interval (seconds) 
 integer(kind=int_kind) :: dt_cpl_io = 3600    !ice<==>ocn coupling interval (seconds)
@@ -98,7 +102,8 @@ namelist/coupling_nml/       &
          chk_a2i_fields, &
          chk_i2a_fields, &
          chk_i2o_fields, &
-         chk_o2i_fields
+         chk_o2i_fields, &
+         chk_fields_period
 
 integer(kind=int_kind) :: iniday, inimon, iniyear   !from inidate
 real(kind=dbl_kind) :: coef_ic    !dt_ice/dt_cpl_io, for i2o fields tavg 

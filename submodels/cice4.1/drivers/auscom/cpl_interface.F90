@@ -95,6 +95,7 @@
   endif
 
   !B: the following part may not be really needed(?)
+  ! This is not needed becuase MPI_BSend is not used in this program. 
   !
   ! Let's suppose the model attaches to a MPI buffer for its own use
   !
@@ -458,7 +459,7 @@
     call ice_HaloUpdate(uwnd0, halo_info, field_loc_center, field_type_vector)
     call ice_HaloUpdate(vwnd0, halo_info, field_loc_center, field_type_vector)
 
-  if ( chk_a2i_fields ) then
+  if ( chk_a2i_fields .and. mod(isteps, chk_fields_period) == 0) then
     call check_a2i_fields('fields_a2i_in_ice.nc',isteps)
   endif
 
@@ -512,7 +513,7 @@
   call ice_HaloUpdate(ssly, halo_info, field_loc_center, field_type_vector)
   call ice_HaloUpdate(pfmice, halo_info, field_loc_center, field_type_scalar)
 
-  if (chk_o2i_fields) then
+  if (chk_o2i_fields .and. mod(isteps, chk_fields_period) == 0) then
     call check_o2i_fields('fields_o2i_in_ice.nc',isteps)
   endif
 
@@ -578,7 +579,7 @@
 
   enddo     !jf = 6, jpfldout
 
-  if (chk_i2o_fields) then
+  if (chk_i2o_fields .and. mod(isteps, chk_fields_period) == 0) then
     call check_i2o_fields('fields_i2o_in_ice.nc',isteps, scale)
   endif
 
@@ -618,7 +619,7 @@
 
   enddo
 
-  if (chk_i2a_fields) then
+  if (chk_i2a_fields .and. mod(isteps, chk_fields_period) == 0) then
     call check_i2a_fields('fields_i2a_in_ice.nc',isteps)
   endif 
 

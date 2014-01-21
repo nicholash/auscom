@@ -21,7 +21,7 @@ data currstep/0/
 
 currstep=currstep+1
 
-if ( .not. file_exist('fields_i2a_in_atm.nc') ) then
+if (currstep == 1) then
   call create_ncfile('fields_i2a_in_atm.nc',ncid,nx_global,ny_global,ll=1,ilout=il_out)
 endif
 
@@ -49,7 +49,7 @@ save currstep
 
 currstep=currstep+1
 
-if ( .not. file_exist('fields_a2i_in_atm.nc') ) then
+if (currstep == 1) then
   call create_ncfile('fields_a2i_in_atm.nc',ncid,nx_global,ny_global,ll=1,ilout=il_out)
 endif
 
