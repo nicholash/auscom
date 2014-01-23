@@ -295,7 +295,7 @@
       END DO        !icpl_ia
 
       ! final update of the stimestamp_io, ie., put back the last dt_ice:
-      stimestamp_io = stimestamp_io + dt
+      stimestamp_io = stimestamp_io + dt_cpl_io
 
       call save_time0_i2o_fields('INPUT/i2o.nc', stimestamp_io) 
 
