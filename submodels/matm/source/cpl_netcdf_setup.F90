@@ -12,7 +12,6 @@ include 'netcdf.inc'	!define nf_*
 integer(kind=int_kind) :: pLonDimId, pLatDimId, timeDimId, pDepDimId
 contains 
 
-!=========================================================================
 subroutine ncheck(status) 
 
 implicit none
@@ -26,66 +25,6 @@ if (status /= nf_noerr) then
 end if
 end subroutine ncheck
 
-!============================================================================
-subroutine read_nc(vout,nx,ny,vname,fname)
-!
-!read in a 2D (X-Y) array with double precision !*** not needed anymore! *** 
-!  instead, the more concise 'ice_read_nc' is use for all nc data reading! 
-!
-!Note the compiling option ("idbl4" I think) does not allow the models to 
-!     read in any single precision variables from a netcdf file such as the
-!     A2I_..nc etc. So we must feed the model with dbl precision vars in nc
-!     files. Similarly, we need write out dbl precision fields, NOT single
-!     precision arrays, into ncfiles! 
-!     --- the above note is perhaps not true! ---
-!     if we define "real*4 vout", then nf_get_vara_real(...,vout) may work. 
-
-implicit none
-
-real(kind=dbl_kind), dimension(nx,ny), intent(out) :: vout 
-integer(kind=int_kind), intent(in) :: nx, ny
-character(len=*), intent(in) :: vname,fname
-
-!real, dimension(nx,ny) :: vtmp      !single precision for 'conversion'
-integer(kind=int_kind) :: varid, ndim, ncid
-integer(kind=int_kind), dimension(:), allocatable :: count, start
-
-!Open file for read access
-call ncheck( nf_open(fname, nf_nowrite, ncid) )
-
-!Get variable ID
-call ncheck(nf_inq_varid(ncid, vname, varid))
-
-!Get number of dimensions
-call ncheck(nf_inq_varndims(ncid, varid, ndim))
-
-!Allocate count and start
-allocate (count(ndim), start(ndim))
-
-!Get the 2D array data out of a ndim-D variable
-if (ndim == 2) then       !currently only have ndim = 2!
-  start = (/ 1, 1 /)
-  count = (/ nx, ny /)
-else if (ndim == 3) then
-  start = (/ 1, 1, 1/)
-  count = (/ nx, ny, 1 /)
-else  !* ndim = 4 *!
-  start = (/ 1, 1, 1, 1 /)
-  count = (/ nx, ny, 1, 1 /)
-endif
-
-!call ncheck(nf_get_vara_real(ncid, varid, start, count, vtmp))
-call ncheck(nf_get_vara_double(ncid, varid, start, count, vout))
-
-!Close file
-call ncheck( nf_close(ncid) )
-
-!vout = vtmp
-
-return
-end subroutine read_nc 
-
-!===========================================================================
 subroutine create_ncfile(ncfile, ncid, ii, jj, kk, ll, ilout)
 !
 !to create 2, 3,or 4D ncfile, depending on optional args (kk,ll)! 
@@ -124,41 +63,6 @@ write(*,'(2a)') 'ncfile created: ',trim(ncfile)
 return
 end subroutine create_ncfile
 
-!===========================================================================
-subroutine create_nc(ncfile,ncid,ii,jj)
-!
-!not needed anymore 'cos its function is covered by 'create_ncfile'
-! 
-
-implicit none
-
-integer(kind=int_kind), intent(in) :: ii,jj
-character(len=*), intent(in) :: ncfile
-integer(kind=int_kind), intent(out) :: ncid
- 
-print *
-print *, 'creating a new netcdf file: ',ncfile
-
-!create a new NetCDF and define the grid:
-call ncheck(nf_create(trim(ncfile),nf_write,ncid))
-
-!define the dimensions
-call ncheck(nf_def_dim(ncid,"ny", jj,  pLatDimId))
-call ncheck(nf_def_dim(ncid,"nx", ii,  pLonDimId))
-!B: note the sizes of dimensions ('jj' and 'ii') can't be missing!
-
-!end of the definition phase
-call ncheck(nf_enddef(ncid))
- 
-!close NetCDF file
-!call ncheck(nf_close(ncid))
-!do NOT close it here!
-write(*,'(2a)') 'ncfile created: ',trim(ncfile)
-
-return
-end subroutine create_nc
-
-!===========================================================================
 subroutine write_nc_1Dtime(vin, nt, vname, ncid)
 
 implicit none
@@ -202,7 +106,6 @@ call ncheck(nf_put_vara_real(ncid,varid,nt,1,vtmp))
 return
 end subroutine write_nc_1Dtime
 
-!===========================================================================
 subroutine write_nc2D(ncid, vname, vin, prcn, nx, ny, istep, ilout)
 !
 !to output a 2D array into a 3D field (with time dimension) 
@@ -251,43 +154,5 @@ end select
 
 return
 end subroutine write_nc2D
-
-!===========================================================================
-subroutine write_nc(vin, nx, ny, vname, ncid)
-!
-! *** its function is covered by write_nc2D and thus not used any more. ***
-!
-
-implicit none
-
-integer(kind=int_kind), intent(in) :: nx, ny, ncid
-integer(kind=int_kind) :: varid
-real(kind=dbl_kind), dimension(nx,ny), intent(in) :: vin
-character(len=*), intent(in) :: vname
-
-!switch to define mode
-call ncheck(nf_redef(ncid))
-
-!define (2D) variable to be written
-call ncheck(nf_def_var(ncid,trim(vname),nf_double, 2, &
-            (/pLonDimId, pLatDimId/),varid))
-!B: here '2' indicates the dimension of the to-be-written variable 'vname',
-!   and (/pLonDimId, pLatDimId/) the dimention.
-!   'nf_real' determines the output precision!
-
-!leave define mode
-call ncheck(nf_enddef(ncid))
-
-!get varId and write to array
-call ncheck(nf_inq_varid(ncid,trim(vname),varid))
-
-!write values into the 2D array
-call ncheck(nf_put_vara_double(ncid,varid,(/1,1/),(/nx,ny/),vin))
-!B: must indicate the start point and number of the record (ie. count as in
-!   routine read_nc above) (/1,1/) and (/nx,ny/) for the to-be-written vin!
-
-return
-end subroutine write_nc
-!===========================================================================
 
 end module cpl_netcdf_setup
