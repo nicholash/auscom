@@ -22,6 +22,9 @@ use cpl_parameters
 use cpl_arrays
 use cpl_forcing_handler
 
+  ! Debugging and runtime checking. 
+  use debug_field_mod
+
 implicit none
 
 include 'mpif.h'
@@ -298,7 +301,10 @@ contains
        write(il_out,*)'(from_cpl) rcvd at time with err: ',cl_read(1),istep1,ierror
      endif
 
-     if (jf == 1) isst   = vwork
+     if (jf == 1) then
+        isst   = vwork
+        call debug_field_2d('isst', 1, vwork)
+     endif
 !!!     if (jf == 2) albvdr = vwork
 !!!     if (jf == 3) albidr = vwork
 !!!     if (jf == 4) albvdf = vwork
@@ -335,16 +341,40 @@ contains
      write(il_out,*) '*** sending coupling field No. ', jf, cl_writ(jf)
      !call flush(il_out)
 
-     if (jf == 1) vwork = swfld
-     if (jf == 2) vwork = lwfld
-     if (jf == 3) vwork = rain
-     if (jf == 4) vwork = snow
-     if (jf == 5) vwork = press
-     if (jf == 6) vwork = runof
-     if (jf == 7) vwork = tair
-     if (jf == 8) vwork = qair
-     if (jf == 9) vwork = uwnd
-     if (jf == 10)vwork = vwnd
+        select case (jf)
+            case (1)
+                vwork = swfld
+                call debug_field_2d('swfld', 1, vwork)
+            case (2)
+                vwork = lwfld
+                call debug_field_2d('lwfld', 1, vwork)
+            case (3)
+                vwork = rain
+                call debug_field_2d('rain', 1, vwork)
+            case (4)
+                vwork = snow
+                call debug_field_2d('snow', 1, vwork)
+            case (5)
+                vwork = press
+                call debug_field_2d('press', 1, vwork)
+            case (6)
+                vwork = runof
+                call debug_field_2d('runof', 1, vwork)
+            case (7)
+                vwork = tair
+                call debug_field_2d('tair', 1, vwork)
+            case (8)
+                vwork = qair
+                call debug_field_2d('qair', 1, vwork)
+            case (9)
+                vwork = uwnd
+                call debug_field_2d('uwnd', 1, vwork)
+            case (10)
+                vwork = vwnd
+                call debug_field_2d('vwnd', 1, vwork)
+            case default
+                call prism_abort_proto(il_comp_id, 'matm into_cpl','bad case')
+            end select
 
      call prism_put_proto(il_var_id_out(jf), istep1, vwork, ierror)
 

@@ -57,6 +57,9 @@ if ( $AusCOM == 'yes' ) then
     setenv CPLLIBS '-L$(CPLLIBDIR) -lpsmile.${CHAN} -lmct -lmpeu -lscrip'
     setenv CPLINCDIR $SYSTEMDIR/submodels/oasis3-mct/Linux/build/lib
     setenv CPL_INCS '-I$(CPLINCDIR)/psmile.$(CHAN) -I$(CPLINCDIR)/pio -I$(CPLINCDIR)/mct'
+
+    setenv MYFLIB_INCS '-I$(SYSTEMDIR)/submodels/myflib'
+    setenv MYFLIB_LIBS '-L$(SYSTEMDIR)/submodels/myflib -lmyflib'
 endif
  
 ### Location and name of the generated exectuable

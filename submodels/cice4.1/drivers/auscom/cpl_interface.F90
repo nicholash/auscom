@@ -23,6 +23,9 @@
   use cpl_arrays_setup
   use cpl_forcing_handler
 
+  ! Debugging and runtime checking. 
+  use debug_field_mod
+
   implicit none
 
   public :: prism_init, init_cpl, coupler_termination, get_time0_sstsss, &
@@ -415,7 +418,6 @@
   implicit none
 
   integer(kind=int_kind), intent(in) :: isteps
-
   integer(kind=int_kind) :: jf, field_type
 
   do jf = 1, n_a2i       !10, not jpfldin, only 10 fields from cpl (atm) 
@@ -436,16 +438,40 @@
     endif
 
     ! Copy over non-ghost part of coupled field.
-    if (jf ==  1) swflx0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-    if (jf ==  2) lwflx0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-    if (jf ==  3) rain0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
-    if (jf ==  4) snow0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
-    if (jf ==  5) press0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-    if (jf ==  6) runof0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-    if (jf ==  7) tair0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
-    if (jf ==  8) qair0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
-    if (jf ==  9) uwnd0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
-    if (jf == 10) vwnd0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
+    select case (jf)
+        case (1)
+            swflx0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+            call debug_field_2d('swflx0', my_task, vwork2d)
+        case (2)
+            lwflx0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+            call debug_field_2d('lwflx0', my_task, vwork2d)
+        case (3)
+            rain0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+            call debug_field_2d('rain0', my_task, vwork2d)
+        case (4)
+            snow0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
+            call debug_field_2d('snow0', my_task, vwork2d)
+        case (5)
+            press0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+            call debug_field_2d('press0', my_task, vwork2d)
+        case (6)
+            runof0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+            call debug_field_2d('runof0', my_task, vwork2d)
+        case (7)
+            tair0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
+            call debug_field_2d('tair0', my_task, vwork2d)
+        case (8)
+            qair0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
+            call debug_field_2d('qair0', my_task, vwork2d)
+        case (9)
+            uwnd0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
+            call debug_field_2d('uwnd0', my_task, vwork2d)
+        case (10)
+            vwnd0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
+            call debug_field_2d('vwnd0', my_task, vwork2d)
+        case default
+            stop "Error: invalid case in subroutine from_atm()"
+    end select
   enddo
 
     call ice_HaloUpdate(swflx0, halo_info, field_loc_center, field_type_scalar)
@@ -494,13 +520,31 @@
     endif
 
     ! Copy over non-ghost part of coupled field.
-    if (jf == n_a2i+1) ssto(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-    if (jf == n_a2i+2) ssso(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-    if (jf == n_a2i+3) ssuo(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-    if (jf == n_a2i+4) ssvo(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-    if (jf == n_a2i+5) sslx(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-    if (jf == n_a2i+6) ssly(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-    if (jf == n_a2i+7) pfmice(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+    select case (jf)
+        case (n_a2i+1)
+            ssto(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+            call debug_field_2d('ssto', my_task, vwork2d)
+        case (n_a2i+2)
+            ssso(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+            call debug_field_2d('ssso', my_task, vwork2d)
+        case (n_a2i+3)
+            ssuo(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+            call debug_field_2d('ssuo', my_task, vwork2d)
+        case (n_a2i+4)
+            ssvo(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+            call debug_field_2d('ssvo', my_task, vwork2d)
+        case (n_a2i+5)
+            sslx(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+            call debug_field_2d('sslx', my_task, vwork2d)
+        case (n_a2i+6)
+            ssly(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+            call debug_field_2d('ssly', my_task, vwork2d)
+        case (n_a2i+7)
+            pfmice(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+            call debug_field_2d('pfmice', my_task, vwork2d)
+        case default
+            stop "Error: invalid case in subroutine from_ocn()"
+    end select
 
   enddo
 
@@ -530,31 +574,64 @@
   integer(kind=int_kind), intent(in) :: isteps
   real, intent(in) :: scale             !only 1 or 1/coef_ic allowed! 
   integer(kind=int_kind) :: jf
+  character(len=10) :: field_name
 
   do jf = n_i2a+1, jpfldout       !no 2-14 are for the ocn
 
-    if (jf == n_i2a+1 ) vwork = scale * iostrsu
-    if (jf == n_i2a+2 ) vwork = scale * iostrsv
-    if (jf == n_i2a+3 ) vwork = scale * iorain
-    if (jf == n_i2a+4 ) vwork = scale * iosnow
-    if (jf == n_i2a+5 ) vwork = scale * iostflx
-    if (jf == n_i2a+6 ) vwork = scale * iohtflx
-    if (jf == n_i2a+7 ) vwork = scale * ioswflx
-    if (jf == n_i2a+8 ) vwork = scale * ioqflux
-    if (jf == n_i2a+9 ) vwork = scale * ioshflx
-    if (jf == n_i2a+10 ) vwork = scale * iolwflx
-    if (jf == n_i2a+11) then 
-       if ( use_core_nyf_runoff .or. use_core_iaf_runoff ) then 
-         vwork = core_runoff
-       else 
-         vwork = scale * iorunof
-       endif 
-    endif 
-    if (jf == n_i2a+12) vwork = scale * iopress
-    if (jf == n_i2a+13) vwork = scale * ioaice
-    !!!
-    if (jf == n_i2a+14) vwork = scale * iomelt
-    if (jf == n_i2a+15) vwork = scale * ioform
+    select case (jf)
+        case (n_i2a+1)
+            vwork = scale * iostrsu
+            field_name = 'iostrsu'
+        case (n_i2a+2)
+            vwork = scale * iostrsv
+            field_name = 'iostrsv'
+        case (n_i2a+3)
+            vwork = scale * iorain
+            field_name = 'iorain'
+        case (n_i2a+4)
+            vwork = scale * iosnow
+            field_name = 'iosnow'
+        case (n_i2a+5)
+            vwork = scale * iostflx
+            field_name = 'iostflx'
+        case (n_i2a+6)
+            vwork = scale * iohtflx
+            field_name = 'iohtflx'
+        case (n_i2a+7)
+            vwork = scale * ioswflx
+            field_name = 'ioswflx'
+        case (n_i2a+8)
+            vwork = scale * ioqflux
+            field_name = 'ioqflux'
+        case (n_i2a+9)
+            vwork = scale * ioshflx
+            field_name = 'ioshflx'
+        case (n_i2a+10)
+            vwork = scale * iolwflx
+            field_name = 'iolwflx'
+        case (n_i2a+11)
+            if ( use_core_nyf_runoff .or. use_core_iaf_runoff ) then 
+                vwork = core_runoff
+                field_name = 'core_runoff'
+            else 
+                vwork = scale * iorunof
+                field_name = 'iorunof'
+           endif 
+        case (n_i2a+12)
+            vwork = scale * iopress
+            field_name = 'iopress'
+        case (n_i2a+13)
+            vwork = scale * ioaice
+            field_name = 'ioaice'
+        case (n_i2a+14)
+            vwork = scale * iomelt
+            field_name = 'iomelt'
+        case (n_i2a+15)
+            vwork = scale * ioform
+            field_name = 'ioform'
+        case default
+            stop "Error: invalid case in subroutine into_ocn()"
+    end select
 
     if(.not. ll_comparal) then
       call gather_global(gwork, vwork, master_task, distrb_info)
@@ -562,6 +639,7 @@
     else
       call pack_global_dbl(gwork, vwork, master_task, distrb_info)
       vwork2d(l_ilo:l_ihi, l_jlo:l_jhi) = gwork(l_ilo:l_ihi, l_jlo:l_jhi)
+      call debug_field_2d(trim(field_name), my_task, vwork2d)
     end if
     if (my_task == 0 .or. ll_comparal) then   
 
@@ -601,8 +679,10 @@
       else
         call pack_global_dbl(gwork, isst, master_task, distrb_info)
         vwork2d(l_ilo:l_ihi, l_jlo:l_jhi) = gwork(l_ilo:l_ihi, l_jlo:l_jhi)
+        call debug_field_2d('isst', my_task, vwork2d)
       endif
     end if 
+
     if (my_task == 0 .or. ll_comparal) then
   
       if (ll_comparal) then

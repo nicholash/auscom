@@ -40,13 +40,13 @@ echo SRCDIR: $SRCDIR
 ### Location and names of coupling libraries
 setenv CPLLIBDIR $SYSTEMDIR/submodels/oasis3-mct/Linux/lib
 setenv CPLLIBS '-L$(CPLLIBDIR) -lpsmile.${CHAN} -lmct -lmpeu -lscrip'
-#echo CPLLIBS: ${CPLLIBS}
 
 ### Location of coupling inclusions
 setenv CPLINCDIR $SYSTEMDIR/submodels/oasis3-mct/Linux/build/lib
 setenv CPL_INCS '-I$(CPLINCDIR)/psmile.$(CHAN) -I$(CPLINCDIR)/pio -I$(CPLINCDIR)/mct'
-#echo CPL_INCS: $CPL_INCS
 
+setenv MYFLIB_INCS '-I$(SYSTEMDIR)/submodels/myflib'
+setenv MYFLIB_LIBS '-L$(SYSTEMDIR)/submodels/myflib -lmyflib'
 
 ### Grid resolution
 setenv GRID nt62

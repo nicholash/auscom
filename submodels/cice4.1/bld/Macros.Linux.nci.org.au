@@ -65,11 +65,12 @@ endif
 
 ifeq ($(AusCOM), yes)
    CPPDEFS := $(CPPDEFS) -DAusCOM -Dcoupled
-   INCLDIR := $(INCLDIR) $(CPL_INCS)
+   INCLDIR := $(INCLDIR) $(CPL_INCS) $(MYFLIB_INCS)
    SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lpsmile.${CHAN}
    SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lmct
    SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lmpeu
    SLIBS   := $(SLIBS) -L$(CPLLIBDIR) -lscrip
+   SLIBS   := $(SLIBS) $(MYFLIB_LIBS)
 endif
 
 ifeq ($(ACCESS), yes)
