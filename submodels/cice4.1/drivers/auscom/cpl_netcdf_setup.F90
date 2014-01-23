@@ -1,7 +1,7 @@
 module cpl_netcdf_setup
 
 use ice_kinds_mod
-use ice_calendar, only: idate, sec
+use ice_calendar, only: idate0, sec
 
 implicit none
 
@@ -175,14 +175,14 @@ character*80 ctimeatt
 
 vtmp = real(vin)  ! isn't this real here real*8 ?
 print *, 'write_nc_1Dtime: time to write field -- ', vtmp, vname
-print *, 'write_nc_1Dtime: idate, sec          -- ', idate, sec
+print *, 'write_nc_1Dtime: idate0, sec          -- ', idate0, sec
 
 ncstatus=nf_inq_varid(ncid,vname,varid)
 
 if (ncstatus/=nf_noerr) then
-  adate(1) = idate/10000
-  adate(2) = (idate - (idate/10000)*10000)/100
-  adate(3) = idate - (idate/100)*100
+  adate(1) = idate0/10000
+  adate(2) = (idate0 - (idate0/10000)*10000)/100
+  adate(3) = idate0 - (idate0/100)*100
   adate(4:6) = 0  !OK for 'whole-day' runs               
   call ncheck(nf_redef(ncid))
   call ncheck(nf_def_var(ncid,trim(vname),nf_real, 1, timeDimId, varid))
