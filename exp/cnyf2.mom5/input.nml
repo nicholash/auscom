@@ -417,6 +417,7 @@
 /
 
  &ocean_solo_nml
+            years = 0
             months = 0
             days   = 10
             date_init = 0001,01,01,0,0,0
