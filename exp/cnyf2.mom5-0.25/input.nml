@@ -144,7 +144,7 @@
       debug_this_module=.false.
       freezing_temp_simple=.false.
       freezing_temp_preteos10=.true.
-      frazil_only_in_surface=.false.
+      frazil_only_in_surface=.true.
 /
 
  &ocean_grids_nml
@@ -356,11 +356,13 @@
 
  &ocean_shortwave_csiro_nml
       use_this_module=.false.
-      debug_this_module=.true.
+      read_depth=.true.
+      zmax_pen=7000 
+      debug_this_module=.false.
 /
 
  &ocean_shortwave_gfdl_nml
-      use_this_module=.true.
+      use_this_module=.false.
       debug_this_module=.true.
       optics_morel_antoine = .false.
       optics_manizza=.true.
@@ -375,8 +377,8 @@
 
  &ocean_shortwave_nml
       use_this_module=.true.
-      use_shortwave_gfdl=.true.
-      use_shortwave_csiro=.false.
+      use_shortwave_gfdl=.false.
+      use_shortwave_csiro=.true.
       use_shortwave_jerlov=.false.
 /
 
@@ -478,7 +480,7 @@
 
  &ocean_tracer_diag_nml
       tracer_conserve_days=30.0
-	  diag_step=4320
+	  diag_step=192
       do_bitwise_exact_sum=.false.
 /
 
