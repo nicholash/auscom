@@ -400,7 +400,7 @@ PROGRAM datm
 
   enddo        !icpl = 1, num_cpl
 
-  call coupler_termination
+  call coupler_termination()
 
   !--------------------------------------------------------------------------!
   

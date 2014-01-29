@@ -401,55 +401,44 @@ contains
   return
   end subroutine into_cpl
   
-  !=======================================================================
-  subroutine coupler_termination
 
-  !-----------------------------------------------------------------------
-  ! PSMILe termination.
-  !-----------------------------------------------------------------------
-  
-  deallocate(isst)
-!!!  deallocate(albvdr)
-!!!  deallocate(albidr)
-!!!  deallocate(albvdf)
-!!!  deallocate(albidf)
-  
-  deallocate(tair) 
-  deallocate(qair) 
-  deallocate(swfld)
-  deallocate(lwfld)
-  deallocate(uwnd) 
-  deallocate(vwnd) 
-  deallocate(rain) 
-  deallocate(press) 
-  deallocate(runof)
-  deallocate(snow)
-  
-  deallocate(vwork)
-  
-  ! Detach from MPI buffer
-  
-  call MPI_Buffer_Detach(rla_bufsend, il_bufsize, ierror)
-  write(il_out,*) 'il_bufsize =', il_bufsize
-  deallocate (rla_bufsend)
-  
-  call prism_terminate_proto (ierror)
-  if (ierror /= PRISM_Ok) then
-      write (il_out,*) 'An error occured in prism_terminate = ', ierror
-  else
-      write(il_out,*)
-      write(il_out,*) '(main) calling prism_terminate_proto done!'
-      write(il_out,*) '==================*** END ***================='
-  endif
-  
-  print *
-  print *, '********** End of MATM **********'
-  print *
+subroutine coupler_termination()
 
-  close(il_out)
-  call MPI_Finalize (ierror)
+    implicit none
 
-  end subroutine coupler_termination
+    ! Write out restart file.
+    call save_a2i_fields('INPUT/a2i.nc')
+
+    deallocate(isst)
+    deallocate(tair) 
+    deallocate(qair) 
+    deallocate(swfld)
+    deallocate(lwfld)
+    deallocate(uwnd) 
+    deallocate(vwnd) 
+    deallocate(rain) 
+    deallocate(press) 
+    deallocate(runof)
+    deallocate(snow)
+    deallocate(vwork)
+
+    ! Detach from MPI buffer, FIXME this may not be needed. 
+    call MPI_Buffer_Detach(rla_bufsend, il_bufsize, ierror)
+    deallocate (rla_bufsend)
+
+    call prism_terminate_proto(ierror)
+    if (ierror /= PRISM_Ok) then
+        write (il_out,*) 'An error occured in prism_terminate = ', ierror
+    endif
+
+    print *
+    print *, '********** End of MATM **********'
+    print *
+
+    close(il_out)
+    call MPI_Finalize (ierror)
+
+end subroutine coupler_termination
 
 !=======================================================================
 end module cpl_interfaces

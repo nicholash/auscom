@@ -155,4 +155,28 @@ end select
 return
 end subroutine write_nc2D
 
+! Write out a netcdf variable with no time dimentsion. FIXME: rename this
+! subroutine and the one above.
+subroutine write_nc2D_notime(ncid, var_name, var_data, nx, ny)
+
+    implicit none
+
+    integer(kind=int_kind), intent(in) :: ncid
+    character(len=*), intent(in) :: var_name
+    integer(kind=int_kind), intent(in) :: nx, ny
+    real(kind=dbl_kind), dimension(nx,ny), intent(in) :: var_data
+
+    integer(kind=int_kind) :: varid, ncstatus 
+
+    ncstatus = nf_inq_varid(ncid, var_name, varid)
+    if (ncstatus /= nf_noerr) then
+        call ncheck(nf_redef(ncid))
+        call ncheck(nf_def_var(ncid, trim(var_name), nf_double, 2, (/ pLonDimId, pLatDimId /), varid))
+        call ncheck(nf_enddef(ncid))
+    endif
+
+    call ncheck(nf_put_vara_double(ncid, varid, (/1,1/), (/nx,ny/), var_data))
+
+end subroutine write_nc2D_notime
+
 end module cpl_netcdf_setup

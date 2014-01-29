@@ -83,6 +83,34 @@ call ncheck(nf_close(ncid))
 return
 end subroutine check_a2i_fields
 
+! Save the atmosphere <-> coupling fields. This will then be used as a restart
+! for the ice model. FIXME: merge with above.
+subroutine save_a2i_fields(fname)
+
+    implicit none
+
+    character(len=*), intent(in) :: fname
+
+    integer(kind=int_kind) :: ncid
+    integer(kind=int_kind) :: jf, ll, ilout
+
+    call create_ncfile(fname, ncid, nx_global, ny_global, ilout=il_out)
+
+    call write_nc2D_notime(ncid, 'vwnd_ai', uwnd, nx_global, ny_global)
+    call write_nc2D_notime(ncid, 'uwnd_ai', vwnd, nx_global, ny_global)
+    call write_nc2D_notime(ncid, 'qair_ai', qair, nx_global, ny_global)
+    call write_nc2D_notime(ncid, 'tair_ai', tair, nx_global, ny_global)
+    call write_nc2D_notime(ncid, 'runof_ai', runof, nx_global, ny_global)
+    call write_nc2D_notime(ncid, 'press_ai', press, nx_global, ny_global)
+    call write_nc2D_notime(ncid, 'rain_ai', rain, nx_global, ny_global)
+    call write_nc2D_notime(ncid, 'snow_ai', snow, nx_global, ny_global)
+    call write_nc2D_notime(ncid, 'lwfld_ai', lwfld, nx_global, ny_global)
+    call write_nc2D_notime(ncid, 'swfld_ai', swfld, nx_global, ny_global)
+
+    call ncheck(nf_close(ncid))
+
+end subroutine save_a2i_fields
+
 !===========================================================================
 subroutine gather_global(vout, vin)
 !'empty', MPI-free "gathering" routine!
