@@ -16,6 +16,13 @@ def test_for_concave(grid):
     pass
 
 
+def test_physical(grid):
+    """
+    Test that grid is physically reasonable.
+    """
+    pass
+
+
 def test_same_area(src, dest):
     """
     Test that source and destination grids cover the same area. 
