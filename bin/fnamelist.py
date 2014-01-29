@@ -68,22 +68,19 @@ class FortranNamelist:
         with open(filename, 'r') as f:
             self.str = f.read()
 
-    def get_value(self, variable, record=None):
+    def get_value(self, record, variable):
         """
         Return the value, start index and end index.
         """
         regex = r"%s[ \t]*=[ \t]*(\S*),?[ \t]*$"
-        if record is None:
-            m = re.search(regex % (variable), self.str, re.MULTILINE | re.DOTALL)
-        else:
-            m = re.search((r"&%s.*?" + regex) % (record, variable), self.str, re.MULTILINE | re.DOTALL)
+        m = re.search((r"&%s.*?" + regex) % (record, variable), self.str, re.MULTILINE | re.DOTALL)
         assert(m is not None)
 
         return (m.group(1), m.start(1), m.end(1))
 
-    def set_value(self, variable, value, record=None):
+    def set_value(self, record, variable, value):
 
-        (_, start, end) = self.get_value(variable, record)
+        (_, start, end) = self.get_value(record, variable)
 
         self.str = self.str[:start] + str(value) + self.str[end:]
 

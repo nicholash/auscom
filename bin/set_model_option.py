@@ -28,23 +28,23 @@ def set_runtime(experiment, runtime):
         nc.write()
 
     nml = FortranNamelist(input_atm % (experiment))
-    nml.set_value('runtime', runtime)
+    nml.set_value('coupling', 'runtime', runtime)
     nml.write()
 
     nml = FortranNamelist(input_ice % (experiment))
-    nml.set_value('runtime', runtime)
+    nml.set_value('coupling_nml', 'runtime', runtime)
     nml.write()
 
     sec = timedelta(seconds=int(runtime))
     d = datetime(1, 1, 1) + sec
 
     nml = FortranNamelist(input_ocn % (experiment))
-    nml.set_value('years', d.year - 1, record='ocean_solo_nml')
-    nml.set_value('months', d.month - 1, record='ocean_solo_nml')
-    nml.set_value('days', d.day - 1, record='ocean_solo_nml')
-    nml.set_value('hours', d.hour, record='ocean_solo_nml')
-    nml.set_value('minutes', d.minute, record='ocean_solo_nml')
-    nml.set_value('seconds', d.second, record='ocean_solo_nml')
+    nml.set_value('ocean_solo_nml', 'years', d.year - 1)
+    nml.set_value('ocean_solo_nml', 'months', d.month - 1)
+    nml.set_value('ocean_solo_nml', 'days', d.day - 1)
+    nml.set_value('ocean_solo_nml', 'hours', d.hour)
+    nml.set_value('ocean_solo_nml', 'minutes', d.minute)
+    nml.set_value('ocean_solo_nml', 'seconds', d.second)
     nml.write()
 
 def set_ocean_timestep(experiment, timestep):
@@ -56,35 +56,35 @@ def set_ocean_timestep(experiment, timestep):
         nc.write()
 
     nml = FortranNamelist(input_atm % (experiment))
-    nml.set_value('dt_atm', timestep)
+    nml.set_value('coupling', 'dt_atm', timestep)
     nml.write()
 
     nml = FortranNamelist(input_ocn % (experiment))
-    nml.set_value('dt_ocean', timestep)
-    nml.set_value('dt_cpl', timestep)
-    nml.set_value('dt_cpld', timestep)
+    nml.set_value('ocean_model_nml', 'dt_ocean', timestep)
+    nml.set_value('auscom_ice_nml', 'dt_cpl', timestep)
+    nml.set_value('ocean_solo_nml', 'dt_cpld', timestep)
     nml.write()
 
     nml = FortranNamelist(input_ice % (experiment))
-    nml.set_value('dt_cpl_io', timestep)
+    nml.set_value('coupling_nml', 'dt_cpl_io', timestep)
     nml.write()
 
 def set_ice_timestep(experiment, timestep):
 
     nml = FortranNamelist(input_ice % (experiment))
-    nml.set_value('dt_cice', timestep)
+    nml.set_value('coupling_nml', 'dt_cice', timestep)
     nml.write()
 
     nml = FortranNamelist(cice_in % (experiment))
 
     # Read in the current timestep and runtime, needed to calculate new runtime (in units of timestep). 
-    (dt, _, _) = nml.get_value('dt')
-    (npt, _, _) =  nml.get_value('npt')
+    (dt, _, _) = nml.get_value('setup_nml', 'dt')
+    (npt, _, _) =  nml.get_value('setup_nml', 'npt')
     runtime = int(dt)*int(npt)
     new_npt = runtime // int(timestep)
 
-    nml.set_value('dt', timestep)
-    nml.set_value('npt', new_npt)
+    nml.set_value('setup_nml', 'dt', timestep)
+    nml.set_value('setup_nml', 'npt', new_npt)
     nml.write()
 
 def main():
