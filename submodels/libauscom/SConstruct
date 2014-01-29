@@ -1,0 +1,5 @@
+
+import os
+env = Environment(ENV={'PATH' : os.environ['PATH']}, F90='ifort', LINK='ifort', F90FLAGS='-i4 -r8 -I/apps/netcdf/4.2.1.1/include/Intel/', LIBS='netcdff')
+sources = ['debug_field_mod.F90', 'fpe_err_handler.F90']
+env.Library('libauscom', sources)
