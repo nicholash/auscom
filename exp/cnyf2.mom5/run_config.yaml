@@ -1,0 +1,13 @@
+
+project: v45
+queue: express
+walltime: 03:00:00
+ncpus: 128
+mem: 200Gb
+
+atm:
+    ncpus: 1
+ice:
+    ncpus: 6
+ocean: 
+    ncpus: 120
