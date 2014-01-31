@@ -1,5 +1,20 @@
 
 import os
-env = Environment(ENV={'PATH' : os.environ['PATH']}, F90='ifort', LINK='ifort', F90FLAGS='-i4 -r8 -I/apps/netcdf/4.2.1.1/include/Intel/', LIBS='netcdff')
-sources = ['debug_field_mod.F90', 'fpe_err_handler.F90']
-env.Library('libauscom', sources)
+import glob
+import socket
+
+if 'raijin' in socket.gethostname():
+    f90 = 'ifort'
+else:
+    f90 = 'gfortran'
+
+flags = ['-i4', '-r8']
+
+# Expects netcdf and mpi headers to be in the standard include path. 
+env = Environment(ENV=os.environ, F90=f90, LINK=f90, F90FLAGS=' '.join(flags), LINKFLAGS=' '.join(flags))
+
+sources = glob.glob('*.F90')
+# Filter out the .mod to build libraries.
+objs = [o for o in env.Object(sources) if o.get_suffix() == '.o']
+
+env.Library('libauscom', objs)

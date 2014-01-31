@@ -2,7 +2,7 @@
 module mpi_error_handler
 
     use ifcore
-    include "mpif.h"
+    use mpi
 
     private 
 
