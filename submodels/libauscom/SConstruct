@@ -5,15 +5,16 @@ import socket
 
 if 'raijin' in socket.gethostname():
     f90 = 'ifort'
+    flags = ['-i4', '-r8']
+    sources = ['debug_field_mod.F90', 'fpe_err_handler.F90', 'mpi_error_handler.F90']
 else:
     f90 = 'gfortran'
-
-flags = ['-i4', '-r8']
+    flags = ['-fdefault-real-8', '-I/usr/include', '-ffree-line-length-none']
+    sources = ['debug_field_mod.F90']
 
 # Expects netcdf and mpi headers to be in the standard include path. 
 env = Environment(ENV=os.environ, F90=f90, LINK=f90, F90FLAGS=' '.join(flags), LINKFLAGS=' '.join(flags))
 
-sources = glob.glob('*.F90')
 # Filter out the .mod to build libraries.
 objs = [o for o in env.Object(sources) if o.get_suffix() == '.o']
 

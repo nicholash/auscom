@@ -1,0 +1,7 @@
+
+atm:
+    ncpus: 1
+ice:
+    ncpus: 1
+ocean: 
+    ncpus: 4

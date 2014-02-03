@@ -643,7 +643,6 @@ end subroutine sat_vapor_pres_init
      ind = int(dtinv*(temp(i)-tmin+teps))
      if (ind < 0 .or. ind > nlim) nbad = nbad+1
      if (ind < 0 .or. ind > nlim ) then
-        !write(6,*)'CICE: xxx i, dtinv, temp, tmin, teps = ', i, dtinv, temp(i), tmin, teps
         print *, 'CICE: xxx i, dtinv, temp, tmin, teps = ', i, dtinv, temp(i), tmin, teps
      endif
    enddo
@@ -669,7 +668,6 @@ end subroutine sat_vapor_pres_init
  real   , intent(in) :: temp(:)
  integer :: i
 
-!!   write(stdout(),*) 'Bad temperatures (dimension 1): ', (check_1d(temp(i:i)),i=1,size(temp,1))
    write(6,*) 'ice: Bad temperatures (dimension 1): ', (check_1d(temp(i:i)),i=1,size(temp,1))
 
  end subroutine temp_check_1d
@@ -680,8 +678,6 @@ end subroutine sat_vapor_pres_init
  real   , intent(in) :: temp(:,:)
  integer :: i, j
 
-!!   write(stdout(),*) 'Bad temperatures (dimension 1): ', (check_1d(temp(i,:)),i=1,size(temp,1))
-!!   write(stdout(),*) 'Bad temperatures (dimension 2): ', (check_1d(temp(:,j)),j=1,size(temp,2))
    write(6,*) 'ice: Bad temperatures (dimension 1): ', (check_1d(temp(i,:)),i=1,size(temp,1))
    write(6,*) 'ice: Bad temperatures (dimension 2): ', (check_1d(temp(:,j)),j=1,size(temp,2))
 
@@ -692,10 +688,6 @@ end subroutine sat_vapor_pres_init
  subroutine temp_check_3d ( temp )
  real, intent(in)  :: temp(:,:,:)
  integer :: i, j, k
-
-!!   write(stdout(),*) 'Bad temperatures (dimension 1): ', (check_2d(temp(i,:,:)),i=1,size(temp,1))
-!!   write(stdout(),*) 'Bad temperatures (dimension 2): ', (check_2d(temp(:,j,:)),j=1,size(temp,2))
-!!   write(stdout(),*) 'Bad temperatures (dimension 3): ', (check_2d(temp(:,:,k)),k=1,size(temp,3))
 
    write(6,*) 'ice: Bad temperatures (dimension 1): ', (check_2d(temp(i,:,:)),i=1,size(temp,1))
    write(6,*) 'ice: Bad temperatures (dimension 2): ', (check_2d(temp(:,j,:)),j=1,size(temp,2))
@@ -711,8 +703,7 @@ subroutine show_all_bad_0d ( temp )
 
  ind = int(dtinv*(temp-tmin+teps))
  if (ind < 0 .or. ind > nlim) then
-!!   write(stdout(),'(a,e,a,i4)') 'Bad temperature=',temp,' pe=',mpp_pe()
-   write(6,'(a,e,a,i4)') 'ice: Bad temperature=',temp,' pe=',my_task
+   write(6,'(a,e12.5,a,i4)') 'ice: Bad temperature=',temp,' pe=',my_task
  endif
  
  end subroutine show_all_bad_0d
@@ -726,8 +717,7 @@ subroutine show_all_bad_0d ( temp )
  do i=1,size(temp)
    ind = int(dtinv*(temp(i)-tmin+teps))
    if (ind < 0 .or. ind > nlim) then
-!!     write(stdout(),'(a,e,a,i4,a,i4)') 'Bad temperature=',temp(i),'  at i=',i,' pe=',mpp_pe()
-     write(6,'(a,e,a,i4,a,i4)') 'ice: Bad temperature=',temp(i),'  at i=',i,' pe=',my_task
+     write(6,'(a,e12.5,a,i4,a,i4)') 'ice: Bad temperature=',temp(i),'  at i=',i,' pe=',my_task
    endif
  enddo
 
@@ -743,8 +733,7 @@ subroutine show_all_bad_0d ( temp )
  do i=1,size(temp,1)
    ind = int(dtinv*(temp(i,j)-tmin+teps))
    if (ind < 0 .or. ind > nlim) then
-!!     write(stdout(),'(a,e,a,i4,a,i4,a,i4)') 'Bad temperature=',temp(i,j),'  at i=',i,' j=',j,' pe=',mpp_pe()
-     write(6,'(a,e,a,i4,a,i4,a,i4)') 'ice: Bad temperature=',temp(i,j),'  at i=',i,' j=',j,' pe=',my_task
+     write(6,'(a,e12.5,a,i4,a,i4,a,i4)') 'ice: Bad temperature=',temp(i,j),'  at i=',i,' j=',j,' pe=',my_task
    endif
  enddo
  enddo
@@ -762,8 +751,7 @@ subroutine show_all_bad_0d ( temp )
  do i=1,size(temp,1)
    ind = int(dtinv*(temp(i,j,k)-tmin+teps))
    if (ind < 0 .or. ind > nlim) then
-!!     write(stdout(),'(a,e,a,i4,a,i4,a,i4,a,i4)') 'Bad temperature=',temp(i,j,k),'  at i=',i,' j=',j,' k=',k,' pe=',mpp_pe()
-     write(6,'(a,e,a,i4,a,i4,a,i4,a,i4)') 'ice: Bad temperature=',temp(i,j,k),'  at i=',i,' j=',j,' k=',k,' pe=',my_task
+     write(6,'(a,e12.5,a,i4,a,i4,a,i4,a,i4)') 'ice: Bad temperature=',temp(i,j,k),'  at i=',i,' j=',j,' k=',k,' pe=',my_task
    endif
  enddo
  enddo
