@@ -18,19 +18,19 @@ from operator import xor
 run_script = """
 #!/bin/csh -f
 
-#PBS -P %s
-#PBS -q %s
-#PBS -l walltime=%s
-#PBS -l ncpus=%s
-#PBS -l mem=%s
+#PBS -P <project>
+#PBS -q <queue>
+#PBS -l walltime=<walltime>
+#PBS -l ncpus=<ncpus>
+#PBS -l mem=<mem>
 #PBS -l wd
-#PBS -o %s/stdout.txt
-#PBS -e %s/stderr.txt
+#PBS -o OCN_RUNDIR/stdout.txt
+#PBS -e OCN_RUNDIR/stderr.txt
 
 module load openmpi/1.6.5-mlx
 module load ipm
 
-mpirun --mca orte_base_help_aggregate 0 -wdir %s -n %s %s/matmxx : -wdir %s -n %s %s/cicexx : -wdir %s -n %s %s/mom5xx
+mpirun --mca orte_base_help_aggregate 0 -wdir <atm_wdir> -n <atm_ncpus> <atm_exec_dir>/matmxx : -wdir <ice_wdir> -n <ice_ncpus> <ice_exec_dir>/cicexx : -wdir <ocn_wdir> -n <ocn_ncpus> <ocn_exec_dir>/mom5xx
 
 """
 
@@ -112,17 +112,29 @@ def ndays_between_dates(begin_date, end_date):
 
     assert(begin_date.day == 1 and end_date.day == 1)
 
+    def leap_days_between_dates(begin_date, end_date):
+        """
+        Return the number of leap days between two dates. 
+
+        The easiest way to do this is to just iterate over all days. 
+        """
+
+        leaps = 0
+        one_day = datetime.timedelta(1)
+
+        curr_date = begin_date
+        while curr_date != end_date:
+            if curr_date.month == 2 and curr_date.day == 29:
+                leaps += 1
+
+            curr_date += one_day
+            
+        return leaps
+
     # Do the calculation using timedelta and then subtract the leap days added.
     td = end_date - begin_date
-
-    leaps = 0
-    if calendar.isleap(end_date.year) and (end_date.month > 2):
-        leaps = 1
-
-    if begin_date.year != end_date.year:     
-        leaps += calendar.leapdays(begin_date.year, end_date.year)
         
-    return (td.days - leaps)
+    return (td.days - leap_days_between_dates(begin_date, end_date))
 
 
 def add_months_to_date(date, num_months):
@@ -224,7 +236,7 @@ def clean_up():
     pass
 
 
-def run(exp_dir, config):
+def run(exp_dir, config, rundirect):
     """
     Submit a job, wait for it to finish, check that it completed properly.
     """
@@ -251,16 +263,27 @@ def run(exp_dir, config):
         pass
 
     # Write script out as a file.
-    runscript = os.path.join(exp_dir, 'qsub_run.sh')
-    with open(runscript, 'w') as f:
-        f.write(run_script % (config['project'], config['queue'], config['walltime'], \
-                              config['ncpus'], config['mem'], atm_dir, atm_dir, \
-                              atm_dir, config['atm']['ncpus'], exp_dir, \
-                              ice_dir, config['ice']['ncpus'], exp_dir, \
-                              ocn_dir, config['ocean']['ncpus'], exp_dir))
+    script = run_script
+    for s in ['project', 'queue', 'walltime', 'ncpus', 'mem']:
+        if s in config:
+            script = run_script.replace('<' + s + '>', config[s])
+
+    script = script.replace('<atm_wdir>', atm_dir)
+    script = script.replace('<atm_ncpus>', str(config['atm']['ncpus']))
+    script = script.replace('<atm_exec_dir>' , exp_dir)
+    script = script.replace('<ice_wdir>', ice_dir) 
+    script = script.replace('<ice_ncpus>', str(config['ice']['ncpus']))
+    script = script.replace('<ice_exec_dir>', exp_dir) 
+    script = script.replace('<ocn_wdir>', ocn_dir)
+    script = script.replace('<ocn_ncpus>', str(config['ocean']['ncpus']))
+    script = script.replace('<ocn_exec_dir>', exp_dir) 
+
+    qsub_script =  os.path.join(exp_dir, 'qsub_run.sh')
+    with open(qsub_script, 'w') as f:
+        f.write(script)
 
     # Submit the experiment
-    run_id = subprocess.check_output(['qsub', runscript])
+    run_id = subprocess.check_output(['qsub', qsub_script])
     run_id = run_id.rstrip()
 
     print 'Job submitted, runid: %s' % run_id
@@ -295,13 +318,15 @@ def main():
     parser.add_argument("--submitruntime", dest="submitruntime", default=12, type=int, help="The length of each submit in months, defaults to 12.")
     parser.add_argument("--newrun", dest="newrun", action='store_true', default=False, help="Set this option to indicate a new run.")
     parser.add_argument("--initdate", dest="initdate", default='00010101', type=str, help="The initial date of the entire run, this is a string of form yyyymmdd.")
+    parser.add_argument("--inputdir", dest="inputdir", default='/short/v45/auscom', type=str, help="Where input data is kept for each experiment.")
+    parser.add_argument("--rundirect", dest="rundirect", action='store_true', default=False, help="Run the model directly, don't use qsub.")
 
     args = parser.parse_args()
 
     # Strange, datetime.date doesn't have strptime()
     init_date = datetime.date(int(args.initdate[0:4]), int(args.initdate[4:6]), int(args.initdate[6:8]))
     exp_dir = os.path.abspath(os.path.join('../exp/', args.experiment))
-    input_dir = os.path.abspath(os.path.join('/short/v45/auscom/', args.experiment))
+    input_dir = os.path.abspath(os.path.join(args.inputdir, args.experiment))
 
     # Read the config file. 
     config = None
@@ -320,7 +345,7 @@ def main():
         prev_start_date = set_next_startdate(exp_dir, init_date, prev_start_date, args.submitruntime, num_submits + 1, args.newrun)
         args.newrun = False
 
-        (ret, err, run_id) = run(exp_dir, config)
+        (ret, err, run_id) = run(exp_dir, config, args.rundirect)
         archive(exp_dir, run_id)
 
         if not ret:
