@@ -319,13 +319,24 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("experiment", help="The experiment to run.")
     parser.add_argument("--submits", dest="submits", default=1, type=int, help="The number of times to submit.")
-    parser.add_argument("--submitruntime", dest="submitruntime", default=12, type=int, help="The length of each submit in months, defaults to 12.")
-    parser.add_argument("--newrun", dest="newrun", action='store_true', default=False, help="Set this option to indicate a new run.")
-    parser.add_argument("--initdate", dest="initdate", default='00010101', type=str, help="The initial date of the entire run, this is a string of form yyyymmdd.")
-    parser.add_argument("--inputdir", dest="inputdir", default='/short/v45/auscom', type=str, help="Where input data is kept for each experiment.")
-    parser.add_argument("--rundirect", dest="rundirect", action='store_true', default=False, help="Run the model directly, don't use qsub.")
+    parser.add_argument("--submit_runtime_months", dest="submit_runtime_months", default=12, type=int, help="The length of each submit in months, defaults to 12.")
+    parser.add_argument("--submit_runtime_days", dest="submit_runtime_days", default=0, type=int, help="The length of each submit in days, defaults to 0.")
+    parser.add_argument("--new_run", dest="new_run", action='store_true', default=False, help="Set this option to indicate a new run.")
+    parser.add_argument("--init_date", dest="init_date", default='00010101', type=str, help="The initial date of the entire run, this is a string of form yyyymmdd.")
+    parser.add_argument("--input_dir", dest="input_dir", default='/short/v45/auscom', type=str, help="Where input data is kept for each experiment.")
+    parser.add_argument("--run_direct", dest="run_direct", action='store_true', default=False, help="Run the model directly, don't use qsub.")
 
     args = parser.parse_args()
+
+    if (args.submit_runtime_days != 0):
+        sys.stderr.write('Arg --submit_runtime_days not supported\n')
+        parser.print_help()
+        return 1
+
+    if (args.submit_runtime_months != 0) and (args.submit_runtime_days != 0):
+        sys.stderr.write('Args --submit_runtime_months and --submit_runtime_days cannot both be non-zero.\n')
+        parser.print_help()
+        return 1
 
     # Strange, datetime.date doesn't have strptime()
     init_date = datetime.date(int(args.initdate[0:4]), int(args.initdate[4:6]), int(args.initdate[6:8]))
@@ -338,7 +349,7 @@ def main():
     with open(os.path.join(exp_dir, 'run_config.yaml')) as f:
         config = yaml.safe_load(f)
 
-    if args.newrun:
+    if args.new_run:
         assert (os.path.exists(input_dir))
         prepare_newrun(exp_dir, input_dir)
     else:
@@ -347,10 +358,10 @@ def main():
     prev_start_date = None
     for num_submits in range(args.submits): 
 
-        prev_start_date = set_next_startdate(exp_dir, init_date, prev_start_date, args.submitruntime, num_submits + 1, args.newrun)
-        args.newrun = False
+        prev_start_date = set_next_startdate(exp_dir, init_date, prev_start_date, args.submit_runtime_months, num_submits + 1, args.new_run)
+        args.new_run = False
 
-        (ret, err, run_id) = run(exp_dir, config, args.rundirect)
+        (ret, err, run_id) = run(exp_dir, config, args.run_direct)
         archive(exp_dir, run_id)
 
         if not ret:
