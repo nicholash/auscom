@@ -24,13 +24,11 @@ run_script = """
 #PBS -l ncpus=<ncpus>
 #PBS -l mem=<mem>
 #PBS -l wd
-#PBS -o OCN_RUNDIR/stdout.txt
-#PBS -e OCN_RUNDIR/stderr.txt
 
 module load openmpi/1.6.5-mlx
 module load ipm
 
-mpirun --mca orte_base_help_aggregate 0 -wdir <atm_wdir> -n <atm_ncpus> <atm_exec_dir>/matmxx : -wdir <ice_wdir> -n <ice_ncpus> <ice_exec_dir>/cicexx : -wdir <ocn_wdir> -n <ocn_ncpus> <ocn_exec_dir>/mom5xx
+mpirun --mca mtl ^mxm --mca orte_base_help_aggregate 0 -wdir <atm_dir> -n <atm_ncpus> <exp_dir>/matmxx : -wdir <ice_dir> -n <ice_ncpus> <exp_dir>/cicexx : -wdir <ocn_dir> -n <ocn_ncpus> <exp_dir>/mom5xx 2> <ocn_dir>/stderr.txt 1> <ocn_dir>/stdout.txt
 
 """
 
@@ -178,14 +176,16 @@ def set_next_startdate(exp_dir, init_date, prev_start_date, runtime_per_submit, 
     days_since_start = ndays_between_dates(init_date, start_date)
     days_this_run = ndays_between_dates(start_date, end_date)
 
+    # init_date is the start date of the experiment. 
     init_str = str(init_date.year).zfill(4) + str(init_date.month).zfill(2) + str(init_date.day).zfill(2)
     run_str = str(start_date.year).zfill(4) + str(start_date.month).zfill(2) + str(start_date.day).zfill(2)
 
     # Atmos.
     atm_rundir = os.path.join(exp_dir, 'ATM_RUNDIR')
     nml = FortranNamelist(os.path.join(atm_rundir, 'input_atm.nml'))
-    # strftime() doesn't work for years < 1900
+    # The start of the experiment.
     nml.set_value('coupling', 'init_date', init_str)
+    # The start of the run.
     nml.set_value('coupling', 'inidate', run_str)
     nml.set_value('coupling', 'truntime0', days_since_start*86400)
     nml.set_value('coupling', 'runtime', days_this_run*86400)
@@ -194,7 +194,7 @@ def set_next_startdate(exp_dir, init_date, prev_start_date, runtime_per_submit, 
     # Ice
     ice_rundir = os.path.join(exp_dir, 'ICE_RUNDIR')
     nml = FortranNamelist(os.path.join(ice_rundir, 'cice_in.nml'))
-    nml.set_value('setup_nml', 'year_init', init_date.year)
+    nml.set_value('setup_nml', 'year_init', start_date.year)
     nml.set_value('setup_nml', 'runtype', '\'initial\'') if newrun else nml.set_value('setup_nml', 'runtype', '\'continue\'')
     nml.set_value('setup_nml', 'restart', '.false.') if newrun else nml.set_value('setup_nml', 'restart', '.true.')
     (dt, _, _) = nml.get_value('setup_nml', 'dt')
@@ -218,7 +218,8 @@ def set_next_startdate(exp_dir, init_date, prev_start_date, runtime_per_submit, 
     nml.set_value('ocean_solo_nml', 'hours', 0)
     nml.set_value('ocean_solo_nml', 'minutes', 0)
     nml.set_value('ocean_solo_nml', 'seconds', 0)
-    nml.set_value('ocean_solo_nml', 'date_init', str(init_date.year).zfill(4) + ',' + str(init_date.month).zfill(2) + ',01,0,0,0')
+    # This date_init value is read from RESTART/ocean_solo.res if it exists. 
+    nml.set_value('ocean_solo_nml', 'date_init', str(start_date.year).zfill(4) + ',' + str(start_date.month).zfill(2) + ',01,0,0,0')
     nml.write()
 
     # Oasis namcouple
@@ -236,7 +237,7 @@ def clean_up():
     pass
 
 
-def run(exp_dir, config, rundirect):
+def run(exp_dir, config, run_direct):
     """
     Submit a job, wait for it to finish, check that it completed properly.
     """
@@ -266,33 +267,36 @@ def run(exp_dir, config, rundirect):
     script = run_script
     for s in ['project', 'queue', 'walltime', 'ncpus', 'mem']:
         if s in config:
-            script = run_script.replace('<' + s + '>', config[s])
+            script = script.replace('<' + s + '>', str(config[s]))
 
-    script = script.replace('<atm_wdir>', atm_dir)
+    script = script.replace('<atm_dir>', atm_dir)
     script = script.replace('<atm_ncpus>', str(config['atm']['ncpus']))
-    script = script.replace('<atm_exec_dir>' , exp_dir)
-    script = script.replace('<ice_wdir>', ice_dir) 
+    script = script.replace('<ice_dir>', ice_dir) 
     script = script.replace('<ice_ncpus>', str(config['ice']['ncpus']))
-    script = script.replace('<ice_exec_dir>', exp_dir) 
-    script = script.replace('<ocn_wdir>', ocn_dir)
+    script = script.replace('<ocn_dir>', ocn_dir)
     script = script.replace('<ocn_ncpus>', str(config['ocean']['ncpus']))
-    script = script.replace('<ocn_exec_dir>', exp_dir) 
+
+    script = script.replace('<exp_dir>' , exp_dir)
 
     qsub_script =  os.path.join(exp_dir, 'qsub_run.sh')
     with open(qsub_script, 'w') as f:
         f.write(script)
 
     # Submit the experiment
-    run_id = subprocess.check_output(['qsub', qsub_script])
-    run_id = run_id.rstrip()
+    if run_direct:
+        subprocess.call([qsub_script], shell=True)
+        run_id = str(time.time())
+    else:
+        run_id = subprocess.check_output(['qsub', qsub_script])
+        run_id = run_id.rstrip()
 
-    print 'Job submitted, runid: %s' % run_id
+        print 'Job submitted, runid: %s' % run_id
 
-    # Wait for termination.
-    wait(run_id)
+        # Wait for termination.
+        wait(run_id)
 
     # Read the output file and check that run suceeded.
-    output = os.path.join(atm_dir, 'stdout.txt')
+    output = os.path.join(ocn_dir, 'stdout.txt')
     s = ''
     with open(output, 'r') as f:
         s = f.read()
@@ -325,7 +329,8 @@ def main():
 
     # Strange, datetime.date doesn't have strptime()
     init_date = datetime.date(int(args.initdate[0:4]), int(args.initdate[4:6]), int(args.initdate[6:8]))
-    exp_dir = os.path.abspath(os.path.join('../exp/', args.experiment))
+    script_path = os.path.dirname(os.path.realpath(__file__))
+    exp_dir = os.path.abspath(os.path.join(script_path, '../exp/', args.experiment))
     input_dir = os.path.abspath(os.path.join(args.inputdir, args.experiment))
 
     # Read the config file. 
