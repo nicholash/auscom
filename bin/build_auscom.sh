@@ -13,25 +13,25 @@ function check {
 #export DEBUG=yes
 
 BASEDIR=$(pwd)
-#cd submodels/oasis3-mct/util/make_dir
-#module purge
-#module load intel-fc
-#module load intel-cc
-#module load netcdf
-#module load openmpi/1.6.5-mlx
-#check make -j 4 -f TopMakefileOasis3
-#cd ${BASEDIR}
+cd ../submodels/oasis3-mct/util/make_dir
+module purge
+module load intel-fc
+module load intel-cc
+module load netcdf
+module load openmpi/1.6.5-mlx
+check make -j 4 -f TopMakefileOasis3
+cd ${BASEDIR}
 
-#cd submodels/cice4.1/compile
-#check ./comp_auscom_cice.sh 192
-#check ./comp_auscom_cice_np6.sh 6
-#cd ${BASEDIR}
+cd ../submodels/cice4.1/compile
+check ./comp_auscom_cice.sh 192
+check ./comp_auscom_cice_np6.sh 6
+cd ${BASEDIR}
 
-#cd submodels/matm/compile
-#check ./comp_auscom_matm.sh
-#cd ${BASEDIR}
+cd ../submodels/matm/compile
+check ./comp_auscom_matm.sh
+cd ${BASEDIR}
 
-cd submodels/mom5/exp
+cd ../submodels/mom5/exp
 check ./MOM_compile.csh --platform nci --type MOM_ACCESS
 cd ${BASEDIR}
-cp ./submodels/mom5/exec/nci/MOM_ACCESS/fms_MOM_ACCESS.x bin/
+cp ./submodels/mom5/exec/nci/MOM_ACCESS/fms_MOM_ACCESS.x ./
