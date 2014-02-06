@@ -44,7 +44,8 @@ class Namcouple:
                 if none_updated:
                     break
 
-            sys.stderr.write('WARNING: no timstep values were updated.\n')
+            if none_updated:
+                sys.stderr.write('WARNING: no timstep values were updated.\n')
 
         substitute_timestep(r"nt62 cice LAG=\+(\d+) ")
         substitute_timestep(r"cice nt62 LAG=\+(\d+) ")

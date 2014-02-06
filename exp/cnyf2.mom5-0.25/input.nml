@@ -480,7 +480,7 @@
 
  &ocean_tracer_diag_nml
       tracer_conserve_days=30.0
-	  diag_step=192
+      diag_step=48
       do_bitwise_exact_sum=.false.
 /
 
