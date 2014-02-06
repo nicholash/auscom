@@ -1,0 +1,26 @@
+
+import os
+import sys
+import yaml
+import subprocess
+
+sources = ['atm.F90', 'couple.F90', 'error_handling.F90']
+
+try:
+    compiler = subprocess.check_output(['mpif90', '-showme']).split(' ')[0]
+except OSError:
+    sys.exit("Error: mpif90 not found.")
+
+with open('build.yaml') as f:
+    config = yaml.safe_load(f)
+
+env = Environment(ENV=os.environ, F90='mpif90', LINK='mpif90', \
+                  F90FLAGS=config[compiler]['f90flags'], \
+                  F90PATH=config['modpath'], \
+                  LIBPATH=config['libpath'], \
+                  LIBS=config['libs'])
+
+objs = [o for o in env.Object(sources) if o.get_suffix() != '.mod']
+    
+env.Program('atm.exe', objs)
+
