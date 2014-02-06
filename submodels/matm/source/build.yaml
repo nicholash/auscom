@@ -1,0 +1,18 @@
+
+modpath: 
+    - '../../oasis3-mct/Linux/build/lib/psmile.MPI1'
+libpath:
+     - '../../oasis3-mct/Linux/lib'
+libs:
+    - psmile.MPI1
+    - mct
+    - mpeu
+    - scrip
+    - netcdf
+    - netcdff
+
+ifort:
+    f90flags: '-i4 -r8 -nofixed -fpp -warn all -warn errors'
+
+gfortran:
+    f90flags: '-fdefault-real-8 -ffree-form -cpp -Wall -fimplicit-none'
