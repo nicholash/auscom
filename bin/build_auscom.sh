@@ -1,5 +1,12 @@
 #!/bin/bash
 
+if [ $# != 1 ]; then 
+    echo "Usage: build_auscom.sh <platform>"
+    exit 1
+fi
+
+platform=$1
+
 function check {
     "$@"
     status=$?
@@ -14,24 +21,20 @@ function check {
 
 BASEDIR=$(pwd)
 cd ../submodels/oasis3-mct/util/make_dir
-module purge
-module load intel-fc
-module load intel-cc
-module load netcdf
-module load openmpi/1.6.5-mlx
+echo "include $HOME/auscom/submodels/oasis3-mct/util/make_dir/make.$platform" > make.inc
+source config.$platform
 check make -j 4 -f TopMakefileOasis3
 cd ${BASEDIR}
 
 cd ../submodels/cice4.1/compile
-check ./comp_auscom_cice.sh 192
-check ./comp_auscom_cice_np6.sh 6
+check ./comp_auscom_cice.sh $platform
 cd ${BASEDIR}
 
 cd ../submodels/matm/compile
-check ./comp_auscom_matm.sh
+check ./comp_auscom_matm.sh $platform
 cd ${BASEDIR}
 
-cd ../submodels/mom5/exp
-check ./MOM_compile.csh --platform nci --type MOM_ACCESS
+cd ../submodels/mom/exp
+check ./MOM_compile.csh --platform $platform --type MOM_ACCESS
 cd ${BASEDIR}
-cp ./submodels/mom5/exec/nci/MOM_ACCESS/fms_MOM_ACCESS.x ./
+cp ../submodels/mom/exec/$platform/MOM_ACCESS/fms_MOM_ACCESS.x ./
