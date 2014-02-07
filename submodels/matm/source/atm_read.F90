@@ -80,9 +80,9 @@ contains
   missing_value = 999999.; FillValue = 999999.
   actual_range = (/-1.e33, 1.e33/)
 
-  print *
-  print *, 'MATM: (read_core) reading data: ',varname
-  print *, 'MATM: (read_core)    from file: ',filename
+  !print *
+  !print *, 'MATM: (read_core) reading data: ',varname
+  !print *, 'MATM: (read_core)    from file: ',filename
 
   ! Open file for read access
   call ncheck( nf_open(filename, nf_nowrite, ncid) )

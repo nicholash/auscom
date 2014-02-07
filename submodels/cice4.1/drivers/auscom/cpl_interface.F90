@@ -499,9 +499,9 @@
  
   integer(kind=int_kind) :: jf, field_type
   
-  if (my_task==0 .or. ll_comparal) then
-    write(il_out,*) '(from_ocn) receiving coupling fields at rtime: ', isteps
-  endif
+  !if (my_task==0 .or. ll_comparal) then
+  !  write(il_out,*) '(from_ocn) receiving coupling fields at rtime: ', isteps
+  !endif
 
   do jf = n_a2i+1, jpfldin          !no 11-17 from ocn
   

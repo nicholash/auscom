@@ -202,10 +202,10 @@
         call ice_timer_start(timer_into_ocn)  ! atm/ocn coupling
         call into_ocn(stimestamp_io, 1.0)
         call ice_timer_stop(timer_into_ocn)  ! atm/ocn coupling
-        if (my_task == 0) then
-           write(il_out,*) ' called into_ocn at icpl_ai, icpl_io = ', icpl_ai,icpl_io
-           write(il_out,*) '                       stimestamp_io = ', stimestamp_io
-        endif
+        !if (my_task == 0) then
+        !   write(il_out,*) ' called into_ocn at icpl_ai, icpl_io = ', icpl_ai,icpl_io
+        !   write(il_out,*) '                       stimestamp_io = ', stimestamp_io
+        !endif
         !set i2o fields back to 0 for next i2o coupling period 'sum-up'
         call nullify_i2o_fluxes(first_step) 
 
@@ -254,10 +254,10 @@
           call ice_timer_start(timer_from_ocn)  ! atm/ocn coupling
           call from_ocn(rtimestamp_io)
           call ice_timer_stop(timer_from_ocn)  ! atm/ocn coupling
-          if (my_task == 0) then
-             write(il_out,*) ' called from_ocn at icpl_ai, icpl_io = ', icpl_ai,icpl_io
-             write(il_out,*) '                       rtimestamp_io = ', rtimestamp_io
-          endif
+          !if (my_task == 0) then
+          !   write(il_out,*) ' called from_ocn at icpl_ai, icpl_io = ', icpl_ai,icpl_io
+          !   write(il_out,*) '                       rtimestamp_io = ', rtimestamp_io
+          !endif
 #ifdef OASIS3_MCT
         endif
 
@@ -271,9 +271,9 @@
       stimestamp_ai = time_sec !- dt
       call into_atm(stimestamp_ai)
       call ice_timer_stop(timer_into_atm)  ! atm/ocn coupling
-      if (my_task == 0) then
-         write(il_out,*) ' called into_atm at icpl_ai, time_sec = ', icpl_ai,time_sec
-      endif
+      !if (my_task == 0) then
+      !   write(il_out,*) ' called into_atm at icpl_ai, time_sec = ', icpl_ai,time_sec
+      !endif
       end if
 #endif
 
@@ -287,9 +287,9 @@
       stimestamp_ai = time_sec - dt
       call into_atm(stimestamp_ai)
       call ice_timer_stop(timer_into_atm)  ! atm/ocn coupling
-      if (my_task == 0) then
-         write(il_out,*) ' called into_atm at icpl_ai, time_sec = ', icpl_ai,time_sec
-      endif
+      !if (my_task == 0) then
+      !   write(il_out,*) ' called into_atm at icpl_ai, time_sec = ', icpl_ai,time_sec
+      !endif
 
 #endif
       END DO        !icpl_ia
@@ -299,9 +299,9 @@
 
       call save_time0_i2o_fields('INPUT/i2o.nc', stimestamp_io) 
 
-      call save_u_star('u_star.nc',stimestamp_io)    
+      call save_u_star('RESTART/u_star.nc',stimestamp_io)    
 
-      call save_sicemass('sicemass.nc',stimestamp_io)    
+      call save_sicemass('RESTART/sicemass.nc',stimestamp_io)    
 
 #else
 
