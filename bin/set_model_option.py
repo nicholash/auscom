@@ -49,24 +49,8 @@ def set_runtime(experiment, runtime):
 
 def set_ocean_timestep(experiment, timestep):
 
-    # Change runtime in the namcouple files.
-    for n in namcouple:
-        nc = Namcouple(n % (experiment))
-        nc.set_ocean_timestep(timestep)
-        nc.write()
-
-    nml = FortranNamelist(input_atm % (experiment))
-    nml.set_value('coupling', 'dt_atm', timestep)
-    nml.write()
-
     nml = FortranNamelist(input_ocn % (experiment))
     nml.set_value('ocean_model_nml', 'dt_ocean', timestep)
-    nml.set_value('auscom_ice_nml', 'dt_cpl', timestep)
-    nml.set_value('ocean_solo_nml', 'dt_cpld', timestep)
-    nml.write()
-
-    nml = FortranNamelist(input_ice % (experiment))
-    nml.set_value('coupling_nml', 'dt_cpl_io', timestep)
     nml.write()
 
 def set_ice_timestep(experiment, timestep):
@@ -87,13 +71,35 @@ def set_ice_timestep(experiment, timestep):
     nml.set_value('setup_nml', 'npt', new_npt)
     nml.write()
 
+def set_coupling_timestep(experiment, timestep):
+
+    # Change timestep in the namcouple files.
+    for n in namcouple:
+        nc = Namcouple(n % (experiment))
+        nc.set_ocean_timestep(timestep)
+        nc.write()
+
+    nml = FortranNamelist(input_atm % (experiment))
+    nml.set_value('coupling', 'dt_atm', timestep)
+    nml.write()
+
+    nml = FortranNamelist(input_ocn % (experiment))
+    nml.set_value('auscom_ice_nml', 'dt_cpl', timestep)
+    nml.set_value('ocean_solo_nml', 'dt_cpld', timestep)
+    nml.write()
+
+    nml = FortranNamelist(input_ice % (experiment))
+    nml.set_value('coupling_nml', 'dt_cpl_io', timestep)
+    nml.write()
+
 def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("experiment", help="The experiment on which to change the runtime.")
-    parser.add_argument("--runtime", dest="runtime", help="The runtime in seconds.")
-    parser.add_argument("--ocean_timestep", dest="ocean_timestep", help="The ocean timestep in seconds.")
-    parser.add_argument("--ice_timestep", dest="ice_timestep", help="The ice timestep in seconds.")
+    parser.add_argument("--runtime", dest="runtime", help="The runtime (in seconds).")
+    parser.add_argument("--ocean_timestep", dest="ocean_timestep", help="The ocean timestep (in seconds).")
+    parser.add_argument("--ice_timestep", dest="ice_timestep", help="The ice timestep (in seconds).")
+    parser.add_argument("--coupling_timestep", dest="coupling_timestep", help="The coupling timestep between ice and ocean (in seconds).")
 
     args = parser.parse_args()
 
@@ -103,6 +109,8 @@ def main():
         set_ocean_timestep(args.experiment, args.ocean_timestep)
     if args.ice_timestep:
         set_ice_timestep(args.experiment, args.ice_timestep)
+    if args.coupling_timestep:
+        set_coupling_timestep(args.experiment, args.coupling_timestep)
 
 if __name__ == "__main__":
     sys.exit(main())
