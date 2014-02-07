@@ -75,8 +75,8 @@ def prepare_contrun(exp_dir, init_date=None):
     atm_input = os.path.join(exp_dir, 'ATM_RUNDIR', 'INPUT')
 
     # Copy over some CICE files. 
-    shutil.copy(os.path.join(exp_dir, 'ICE_RUNDIR', 'u_star.nc'), ice_input)
-    shutil.copy(os.path.join(exp_dir, 'ICE_RUNDIR', 'sicemass.nc'), ice_input)
+    shutil.copy(os.path.join(ice_restart, 'u_star.nc'), ice_input)
+    shutil.copy(os.path.join(ice_restart, 'sicemass.nc'), ice_input)
 
     # Setup the CICE restart. 
     # Check that restart file for this start date exists. 
@@ -101,16 +101,16 @@ def prepare_contrun(exp_dir, init_date=None):
         for f in configs:
             shutil.copy(os.path.join(exp_dir, f), os.path.join(exp_dir, d))
 
-def ndays_between_dates(begin_date, end_date):
+def ndays_between_dates(start_date, end_date):
     """
     Calculate the number of days between two dates according to a 365 calendar with no leap years.
 
     The dates should always have day 01.
     """
 
-    assert(begin_date.day == 1 and end_date.day == 1)
+    assert(start_date.day == 1 and end_date.day == 1)
 
-    def leap_days_between_dates(begin_date, end_date):
+    def leap_days_between_dates(start_date, end_date):
         """
         Return the number of leap days between two dates. 
 
@@ -120,7 +120,7 @@ def ndays_between_dates(begin_date, end_date):
         leaps = 0
         one_day = datetime.timedelta(1)
 
-        curr_date = begin_date
+        curr_date = start_date
         while curr_date != end_date:
             if curr_date.month == 2 and curr_date.day == 29:
                 leaps += 1
@@ -130,9 +130,9 @@ def ndays_between_dates(begin_date, end_date):
         return leaps
 
     # Do the calculation using timedelta and then subtract the leap days added.
-    td = end_date - begin_date
+    td = end_date - start_date
         
-    return (td.days - leap_days_between_dates(begin_date, end_date))
+    return (td.days - leap_days_between_dates(start_date, end_date))
 
 
 def add_months_to_date(date, num_months):
@@ -231,7 +231,7 @@ def set_next_startdate(exp_dir, init_date, prev_start_date, runtime_per_submit, 
         nc.set_runtime((days_this_run + 1)*86400)
         nc.write()
 
-    return start_date
+    return (start_date, end_date)
 
 def clean_up():
     pass
@@ -303,16 +303,23 @@ def run(exp_dir, config, run_direct):
 
     return (('End of MATM' in s) and ('End of CICE' in s) and ('MOM4: --- completed ---' in s), output, run_id)
 
-def archive(exp_dir, runid):
+def archive(exp_dir, run_name):
     """
-    Copy all data associated with the run to an archive directory.
+    Do some data processing.
+
+    This is a hack, need to move to payu tool.
     """
 
-    archive_dir = os.path.join(exp_dir, 'archive', runid)
+    archive_dir = os.path.join(exp_dir, 'archive', run_name)
     os.makedirs(archive_dir)
 
-    for rundir in ['ATM_RUNDIR', 'ICE_RUNDIR', 'OCN_RUNDIR']:
-        shutil.copytree(os.path.join(exp_dir, rundir), os.path.join(archive_dir, rundir))
+    # Move model dirs into archive, remake new ones, copy INPUT and RESTART back. 
+    for model_name in ['ATM_RUNDIR', 'ICE_RUNDIR', 'OCN_RUNDIR']:
+        model_dir = os.path.join(exp_dir, model_name)
+        shutil.move(model_dir, os.path.join(archive_dir, model_name))
+        os.makedirs(model_dir)
+        shutil.copytree(os.path.join(archive_dir, model_name, 'INPUT'), os.path.join(model_dir, 'INPUT'))
+        shutil.copytree(os.path.join(archive_dir, model_name, 'RESTART'), os.path.join(model_dir, 'RESTART'))
 
 def main():
 
@@ -339,10 +346,10 @@ def main():
         return 1
 
     # Strange, datetime.date doesn't have strptime()
-    init_date = datetime.date(int(args.initdate[0:4]), int(args.initdate[4:6]), int(args.initdate[6:8]))
+    init_date = datetime.date(int(args.init_date[0:4]), int(args.init_date[4:6]), int(args.init_date[6:8]))
     script_path = os.path.dirname(os.path.realpath(__file__))
     exp_dir = os.path.abspath(os.path.join(script_path, '../exp/', args.experiment))
-    input_dir = os.path.abspath(os.path.join(args.inputdir, args.experiment))
+    input_dir = os.path.abspath(os.path.join(args.input_dir, args.experiment))
 
     # Read the config file. 
     config = None
@@ -353,21 +360,21 @@ def main():
         assert (os.path.exists(input_dir))
         prepare_newrun(exp_dir, input_dir)
     else:
-        prepare_contrun(exp_dir, args.initdate)
+        prepare_contrun(exp_dir, args.init_date)
 
-    prev_start_date = None
+    start_date = None
+    end_date = None
     for num_submits in range(args.submits): 
 
-        prev_start_date = set_next_startdate(exp_dir, init_date, prev_start_date, args.submit_runtime_months, num_submits + 1, args.new_run)
+        start_date, end_date = set_next_startdate(exp_dir, init_date, start_date, args.submit_runtime_months, num_submits + 1, args.new_run)
         args.new_run = False
 
         (ret, err, run_id) = run(exp_dir, config, args.run_direct)
-        archive(exp_dir, run_id)
-
         if not ret:
             print 'Run failed, see %s' % err
             return 1
             
+        archive(exp_dir, '%s_to_%s' % (start_date, end_date))
         prepare_contrun(exp_dir)
 
     clean_up()
