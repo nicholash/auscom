@@ -17,9 +17,9 @@ FIXEDFLAGS := -132
 FREEFLAGS  := 
 
 ifeq ($(DEBUG), yes)
-    FFLAGS     := -O0 -fdefault-real-8 -traceback -g -debug all -no-vec -w -no-vec -mcmodel=medium
+    FFLAGS     := -O0 -fdefault-real-8 -traceback -g -debug all -no-vec -w -no-vec
 else
-    FFLAGS     := -O3 -fdefault-real-8 -g -w -mcmodel=medium
+    FFLAGS     := -O3 -fdefault-real-8 -g -w
 endif
 
 MOD_SUFFIX := mod
