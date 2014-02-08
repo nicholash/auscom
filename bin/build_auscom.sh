@@ -20,6 +20,11 @@ function check {
 #export DEBUG=yes
 
 BASEDIR=$(pwd)
+
+cd ../submodels/libauscom
+scons
+cd ${BASEDIR}
+
 cd ../submodels/oasis3-mct/util/make_dir
 echo "include $HOME/auscom/submodels/oasis3-mct/util/make_dir/make.$platform" > make.inc
 source config.$platform
