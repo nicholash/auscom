@@ -19,7 +19,8 @@ type couple_field_type
     character(len=256) :: file_var_name
     integer :: dims
     integer :: direction
-    integer, dimension(4) :: shape 
+    integer :: xglob
+    integer :: yglob
     real, dimension(:,:), allocatable :: field
 end type
 
@@ -70,10 +71,8 @@ subroutine coupler_setup_fields(fields, xglob, yglob)
     do i=1, num_put
         coupling_fields(i)%name = put_fields(i)
         coupling_fields(i)%dims = 2
-        coupling_fields(i)%shape(1) = 1
-        coupling_fields(i)%shape(2) = xglob
-        coupling_fields(i)%shape(3) = 1
-        coupling_fields(i)%shape(4) = yglob
+        coupling_fields(i)%xglob = xglob
+        coupling_fields(i)%yglob = yglob
         coupling_fields(i)%direction = OASIS_OUT
         allocate(coupling_fields(i)%field(xglob, yglob))
     enddo
@@ -81,10 +80,8 @@ subroutine coupler_setup_fields(fields, xglob, yglob)
     do i=i, num_get
         coupling_fields(i)%name = get_fields(i)
         coupling_fields(i)%dims = 2
-        coupling_fields(i)%shape(1) = 1
-        coupling_fields(i)%shape(2) = xglob
-        coupling_fields(i)%shape(3) = 1
-        coupling_fields(i)%shape(4) = yglob
+        coupling_fields(i)%xglob = xglob
+        coupling_fields(i)%yglob = yglob
         coupling_fields(i)%direction = OASIS_IN
         allocate(coupling_fields(i)%field(xglob, yglob))
     enddo
