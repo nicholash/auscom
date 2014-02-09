@@ -1,0 +1,15 @@
+
+&atm_config
+    ! Format is <years>, <months>, <days>
+    exp_start_date = 1, 1, 1
+    run_start_date = 1, 1, 1
+    run_end_date = 2, 1, 1
+
+    dt=21600
+    resolution = 192,94
+
+&coupling_setup
+    put_fields = 'tair', 'qair', 'swfld', 'lwfld', 'uwnd', 'vwnd', 'rain', 'snow', 'press', 'runof'
+    get_fields = 'isst'
+
+&end

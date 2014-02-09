@@ -1,4 +1,4 @@
-module error_handling
+module error_handler
 
 use, intrinsic :: iso_fortran_env, only : error_unit
 
@@ -15,7 +15,8 @@ subroutine assert(res, error_msg)
     character(len=*), intent(in) :: error_msg
 
     if (.not. res) then
-        write(error_unit, error_msg)
+        print *, 'Error: '//error_msg
+        !write(error_unit, error_msg)
         call exit(1)
     endif
 

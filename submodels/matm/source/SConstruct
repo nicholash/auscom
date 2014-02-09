@@ -4,7 +4,7 @@ import sys
 import yaml
 import subprocess
 
-sources = ['atm.F90', 'couple.F90', 'error_handling.F90']
+sources = ['atm.F90', 'coupler.F90', 'core2_data_loader.F90', 'calendar.F90', 'error_handler.F90', 'test.F90']
 
 try:
     compiler = subprocess.check_output(['mpif90', '-showme']).split(' ')[0]
