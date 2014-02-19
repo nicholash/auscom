@@ -29,26 +29,19 @@ namelist /atm_config/ exp_start_date, run_start_date, run_end_date, dt, resoluti
     xloc = xglob
     yloc = yglob
     
-    start_date%year = run_start_date(1)
-    start_date%month = run_start_date(2)
-    start_date%day = run_start_date(3)
-
-    end_date%year = run_end_date(1)
-    end_date%month = run_end_date(2)
-    end_date%day = run_end_date(3)
-
-    ! Set up coupling variables. 
-    ! FIXME: why not call this from coupler_init()?
-    call coupler_setup_fields(coupling_fields, xglob, yglob)
+    ! Create date types.
+    call calendar_make_date(run_start_date, start_date)
+    call calendar_make_date(run_end_date, end_date)
 
     ! Initialise the coupler. 
     call coupler_init('atmxxx', xglob, yglob, xloc, yloc, coupling_fields)
 
-    ! Once the coupler is initialised, init the data loader. 
+    ! Init the data loader. Depending on the data source, this associates 
+    ! a coupling field with a model or data field.
     loader_init(coupling_fields)
 
-    ! Figure out the runtime and start coupling loop. 
-    call get_runtime(start_date, end_date, runtime)
+    ! Calculate time difference in seconds between start and end dates.
+    call calendar_timediff(start_date, end_date, runtime)
 
     nsteps = runtime / dt
     curr_time = 0

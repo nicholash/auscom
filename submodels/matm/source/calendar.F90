@@ -6,7 +6,7 @@ use error_handler, only : assert
 implicit none
 
 private
-public get_runtime, date
+public calendar_timediff, calendar_make_date
 
 type date
     integer :: year, month, day
@@ -40,7 +40,7 @@ subroutine add_day_to_date(start_date, new_date)
 end subroutine
 
 ! Calculate the runtime in seconds based on a start and end date. 
-subroutine get_runtime(start_date, end_date, runtime)
+subroutine calendar_timediff(start_date, end_date, runtime)
 
     ! Index 1 = year, 2 = month, 3 = day.
     type(date), intent(in) :: start_date, end_date
@@ -74,6 +74,17 @@ subroutine get_runtime(start_date, end_date, runtime)
 
         tmp_date = new_date
     enddo
+
+end subroutine
+
+subroutine calendar_make_date(date_array, date)
+
+    integer, intent(in), dimension(3) :: date_array
+    type(date), intent(out) :: date
+
+    date%year = date_array(1)
+    date%month = date_array(2)
+    date%day = date_array(3)
 
 end subroutine
 

@@ -10,7 +10,7 @@ use mpi, only : mpi_init, mpi_comm_size, mpi_comm_rank, MPI_SUCCESS
 implicit none
 
 private
-public coupler_init, coupler_setup_fields, coupler_put, coupler_get, couple_field_type
+public coupler_init, coupler_put, coupler_get, couple_field_type
 
 type couple_field_type
     integer :: id
@@ -33,9 +33,9 @@ namelist /coupling_setup/ put_fields, get_fields
 
 contains 
 
-subroutine coupler_setup_fields(fields, xglob, yglob)
+subroutine setup_fields(xres, yres, fields)
 
-    integer, intent(in) :: xglob, yglob ! Global resolution
+    integer, intent(in) :: xres, yres ! field resolution
     type(couple_field_type), dimension(:), pointer, intent(out) :: fields
 
     integer :: num_put, num_get, i
@@ -70,19 +70,19 @@ subroutine coupler_setup_fields(fields, xglob, yglob)
     do i=1, num_put
         coupling_fields(i)%name = put_fields(i)
         coupling_fields(i)%dims = 2
-        coupling_fields(i)%xglob = xglob
-        coupling_fields(i)%yglob = yglob
+        coupling_fields(i)%xres = xres
+        coupling_fields(i)%yres = yres
         coupling_fields(i)%direction = OASIS_OUT
-        allocate(coupling_fields(i)%field(xglob, yglob))
+        allocate(coupling_fields(i)%field(xres, yres))
     enddo
 
     do i=i, num_get
         coupling_fields(i)%name = get_fields(i)
         coupling_fields(i)%dims = 2
-        coupling_fields(i)%xglob = xglob
-        coupling_fields(i)%yglob = yglob
+        coupling_fields(i)%xglob = xres
+        coupling_fields(i)%yglob = yres
         coupling_fields(i)%direction = OASIS_IN
-        allocate(coupling_fields(i)%field(xglob, yglob))
+        allocate(coupling_fields(i)%field(xres, yres))
     enddo
 
 end subroutine
@@ -92,7 +92,7 @@ subroutine coupler_init(model_name, xglob, yglob, xloc, yloc, fields)
     character(len=*), intent(in) :: model_name
     ! global and local grid resolution 
     integer, intent(in) :: xglob, yglob, xloc, yloc
-    type(couple_field_type), dimension(:), intent(in) :: fields
+    type(couple_field_type), dimension(:), intent(inout) :: fields
 
     integer :: ierror, i, local_comm
     ! Model id, partition id and description
@@ -104,6 +104,9 @@ subroutine coupler_init(model_name, xglob, yglob, xloc, yloc, fields)
 
     call assert(mod(xglob, xloc) == 0, "Global domain is not evenly divisible by local domain.")
     call assert(mod(yglob, yloc) == 0, "Global domain is not evenly divisible by local domain.")
+
+    ! Initialise the fields array.
+    call setup_fields(xres, yres, fields)
 
     call mpi_init(ierror)
     call assert(ierror == MPI_SUCCESS, "mpi_init() failed.")
@@ -165,7 +168,7 @@ end subroutine
 
 subroutine coupler_close()
     
-    ! Iterate over coupling fields and deallocate internal memory.
+    ! FIXME: iterate over coupling fields and deallocate internal memory.
 
     deallocate(coupling_fields)
 
