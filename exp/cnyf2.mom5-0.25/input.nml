@@ -144,11 +144,11 @@
       debug_this_module=.false.
       freezing_temp_simple=.false.
       freezing_temp_preteos10=.true.
-      frazil_only_in_surface=.true.
+      frazil_only_in_surface=.false.
 /
 
  &ocean_grids_nml
-      debug_this_module=.true.
+      debug_this_module=.false.
 /
 
  &ocean_increment_eta_nml
@@ -186,7 +186,7 @@
 /
 
  &ocean_model_nml
-      dt_ocean = 900
+      dt_ocean = 450
       time_tendency='twolevel'
       vertical_coordinate='zstar'
       baroclinic_split = 1
@@ -362,8 +362,8 @@
 /
 
  &ocean_shortwave_gfdl_nml
-      use_this_module=.false.
-      debug_this_module=.true.
+      use_this_module=.true.
+      debug_this_module=.false.
       optics_morel_antoine = .false.
       optics_manizza=.true.
       read_chl=.true.
@@ -377,8 +377,8 @@
 
  &ocean_shortwave_nml
       use_this_module=.true.
-      use_shortwave_gfdl=.false.
-      use_shortwave_csiro=.true.
+      use_shortwave_gfdl=.true.
+      use_shortwave_csiro=.false.
       use_shortwave_jerlov=.false.
 /
 
@@ -441,7 +441,7 @@
  /
 
  &ocean_tempsalt_nml
-	  debug_this_module=.true.
+	  debug_this_module=.false.
       temperature_variable='potential_temp'
       pottemp_2nd_iteration=.true.
 	  pottemp_equal_contemp=.true.
@@ -486,6 +486,7 @@
 
  &ocean_tracer_nml
       debug_this_module=.false.
+      use_tempsalt_check_range=.true.
       zero_tendency=.false.
       remap_depth_to_s_init=.false.
       zero_tracer_source=.false.
@@ -624,7 +625,7 @@
 /
 
  &auscom_ice_nml
-    dt_cpl=900
+    dt_cpl=450
     do_ice_once=.false.
     pop_icediag=.true.
     kmxice=5 
@@ -649,5 +650,5 @@
             minutes = 0
             seconds = 0
             calendar = 'NOLEAP'
-            dt_cpld  = 900
+            dt_cpld  = 450
 /
