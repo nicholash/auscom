@@ -1,0 +1,13 @@
+
+project: v45
+queue: normal
+walltime: 05:00:00
+ncpus: 1168
+mem: 2000Gb
+
+atm:
+    ncpus: 1
+ice:
+    ncpus: 192
+ocean: 
+    ncpus: 960
