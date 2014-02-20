@@ -1,9 +1,9 @@
 
 modpath: 
-    - '../../oasis3-mct/Linux/build/lib/psmile.MPI1'
+    - '../oasis3-mct/Linux/build/lib/psmile.MPI1'
     - '/usr/include'
 libpath:
-     - '../../oasis3-mct/Linux/lib'
+     - '../oasis3-mct/Linux/lib'
 libs:
     - psmile.MPI1
     - mct

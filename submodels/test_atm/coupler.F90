@@ -3,14 +3,15 @@ module coupler
 
 use mod_oasis, only : oasis_init_comp, oasis_def_var, oasis_get_localcomm, &
                       oasis_def_partition, oasis_enddef, OASIS_OK, OASIS_REAL, &
-                      OASIS_IN, OASIS_OUT
+                      OASIS_IN, OASIS_OUT, oasis_put, oasis_get
 use error_handler , only : assert
 use mpi, only : mpi_init, mpi_comm_size, mpi_comm_rank, MPI_SUCCESS
 
 implicit none
 
 private
-public coupler_init, coupler_put, coupler_get, couple_field_type, MAX_COUPLING_FIELDS
+public coupler_init, coupler_put, coupler_get, coupler_close, couple_field_type, &
+       MAX_COUPLING_FIELDS
 
 type couple_field_type
     integer :: id
@@ -23,20 +24,20 @@ integer, parameter :: BOX_PARTITION = 2, MAX_COUPLING_FIELDS = 20, MAX_FIELD_NAM
 ! Namelist parameters
 character(len=MAX_FIELD_NAME_LEN), dimension(MAX_COUPLING_FIELDS) :: in_field_names, out_field_names
 
-namelist /coupling_setup/ in_field_names, out_field_names
+namelist /coupler_nml/ in_field_names, out_field_names
 
 contains 
 
 subroutine read_field_info(xres, yres, in_fields, out_fields)
 
     integer, intent(in) :: xres, yres ! field resolution
-    type(couple_field_type), dimension(:), allocatable, intent(out) :: in_fields, out_fields
+    type(couple_field_type), dimension(:), allocatable, intent(inout) :: in_fields, out_fields
 
     integer :: num_in, num_out, i, tmp_unit
 
     ! Read in coupling field information. 
-    num_put = 0
-    num_get = 0
+    num_in = 0
+    num_out = 0
 
     do i=1, MAX_COUPLING_FIELDS
         in_field_names(i) = ''
@@ -44,7 +45,7 @@ subroutine read_field_info(xres, yres, in_fields, out_fields)
     enddo
 
     open(newunit=tmp_unit, file='input_atm.nml')
-    read(tmp_unit, nml=coupling_setup)
+    read(tmp_unit, nml=coupler_nml)
     close(tmp_unit)
 
     ! Count the coupling fields.
@@ -80,7 +81,7 @@ subroutine coupler_init(model_name, xglob, yglob, xloc, yloc, in_fields, out_fie
     character(len=*), intent(in) :: model_name
     ! global and local grid resolution 
     integer, intent(in) :: xglob, yglob, xloc, yloc
-    type(couple_field_type), dimension(:), intent(inout) :: in_fields, out_fields
+    type(couple_field_type), dimension(:), allocatable, intent(inout) :: in_fields, out_fields
 
     integer :: ierror, i, local_comm
     ! Model id, partition id and description
@@ -94,7 +95,7 @@ subroutine coupler_init(model_name, xglob, yglob, xloc, yloc, in_fields, out_fie
     call assert(mod(yglob, yloc) == 0, "Global domain is not evenly divisible by local domain.")
 
     ! Initialise the fields arrays.
-    call setup_fields(xloc, yloc, in_fields, out_fields)
+    call read_field_info(xloc, yloc, in_fields, out_fields)
 
     call mpi_init(ierror)
     call assert(ierror == MPI_SUCCESS, "mpi_init() failed.")
@@ -136,7 +137,7 @@ subroutine coupler_init(model_name, xglob, yglob, xloc, yloc, in_fields, out_fie
     ! Now define the variables.
     do i=1, size(in_fields)
         ! The number of dimensions of fields.
-        dims(1) = size(shape(in_fields%fields))
+        dims(1) = size(shape(in_fields(i)%field))
         dims(2) = 1 ! Always one. 
         call oasis_def_var(in_fields(i)%id, in_fields(i)%name, part_id, dims, &
                            OASIS_IN, var_actual_shape, OASIS_REAL, ierror) 
@@ -144,7 +145,7 @@ subroutine coupler_init(model_name, xglob, yglob, xloc, yloc, in_fields, out_fie
     enddo
 
     do i=1, size(out_fields)
-        dims(1) = size(shape(in_fields%fields))
+        dims(1) = size(shape(in_fields(i)%field))
         dims(2) = 1 ! Always one. 
         call oasis_def_var(out_fields(i)%id, out_fields(i)%name, part_id, dims, &
                            OASIS_OUT, var_actual_shape, OASIS_REAL, ierror) 
@@ -156,23 +157,49 @@ subroutine coupler_init(model_name, xglob, yglob, xloc, yloc, in_fields, out_fie
 
 end subroutine
 
-subroutine coupler_put() 
+subroutine coupler_put(time, fields) 
+
+    integer, intent(in) :: time
+    type(couple_field_type), dimension(:), intent(inout) :: fields
+
+    integer :: i, info
 
     ! Iterate over coupling fields and send all out fields.
+    do i=1, size(fields)
+        call oasis_put(fields(i)%id, time, fields(i)%field, info)
+    enddo
 
 end subroutine
 
-subroutine coupler_get() 
+subroutine coupler_get(time, fields) 
+
+    integer, intent(in) :: time
+    type(couple_field_type), dimension(:), intent(inout) :: fields
+
+    integer :: i, info
 
     ! Iterate over coupling fields and get all in fields.
+    do i=1, size(fields)
+        call oasis_get(fields(i)%id, time, fields(i)%field, info)
+    enddo
 
 end subroutine
 
-subroutine coupler_close()
+subroutine coupler_close(in_fields, out_fields)
     
-    ! FIXME: iterate over coupling fields and deallocate internal memory.
+    type(couple_field_type), allocatable, dimension(:), intent(inout) :: in_fields, out_fields
+    
+    integer :: i
 
-    deallocate(coupling_fields)
+    do i=1, size(in_fields)
+        deallocate(in_fields(i)%field)
+    enddo
+    deallocate(in_fields)
+
+    do i=1, size(out_fields)
+        deallocate(out_fields(i)%field)
+    enddo
+    deallocate(in_fields)
 
 end subroutine
 

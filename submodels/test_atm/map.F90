@@ -27,18 +27,6 @@ end type
 
 contains
 
-subroutine assert(cond, msg)
-
-    logical, intent(in) :: cond
-    character(len=*), intent(in) :: msg
-
-    if (.not. cond) then
-        print *, msg
-        stop 1
-    endif
-
-end subroutine
-
 subroutine map_init(tbl)
 
     class(map_type), intent(inout) :: tbl

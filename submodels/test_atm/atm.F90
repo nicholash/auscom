@@ -1,23 +1,23 @@
 
 program atm
 
-use couple, only : coupler_init, coupler_setup_fields, coupler_get, coupler_put, couple_field_type
-use core2_data_setup, only : init_data_loader, load_data
+use coupler, only : coupler_init, coupler_get, coupler_put, coupler_close, couple_field_type
+use core2_loader , only : loader_init, loader_load, loader_close
 use test, only : run_tests
-use calendar, only : get_runtime, date
+use calendar, only : calendar_timediff, date_type, calendar_make_date
 use error_handler, only : assert
 
 implicit none
 
 ! Namelist parameters
 integer, dimension(3) :: exp_start_date, run_start_date, run_end_date
-integer :: dt
+integer :: dt = 1800
 integer, dimension(2) :: resolution
 
 namelist /atm_config/ exp_start_date, run_start_date, run_end_date, dt, resolution
 
     type(couple_field_type), dimension(:), allocatable :: in_fields, out_fields
-    type(date) :: start_date, end_date
+    type(date_type) :: start_date, end_date
     integer :: step, nsteps
     integer :: xglob, yglob, xloc, yloc 
     integer :: runtime, curr_time
@@ -38,7 +38,7 @@ namelist /atm_config/ exp_start_date, run_start_date, run_end_date, dt, resoluti
 
     ! Init the data loader. Depending on the data source, this associates 
     ! a coupling field with a model or data field.
-    loader_init(out_fields)
+    call loader_init(out_fields)
 
     ! Calculate time difference in seconds between start and end dates.
     call calendar_timediff(start_date, end_date, runtime)
@@ -48,20 +48,21 @@ namelist /atm_config/ exp_start_date, run_start_date, run_end_date, dt, resoluti
 
     do step=1, nsteps 
 
-        curr_time = curr_time + dt
-
         ! Get fields from coupler and write out. 
-        call coupler_get(in_fields)
+        call coupler_get(curr_time, in_fields)
 
         ! Read forcing data from file, copy to coupling field
         call loader_load(curr_time, out_fields)
 
         ! Send fields to coupler.
-        call coupler_put(out_fields)
+        call coupler_put(curr_time, out_fields)
+
+        curr_time = curr_time + dt
 
     enddo
 
     ! Clean up.
-    coupler_close(coupling_fields)
+    call coupler_close(in_fields, out_fields)
+    call loader_close()
 
 end program

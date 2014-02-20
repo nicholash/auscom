@@ -1,5 +1,5 @@
 
-&atm_config
+&atm_nml
     ! Format is <years>, <months>, <days>
     exp_start_date = 1, 1, 1
     run_start_date = 1, 1, 1
@@ -8,11 +8,11 @@
     dt=21600
     resolution = 192,94
 
-&coupling_setup
+&coupler_nml
     in_fields = 'isst'
     out_fields = 'tair', 'qair', 'swfld', 'lwfld', 'uwnd', 'vwnd', 'rain', 'snow', 'press', 'runof'
 
-&core2_loader
+&core2_loader_nml
     field_files(:,1) = 'tair', 'INPUT/t_10.0001.nc', 'T_10_MOD'
     field_files(:,2) = 'qair', 'INPUT/q_10.0001.nc', 'Q_10_MOD'
     field_files(:,3) = 'swfld', 'INPUT/ncar_rad.0001.nc', 'SWDN_MOD'

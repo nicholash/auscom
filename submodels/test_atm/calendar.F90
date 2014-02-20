@@ -6,9 +6,9 @@ use error_handler, only : assert
 implicit none
 
 private
-public calendar_timediff, calendar_make_date, SECONDS_PER_YEAR
+public date_type, calendar_timediff, calendar_make_date, SECONDS_PER_YEAR
 
-type date
+type date_type
     integer :: year, month, day
 end type
 
@@ -20,8 +20,8 @@ contains
 ! Add a single day to start_date, return date.
 subroutine add_day_to_date(start_date, new_date)
 
-    type(date), intent(in) :: start_date
-    type(date), intent(out) :: new_date
+    type(date_type), intent(in) :: start_date
+    type(date_type), intent(out) :: new_date
 
     new_date = start_date
 
@@ -43,10 +43,10 @@ end subroutine
 subroutine calendar_timediff(start_date, end_date, runtime)
 
     ! Index 1 = year, 2 = month, 3 = day.
-    type(date), intent(in) :: start_date, end_date
+    type(date_type), intent(in) :: start_date, end_date
     integer, intent(out) :: runtime
 
-    type(date) :: tmp_date, new_date
+    type(date_type) :: tmp_date, new_date
 
     runtime = 0
 
@@ -80,7 +80,7 @@ end subroutine
 subroutine calendar_make_date(date_array, date)
 
     integer, intent(in), dimension(3) :: date_array
-    type(date), intent(out) :: date
+    type(date_type), intent(out) :: date
 
     date%year = date_array(1)
     date%month = date_array(2)
