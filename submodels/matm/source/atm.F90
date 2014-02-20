@@ -2,7 +2,7 @@
 program atm
 
 use couple, only : coupler_init, coupler_setup_fields, coupler_get, coupler_put, couple_field_type
-use core2_data_loader, only : load_data
+use core2_data_setup, only : init_data_loader, load_data
 use test, only : run_tests
 use calendar, only : get_runtime, date
 use error_handler, only : assert
@@ -16,7 +16,7 @@ integer, dimension(2) :: resolution
 
 namelist /atm_config/ exp_start_date, run_start_date, run_end_date, dt, resolution
 
-    type(couple_field_type), dimension(:), pointer :: coupling_fields
+    type(couple_field_type), dimension(:), allocatable :: coupling_fields
     type(date) :: start_date, end_date
     integer :: step, nsteps
     integer :: xglob, yglob, xloc, yloc 
@@ -37,11 +37,15 @@ namelist /atm_config/ exp_start_date, run_start_date, run_end_date, dt, resoluti
     end_date%month = run_end_date(2)
     end_date%day = run_end_date(3)
 
-    ! Set up coupling variables.
+    ! Set up coupling variables. 
+    ! FIXME: why not call this from coupler_init()?
     call coupler_setup_fields(coupling_fields, xglob, yglob)
 
     ! Initialise the coupler. 
     call coupler_init('atmxxx', xglob, yglob, xloc, yloc, coupling_fields)
+
+    ! Once the coupler is initialised, init the data loader. 
+    loader_init(coupling_fields)
 
     ! Figure out the runtime and start coupling loop. 
     call get_runtime(start_date, end_date, runtime)
@@ -54,16 +58,17 @@ namelist /atm_config/ exp_start_date, run_start_date, run_end_date, dt, resoluti
         curr_time = curr_time + dt
 
         ! Get fields from coupler and write out. 
-        call coupler_get()
+        call coupler_get(coupling_fields)
 
         ! Read forcing data from file, copy to coupling field
-        call load_data(curr_time, coupling_fields)
+        call loader_load(curr_time, coupling_fields)
 
         ! Send fields to coupler.
-        call coupler_put()
+        call coupler_put(coupling_fields)
 
     enddo
 
     ! Clean up.
+    coupler_close(coupling_fields)
 
 end program

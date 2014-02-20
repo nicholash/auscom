@@ -26,8 +26,6 @@ end type
 
 integer, parameter :: BOX_PARTITION = 2, MAX_FIELDS = 20, MAX_FIELD_NAME_LEN = 8
 
-type(couple_field_type), dimension(:), allocatable, target :: coupling_fields
-
 ! Namelist parameters
 character(len=MAX_FIELD_NAME_LEN), dimension(MAX_FIELDS) :: put_fields, get_fields
 
@@ -65,8 +63,9 @@ subroutine coupler_setup_fields(fields, xglob, yglob)
         endif
     enddo
 
+    ! FIXME: check that fields is not already allocated.
     ! Initialise fields. 
-    allocate(coupling_fields(num_put + num_get))  
+    allocate(fields(num_put + num_get))  
 
     do i=1, num_put
         coupling_fields(i)%name = put_fields(i)
@@ -85,8 +84,6 @@ subroutine coupler_setup_fields(fields, xglob, yglob)
         coupling_fields(i)%direction = OASIS_IN
         allocate(coupling_fields(i)%field(xglob, yglob))
     enddo
-
-    fields => coupling_fields
 
 end subroutine
 
@@ -163,6 +160,14 @@ end subroutine
 subroutine coupler_get() 
 
     ! Iterate over coupling fields and get all in fields.
+
+end subroutine
+
+subroutine coupler_close()
+    
+    ! Iterate over coupling fields and deallocate internal memory.
+
+    deallocate(coupling_fields)
 
 end subroutine
 

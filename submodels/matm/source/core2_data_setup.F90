@@ -1,19 +1,22 @@
 
-module core2_data_setup
+module core2_loader
 
 use coupler, only : couple_field_type
 
 implicit none
 
 private
-public init_data_loader, load_data
+public loader_init, loader_load
 
-subroutine init_data_loader(coupling_fields)
+subroutine loader_init(coupling_fields)
 
     type(couple_field_type), dimension(:), intent(inout) :: coupling_fields
 
     integer :: i
 
+    ! FIXME: check that coupling_fields input has been allocated/initialised.
+
+    ! Create a mapping between coupling variables and input fields.
     ! FIXME: Some kind of config file for this?
     do i=1, size(coupling_fields)
         select case(coupling_fields(i)%name)
@@ -51,6 +54,9 @@ subroutine init_data_loader(coupling_fields)
 
     enddo
 
+end subroutine
+
+subroutine loader_load()
 end subroutine
 
 end module
