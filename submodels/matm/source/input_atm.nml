@@ -9,7 +9,19 @@
     resolution = 192,94
 
 &coupling_setup
-    put_fields = 'tair', 'qair', 'swfld', 'lwfld', 'uwnd', 'vwnd', 'rain', 'snow', 'press', 'runof'
-    get_fields = 'isst'
+    in_fields = 'isst'
+    out_fields = 'tair', 'qair', 'swfld', 'lwfld', 'uwnd', 'vwnd', 'rain', 'snow', 'press', 'runof'
+
+&core2_loader
+    field_files(:,1) = 'tair', 'INPUT/t_10.0001.nc', 'T_10_MOD'
+    field_files(:,2) = 'qair', 'INPUT/q_10.0001.nc', 'Q_10_MOD'
+    field_files(:,3) = 'swfld', 'INPUT/ncar_rad.0001.nc', 'SWDN_MOD'
+    field_files(:,4) = 'lwfld', 'INPUT/ncar_rad.0001.nc', 'LWDN_MOD'
+    field_files(:,5) = 'uwnd', 'INPUT/u_10.0001.nc', 'U_10_MOD'
+    field_files(:,6) = 'vwnd', 'INPUT/v_10.0001.nc', 'V_10_MOD'
+    field_files(:,7) = 'rain', 'INPUT/ncar_precip.0001.nc', 'RAIN'
+    field_files(:,8) = 'snow', 'INPUT/ncar_precip.0001.nc', 'SNOW'
+    field_files(:,9) = 'press', 'INPUT/slp.0001.nc', 'SLP'
+    field_files(:,10) = 'runof', 'INPUT/mean_runof.0001.nc', 'RUNOF'
 
 &end

@@ -16,7 +16,7 @@ integer, dimension(2) :: resolution
 
 namelist /atm_config/ exp_start_date, run_start_date, run_end_date, dt, resolution
 
-    type(couple_field_type), dimension(:), allocatable :: coupling_fields
+    type(couple_field_type), dimension(:), allocatable :: in_fields, out_fields
     type(date) :: start_date, end_date
     integer :: step, nsteps
     integer :: xglob, yglob, xloc, yloc 
@@ -34,11 +34,11 @@ namelist /atm_config/ exp_start_date, run_start_date, run_end_date, dt, resoluti
     call calendar_make_date(run_end_date, end_date)
 
     ! Initialise the coupler. 
-    call coupler_init('atmxxx', xglob, yglob, xloc, yloc, coupling_fields)
+    call coupler_init('atmxxx', xglob, yglob, xloc, yloc, in_fields, out_fields)
 
     ! Init the data loader. Depending on the data source, this associates 
     ! a coupling field with a model or data field.
-    loader_init(coupling_fields)
+    loader_init(out_fields)
 
     ! Calculate time difference in seconds between start and end dates.
     call calendar_timediff(start_date, end_date, runtime)
@@ -51,13 +51,13 @@ namelist /atm_config/ exp_start_date, run_start_date, run_end_date, dt, resoluti
         curr_time = curr_time + dt
 
         ! Get fields from coupler and write out. 
-        call coupler_get(coupling_fields)
+        call coupler_get(in_fields)
 
         ! Read forcing data from file, copy to coupling field
-        call loader_load(curr_time, coupling_fields)
+        call loader_load(curr_time, out_fields)
 
         ! Send fields to coupler.
-        call coupler_put(coupling_fields)
+        call coupler_put(out_fields)
 
     enddo
 

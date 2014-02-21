@@ -10,93 +10,81 @@ use mpi, only : mpi_init, mpi_comm_size, mpi_comm_rank, MPI_SUCCESS
 implicit none
 
 private
-public coupler_init, coupler_put, coupler_get, couple_field_type
+public coupler_init, coupler_put, coupler_get, couple_field_type, MAX_COUPLING_FIELDS
 
 type couple_field_type
     integer :: id
     character(len=8) :: name
-    character(len=256) :: file_name
-    character(len=256) :: file_var_name
-    integer :: dims
-    integer :: direction
-    integer :: xglob
-    integer :: yglob
     real, dimension(:,:), allocatable :: field
 end type
 
-integer, parameter :: BOX_PARTITION = 2, MAX_FIELDS = 20, MAX_FIELD_NAME_LEN = 8
+integer, parameter :: BOX_PARTITION = 2, MAX_COUPLING_FIELDS = 20, MAX_FIELD_NAME_LEN = 8
 
 ! Namelist parameters
-character(len=MAX_FIELD_NAME_LEN), dimension(MAX_FIELDS) :: put_fields, get_fields
+character(len=MAX_FIELD_NAME_LEN), dimension(MAX_COUPLING_FIELDS) :: in_field_names, out_field_names
 
-namelist /coupling_setup/ put_fields, get_fields
+namelist /coupling_setup/ in_field_names, out_field_names
 
 contains 
 
-subroutine setup_fields(xres, yres, fields)
+subroutine read_field_info(xres, yres, in_fields, out_fields)
 
     integer, intent(in) :: xres, yres ! field resolution
-    type(couple_field_type), dimension(:), pointer, intent(out) :: fields
+    type(couple_field_type), dimension(:), allocatable, intent(out) :: in_fields, out_fields
 
-    integer :: num_put, num_get, i
+    integer :: num_in, num_out, i, tmp_unit
 
     ! Read in coupling field information. 
     num_put = 0
     num_get = 0
 
-    do i=1, MAX_FIELDS
-        put_fields(i) = ''
-        get_fields(i) = ''
+    do i=1, MAX_COUPLING_FIELDS
+        in_field_names(i) = ''
+        out_field_names(i) = ''
     enddo
 
-    ! FIXME: allocate unit properly
-    open(unit=1, file='input_atm.nml')
-    read(unit=1, nml=coupling_setup)
-    close(unit=1)
+    open(newunit=tmp_unit, file='input_atm.nml')
+    read(tmp_unit, nml=coupling_setup)
+    close(tmp_unit)
 
-    do i=1, MAX_FIELDS
-        if (len(trim(put_fields(i))) /= 0) then
-            num_put = num_put + 1
+    ! Count the coupling fields.
+    do i=1, MAX_COUPLING_FIELDS
+        if (len(trim(in_field_names(i))) /= 0) then
+            num_in = num_in + 1
         endif
-        if (len(trim(get_fields(i))) /= 0) then
-            num_get = num_get + 1
+        if (len(trim(out_field_names(i))) /= 0) then
+            num_out = num_out + 1
         endif
     enddo
 
-    ! FIXME: check that fields is not already allocated.
     ! Initialise fields. 
-    allocate(fields(num_put + num_get))  
+    call assert(.not. allocated(in_fields), 'In fields already allocated')
+    allocate(in_fields(num_in))  
+    call assert(.not. allocated(out_fields), 'In fields already allocated')
+    allocate(out_fields(num_out))
 
-    do i=1, num_put
-        coupling_fields(i)%name = put_fields(i)
-        coupling_fields(i)%dims = 2
-        coupling_fields(i)%xres = xres
-        coupling_fields(i)%yres = yres
-        coupling_fields(i)%direction = OASIS_OUT
-        allocate(coupling_fields(i)%field(xres, yres))
+    do i=1, num_in
+        in_fields(i)%name = in_field_names(i)
+        allocate(in_fields(i)%field(xres, yres))
     enddo
 
-    do i=i, num_get
-        coupling_fields(i)%name = get_fields(i)
-        coupling_fields(i)%dims = 2
-        coupling_fields(i)%xglob = xres
-        coupling_fields(i)%yglob = yres
-        coupling_fields(i)%direction = OASIS_IN
-        allocate(coupling_fields(i)%field(xres, yres))
+    do i=1, num_out
+        out_fields(i)%name = out_field_names(i)
+        allocate(out_fields(i)%field(xres, yres))
     enddo
 
 end subroutine
 
-subroutine coupler_init(model_name, xglob, yglob, xloc, yloc, fields) 
+subroutine coupler_init(model_name, xglob, yglob, xloc, yloc, in_fields, out_fields) 
 
     character(len=*), intent(in) :: model_name
     ! global and local grid resolution 
     integer, intent(in) :: xglob, yglob, xloc, yloc
-    type(couple_field_type), dimension(:), intent(inout) :: fields
+    type(couple_field_type), dimension(:), intent(inout) :: in_fields, out_fields
 
     integer :: ierror, i, local_comm
     ! Model id, partition id and description
-    integer :: model_id, part_id, part_desc(5)
+    integer :: model_id, part_id, part_desc(5), var_actual_shape(4)
     ! Total PEs, my pe, my pe block/cell coords.
     integer :: npes, mype, xblock, yblock
     ! Temp array needed for call to oasis_def_var()
@@ -105,8 +93,8 @@ subroutine coupler_init(model_name, xglob, yglob, xloc, yloc, fields)
     call assert(mod(xglob, xloc) == 0, "Global domain is not evenly divisible by local domain.")
     call assert(mod(yglob, yloc) == 0, "Global domain is not evenly divisible by local domain.")
 
-    ! Initialise the fields array.
-    call setup_fields(xres, yres, fields)
+    ! Initialise the fields arrays.
+    call setup_fields(xloc, yloc, in_fields, out_fields)
 
     call mpi_init(ierror)
     call assert(ierror == MPI_SUCCESS, "mpi_init() failed.")
@@ -140,12 +128,26 @@ subroutine coupler_init(model_name, xglob, yglob, xloc, yloc, fields)
     call oasis_def_partition(part_id, part_desc, ierror)
     call assert(ierror == OASIS_OK, "oasis_def_partition() failed")
 
+    var_actual_shape(1) = 1
+    var_actual_shape(2) = part_desc(3)
+    var_actual_shape(3) = 1
+    var_actual_shape(4) = part_desc(4)
+
     ! Now define the variables.
-    do i=1, size(fields)
-        dims(1) = fields(i)%dims 
+    do i=1, size(in_fields)
+        ! The number of dimensions of fields.
+        dims(1) = size(shape(in_fields%fields))
         dims(2) = 1 ! Always one. 
-        call oasis_def_var(fields(i)%id, fields(i)%name, part_id, dims, &
-                           fields(i)%direction, fields(i)%shape, OASIS_REAL, ierror) 
+        call oasis_def_var(in_fields(i)%id, in_fields(i)%name, part_id, dims, &
+                           OASIS_IN, var_actual_shape, OASIS_REAL, ierror) 
+        call assert(ierror == OASIS_OK, "oasis_def_var() failed")
+    enddo
+
+    do i=1, size(out_fields)
+        dims(1) = size(shape(in_fields%fields))
+        dims(2) = 1 ! Always one. 
+        call oasis_def_var(out_fields(i)%id, out_fields(i)%name, part_id, dims, &
+                           OASIS_OUT, var_actual_shape, OASIS_REAL, ierror) 
         call assert(ierror == OASIS_OK, "oasis_def_var() failed")
     enddo
 

@@ -6,7 +6,7 @@ use error_handler, only : assert
 implicit none
 
 private
-public calendar_timediff, calendar_make_date
+public calendar_timediff, calendar_make_date, SECONDS_PER_YEAR
 
 type date
     integer :: year, month, day
