@@ -8,13 +8,17 @@ import netCDF4 as nc
 from scipy import signal
 
 """
-Apply a guassian blur/smooth to a particular variable. Used to smooth out bathymetry.
+Smooth out bathymetry by applying a gaussian blur. 
 
 See: http://wiki.scipy.org/Cookbook/SignalSmooth
 
 Convolving a noisy image with a gaussian kernel (or any bell-shaped curve)
 blurs the noise out and leaves the low-frequency details of the image standing
 out. 
+
+After smoothing various things need to be fixed up:
+    - A minimum depth should be set, e.g. we don't want ocean depths of < 1m 
+    - All land points should be the same in the smoothed bathymetry.
 """
 
 def gauss_kern(size, sizey=None):
@@ -49,9 +53,9 @@ def main():
                          Rows and columns that will be smoothed. For example if size == 10,
                          then a 10x10 array centred at (x, y) will be smoothed.""", type=int)
     parser.add_argument("--kernel", help="Size of guassian kernel.", default=5, type=int)
-    parser.add_argument("--set_small_values", help="""
-                        After smoothing, set values > 0 and < <option> to <option>.
-                        This is used to fix up shallow waters in a bathymetry file.""", type=int)
+    parser.add_argument("--minimum_depth", help="""
+                        After smoothing, set values to a minimum depth.
+                        This is used to fix up shallow waters""", default=40, type=int)
     parser.add_argument("input_file", help="Name of the input file.")
     parser.add_argument("input_var", help="Name of the variable to blur.")
     parser.add_argument("output_file", help="Name of the output file.")
@@ -77,8 +81,11 @@ def main():
     var = np.pad(input_var, (args.kernel, args.kernel), mode='edge')
     smoothed = blur_image(var, args.kernel)
 
-    if args.set_small_values:
-        smoothed[(smoothed > 0) & (smoothed < args.set_small_values)] = args.set_small_values
+    # After smoothing make sure that there is a certain minimum depth.
+    smoothed[(smoothed > 0) & (smoothed < args.minimum_depth)] = args.minimum_depth
+
+    # Ensure that all land points remain the same.
+    smoothed[input_var == 0] = 0
 
     f.variables[args.input_var][south_ext:north_ext,west_ext:east_ext] = smoothed 
     f.close()
