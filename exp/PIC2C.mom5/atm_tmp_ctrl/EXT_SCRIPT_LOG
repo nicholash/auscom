@@ -1,0 +1,62 @@
+-------------------------
+Executing Hand edits:
+
+  
+
+
+
+Now running ~hadco/handedits/vn7.0/fcm_checks.scr
+
+----- End of ~hadco/handedits/vn7.0/fcm_checks.scr -----
+
+Now running ~frrh/scripts/set_nice
+ NICE=1,
+++ ed SIZES
+2553
+2552
+++ ed RECONA
+RECONA: No such file or directory
+----- End of ~frrh/scripts/set_nice -----
+
+Now running ~hadco/handedits/vn7.1/precip_opt.ed
+ DD_opt=1,
+15310
+15333
+----- End of ~hadco/handedits/vn7.1/precip_opt.ed -----
+
+Now running ~hadco/handedits/vn7.1/vg_soilhc.ed
+ MASKD= 0.20, 
+15333
+15384
+----- End of ~hadco/handedits/vn7.1/vg_soilhc.ed -----
+
+Now running ~frps/umui_jobs/hand_edits/LL_fixes.scr
+# Create tmp_compile file                         #
+#@ resources       = ConsumableCpus(3) ConsumableMemory(5gb)
+# Create tmp_run file                             #
+#@ smt             = no
+#@ notification    = never
+#@ resources       = ConsumableCpus(1) ConsumableMemory(${MEMORY}) 
+#@ queue
+Improved loadleveler configuration
++ ed SUBMIT
++ << \EOF 
+10693
+10748
++ set -
+----- End of ~frps/umui_jobs/hand_edits/LL_fixes.scr -----
+
+Now running ~frrh/scripts/nemocice_decompose
+
+----- End of ~frrh/scripts/nemocice_decompose -----
+
+Now running ~frum/umui_jobs/macros/cpl_macro_hadgem3_IBM
+ ### End of user STASH requests for ATMOS ### 
+9176
+10725
+----- End of ~frum/umui_jobs/macros/cpl_macro_hadgem3_IBM -----
+
+End of Hand edits
+-------------------------
+    
+
