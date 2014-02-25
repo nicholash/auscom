@@ -1,0 +1,127 @@
+#############################################################################
+#
+# 0. PROLOGUE
+#
+#############################################################################
+set -e
+set -x
+
+#
+#-- Export System depending variables
+#
+export MPIPROGINF=DETAIL;
+export MPISUSPEND=ON;
+export F_PROGINF=detail;
+export F_FTRACE=YES;
+
+export MPLARGS=" " ;
+export F_SETBUF06=50000
+export F_SETBUF07=50000
+export F_SETBUF08=50000
+export ATM_COMPARAL=1
+export F_SYSLEN=300
+export F_SETBUF00=50000    #non-zero buffer for 00 (i/o unit=0) ?
+ 
+MPIEXPORT="F_PROGINF F_SYSLEN"
+MPIEXPORT="${MPIEXPORT} MPIPROGINF F_FTRACE MPISUSPEND"
+MPIEXPORT="${MPIEXPORT} F_SETBUF00 F_SETBUF06 F_SETBUF07 F_SETBUF08"
+export MPI_MULTITASKMIX="ON"
+export MPIEXPORT="${MPIEXPORT} MPI_MULTITASKMIX"
+export MPI_BUFFER_MAX=5000000   #required by who?
+
+#
+#-- increase stack limit to ensure mppncombine and models can run
+#
+ulimit -s unlimited
+#
+#-- enable core dumps for debugging runs
+#
+ulimit -c unlimited
+
+#############################################################################
+#
+# 1. Primary setups
+#
+#############################################################################
+#
+## 1.1 Experiment ID etc.
+#
+chan=MPI1       	# Message Passage (MPI1/MPI2)
+
+um_grid=${UM_GRID_PFX:-um96} 	#um96 by default
+co2_flag=0              # indicate whether to use carbon cycle
+
+#
+## 1.2 Define paths
+#
+
+# Location where jobs are submitted (and this script stays)
+expid=PIC2C.mom5
+expdir=/short/v45/nah599/auscom/exp/$expid
+inputdir=/short/v45/auscom/$expid
+
+atmrundir=$expdir/ATM_RUNDIR
+ocnrundir=$expdir/OCN_RUNDIR
+icerundir=$expdir/ICE_RUNDIR
+
+#############################################################################
+#
+# Setup inputs.
+#
+#############################################################################
+
+rm -rf $icerundir $ocnrundir $atmrundir
+
+mkdir -p $icerundir/RESTART $icerundir/HISTORY $icerundir/INPUT	#subdirs for CICE
+mkdir -p $ocnrundir/RESTART $ocnrundir/HISTORY $ocnrundir/INPUT	#subdirs for MOM4
+mkdir -p $atmrundir/RESTART $atmrundir/HISTORY $atmrundir/INPUT	#subdirs for MOM4
+mkdir -p $atmrundir/tmp
+
+# Copy in input files and change mode. Some these will be overwritten at the end of the run.
+cp $inputdir/atm/* $atmrundir/
+cp $inputdir/mom4/* $ocnrundir/INPUT/
+cp $inputdir/cice/* $icerundir/INPUT/
+
+# Copy over oasis files
+cp $inputdir/oasis3-mct/* $atmrundir/
+cp $inputdir/oasis3-mct/* $ocnrundir/
+cp $inputdir/oasis3-mct/* $icerundir/
+cp $inputdir/oasis3-mct/o2i.nc $icerundir/RESTART/
+
+chmod -R +w $atmrundir/*
+chmod -R +w $ocnrundir/*
+chmod -R +w $icerundir/*
+
+# Copy over atm config files. 
+export JOBDIR=$atmrundir/tmp_ctrl
+
+cp -r $expdir/atm_tmp_ctrl $atmrundir/tmp_ctrl
+cp $expdir/cable.nml $atmrundir/
+cp $expdir/input_atm.nml $atmrundir/
+cp $expdir/namcouple $atmrundir/
+
+# Copy over ocean config files. 
+cp $expdir/data_table $ocnrundir/
+cp $expdir/diag_table $ocnrundir/
+cp $expdir/field_table $ocnrundir/
+cp $expdir/input.nml $ocnrundir/
+cp $expdir/namcouple $ocnrundir/
+
+# Copy over ice config files. 
+cp $expdir/cice_in.nml $icerundir/
+cp $expdir/input_ice.nml $icerundir/
+cp $expdir/namcouple $icerundir/
+
+oce_nx=8; oce_ny=5      # nproc_ocn = oce_nx * oce_ny
+ 
+export ACCESSRUNCMD="--mca mpi_paffinity_alone 1 \
+                     -wd $atmrundir -n $UM_NPES $expdir/um7.3x : \
+                     -wd $ocnrundir -n 40 $expdir/mom5xx : \
+                     -wd $icerundir -n 6 $expdir/cicexx"
+
+source /opt/Modules/3.2.6/init/ksh
+module unload openmpi
+module unload netcdf
+module load openmpi/1.6.5
+module load netcdf/4.2.1.1
+
