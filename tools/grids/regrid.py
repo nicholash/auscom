@@ -180,11 +180,11 @@ def run_regridding(srcfield, dstfield, srcfracfield, dstfracfield):
 
     return dstfield, srcfracfield, dstfracfield
 
-def make_grid(field_def):
+def make_grid(field_def, mask=None):
     """
     Define a grid
 
-    Use the OASIS atm grid. 
+    Use the cice grid. 
     """
 
     f, lon_name, lat_name, clon_name, clat_name = field_def
@@ -244,16 +244,26 @@ def make_grid(field_def):
     # Check that there are no NANs left.
     assert not (np.isnan(np.sum(x_corner)) or np.isnan(np.sum(y_corner)))
 
+    if mask is not None:
+       print 'Using mask'
+       ESMP.ESMP_GridAddItem(grid, item=ESMP.ESMP_GRIDITEM_MASK)
+       m = ESMP.ESMP_GridGetItem(grid, item=ESMP.ESMP_GRIDITEM_MASK)
+       mask = mask.reshape(m.shape[0])
+       m[mask == True] = 1
+       m[mask == False] = 0
+       import pdb
+       pdb.set_trace()
+
     return grid
 
-def setup_grid_and_fields(src_def, dest_def):
+def setup_grid_and_fields(src_def, dest_def, src_mask=None, dest_mask=None):
 
     ESMP.ESMP_Initialize()
     ESMP.ESMP_LogSet(True)
 
     # Create source and destination grids.
-    src_grid = make_grid(src_def)
-    dest_grid = make_grid(dest_def)
+    src_grid = make_grid(src_def, src_mask)
+    dest_grid = make_grid(dest_def, dest_mask)
 
     # Fields to regrid
     src_field = ESMP.ESMP_FieldCreateGrid(src_grid, 'src_field')
@@ -300,13 +310,21 @@ def main():
                          corner latitudes field.\"")
     parser.add_argument("dest_grid", help="A Python tuple describing the destination grid. \
                          It has the same format as the source grid argument.")
-    parser.add_argument("fields", help="A Python list of field tuples describing fields to regrid. \
-                         Each tuple is: source filename, field name, destination filename. E.g. \
+    parser.add_argument("field", help="A field tuples describing the field to regrid. \
+                         The tuple is: source filename, field name, destination filename. E.g. \
                          %s \"('grid.nc', 'lons', 'lats', 'clons', 'clats')\" \
                          \"('grid.new.nc', 'lons', 'lats', 'clons', 'clats')\" \
-                         \"[('core_runoff.nc', 'runoff', 'core_runoff.new.nc')]\". \
+                         \"('core_runoff.nc', 'runoff', 'core_runoff.new.nc')\". \
                          If the destination file does not exist it will be created. \
                          Don't forget the double and single quotes." % sys.argv[0])
+    parser.add_argument("--src_mask_file", help="Specify a mask for the src field. If this is not given but \
+                                                 the src field has missing values, then those will be used  \
+                                                 as a mask.")
+    parser.add_argument("--src_mask_var", help="The source mask variable name.")
+    parser.add_argument("--flip_src_mask", action='store_true', help="Invert the source mask. Program expectes 1 or True to represent masked.")
+    parser.add_argument("--dest_mask_file", help="Specify a mask for the dest field.")
+    parser.add_argument("--dest_mask_var", help="The dest mask variable name.")
+    parser.add_argument("--flip_dest_mask", action='store_true', help="Invert the dest mask. Program expectes 1 or True to represent masked.")
 
     args = parser.parse_args()
 
@@ -322,52 +340,93 @@ def main():
     args_src_grid[0] = src_grid_file
     args_dest_grid[0] = dest_grid_file
 
+    src_file, field_name, dest_file = ast.literal_eval(args.field)
+    src_file = nc.Dataset(src_file, 'r')
+    if os.path.exists(dest_file):
+        dest_file = nc.Dataset(dest_file, 'r+')
+    else:
+        dest_file = nc.Dataset(dest_file, 'w')
+
+    src_mask = None
+    dest_mask = None
+
+    # Check whether the field has missing values, in which case a src mask is needed.
+    if hasattr(src_file.variables[field_name], 'missing_value'):
+        assert(args.src_mask_file is None and args.src_mask_var is None)
+        src_mask = np.ma.getmask(src_file.variables[field_name][:])
+        src_mask = src_mask[0,:,:]
+
+        # FIXME: hack to get a particular field regridded. 
+        # Just put 0 everywhere where there's a missing value.
+
+    if args.src_mask_file:
+        # If no missing values, then use --src_mask_var
+        assert(args.src_mask_var is not None)
+
+        with nc.Dataset(args.src_mask_file) as f:
+            src_mask = f.variables[args.src_mask_var][:]
+            # In case src_mask is ints or reals, convert to proper masked array. 
+            src_mask = np.ma.make_mask(src_mask)
+
+    else:
+        sys.stdout.write("INFO: no mask present, regridding without mask.\n")
+        # If neither of the above, then give a message/warning but proceed anyway. 
+
+    if src_mask is not None:
+        if (args.dest_mask_file is None) or (args.dest_mask_var is None):
+            sys.stderr.write("Source field has mask, a dest mask and var must be provided.\n") 
+            return 1
+
+        with nc.Dataset(args.dest_mask_file) as f:
+            dest_mask = f.variables[args.dest_mask_var][:]
+            # In case src_mask is ints or reals, convert to proper masked array. 
+            dest_mask = np.ma.make_mask(dest_mask)
+
+    if args.flip_src_mask:
+        assert(src_mask is not None)
+        src_mask = ~src_mask
+
+    if args.flip_dest_mask:
+        assert(dest_mask is not None)
+        dest_mask = ~dest_mask
+
     # Open up the source and destination grids and do setup.
-    src_grid, dest_grid, src_field, dest_field, src_frac, dest_frac, src_area, dest_area = setup_grid_and_fields(args_src_grid, args_dest_grid)
+    src_grid, dest_grid, src_field, dest_field, src_frac, dest_frac, src_area, dest_area = setup_grid_and_fields(args_src_grid, args_dest_grid, src_mask, dest_mask)
 
-    # Iterate over the each of the fields to be regridded.
-    for src_file, field_name, dest_file in ast.literal_eval(args.fields):
+    # Load the field to be regridded.
+    src_field_ptr = ESMP.ESMP_FieldGetPtr(src_field) 
 
-        src_file = nc.Dataset(src_file, 'r')
-        if os.path.exists(dest_file):
-            dest_file = nc.Dataset(dest_file, 'r+')
-        else:
-            dest_file = nc.Dataset(dest_file, 'w')
+    # Iterate over all time points
+    src_field_tmp = np.copy(src_file.variables[field_name])
+    if len(src_field_tmp.shape) == 3:
+        src_field_tmp = src_field_tmp[0,:,:]
 
-        # Load the field to be regridded.
-        src_field_ptr = ESMP.ESMP_FieldGetPtr(src_field) 
-        # If field is 3d (i.e. has time) then just use the first time point.
-        src_field_tmp = np.copy(src_file.variables[field_name])
-        if len(src_field_tmp.shape) == 3:
-            src_field_tmp = src_field_tmp[0,:,:]
+    src_field_ptr[:] = ((src_field_tmp).reshape(src_field.size))[:]
 
-        src_field_ptr[:] = ((src_field_tmp).reshape(src_field.size))[:]
+    # Do the regridding 
+    dest_field, src_frac, dest_frac = run_regridding(src_field, dest_field, src_frac, dest_frac)
 
-        # Do the regridding 
-        dest_field, src_frac, dest_frac = run_regridding(src_field, dest_field, src_frac, dest_frac)
+    # Write out field.
+    dest_shape = dest_grid_file.variables[dest_lons].shape
+    dest_field_ptr = ESMP.ESMP_FieldGetPtr(dest_field)
+    dest_field_ptr = dest_field_ptr.reshape(dest_shape)
+    # Create dimensions if necessary.
+    if not dest_file.dimensions.has_key('nx'):
+        dest_file.createDimension('nx', dest_shape[1])
+        dest_file.createDimension('ny', dest_shape[0])
 
-        # Write out field.
-        dest_shape = dest_grid_file.variables[dest_lons].shape
-        dest_field_ptr = ESMP.ESMP_FieldGetPtr(dest_field)
-        dest_field_ptr = dest_field_ptr.reshape(dest_shape)
-        # Create dimensions if necessary.
-        if not dest_file.dimensions.has_key('nx'):
-            dest_file.createDimension('nx', dest_shape[1])
-            dest_file.createDimension('ny', dest_shape[0])
+    if not dest_file.variables.has_key(field_name):
+        dest_file.createVariable(field_name, 'f8', ('ny', 'nx'))
 
-        if not dest_file.variables.has_key(field_name):
-            dest_file.createVariable(field_name, 'f8', ('ny', 'nx'))
+    dest_file.variables[field_name][:,:] = dest_field_ptr[:,:] 
 
-        dest_file.variables[field_name][:,:] = dest_field_ptr[:,:] 
+    # Check some results. 
+    src_mass, src_area = compute_mass(src_field, src_area, src_frac, True)
+    dest_mass, dest_area = compute_mass(dest_field, dest_area, 0, False)
+    np.testing.assert_approx_equal(src_mass, dest_mass)
 
-        # Check some results. 
-        src_mass, src_area = compute_mass(src_field, src_area, src_frac, True)
-        dest_mass, dest_area = compute_mass(dest_field, dest_area, 0, False)
-        np.testing.assert_approx_equal(src_mass, dest_mass)
-
-        src_file.close()
-        dest_file.close()
-
+    src_file.close()
+    dest_file.close()
     src_grid_file.close()
     dest_grid_file.close()
 
