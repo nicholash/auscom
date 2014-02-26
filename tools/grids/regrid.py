@@ -388,18 +388,15 @@ def main():
         dest_mask = ~dest_mask
 
     # Create the destination file.
-    if os.path.exists(dest_file):
-        dest_file = nc.Dataset(dest_file, 'r+')
-    else:
-        dest_file = nc.Dataset(dest_file, 'w')
+    assert(not os.path.exists(dest_file))
+    dest_file = nc.Dataset(dest_file, 'w')
     dest_shape = dest_grid_file.variables[dest_lons].shape
 
-    if not dest_file.dimensions.has_key('nx'):
-        dest_file.createDimension('nx', dest_shape[1])
-        dest_file.createDimension('ny', dest_shape[0])
-        dest_file.createDimension('time', src_file.variables['time'].shape[0])
-    if not dest_file.variables.has_key(field_name):
-        dest_file.createVariable(field_name, 'f8', ('time', 'ny', 'nx'))
+    dest_file.createDimension('nx', dest_shape[1])
+    dest_file.createDimension('ny', dest_shape[0])
+    dest_file.createDimension('time', None)
+    dest_file.createVariable('time', 'f8', ('time'))
+    dest_file.createVariable(field_name, 'f8', ('time', 'ny', 'nx'))
 
     # Open up the source and destination grids and do setup. 
     # _cl suffic is for 'clean', i.e. not modified since initialisation.
@@ -409,6 +406,9 @@ def main():
     assert(len(src_field_tmp.shape) == 3)
     for t in range(src_field_tmp.shape[0]):
         print 'Regridding at timestep %s' % t
+
+        # Set the time field.
+        dest_file.variables['time'][t] = src_file.variables['time'][t]
 
         # Load the field to be regridded.
         src_field_ptr = ESMP.ESMP_FieldGetPtr(src_field_cl) 
