@@ -56,7 +56,7 @@ co2_flag=0              # indicate whether to use carbon cycle
 #
 
 # Location where jobs are submitted (and this script stays)
-expid=PIC2C.mom5
+expid=PIC2C-0.25
 expdir=/short/v45/nah599/auscom/exp/$expid
 inputdir=/short/v45/auscom/$expid
 
@@ -72,14 +72,14 @@ icerundir=$expdir/ICE_RUNDIR
 
 rm -rf $icerundir $ocnrundir $atmrundir
 
-mkdir -p $icerundir/RESTART $icerundir/HISTORY $icerundir/INPUT	#subdirs for CICE
-mkdir -p $ocnrundir/RESTART $ocnrundir/HISTORY $ocnrundir/INPUT	#subdirs for MOM4
-mkdir -p $atmrundir/RESTART $atmrundir/HISTORY $atmrundir/INPUT	#subdirs for MOM4
+mkdir -p $icerundir/RESTART $icerundir/HISTORY $icerundir/INPUT
+mkdir -p $ocnrundir/RESTART $ocnrundir/HISTORY $ocnrundir/INPUT
+mkdir -p $atmrundir/RESTART $atmrundir/HISTORY $atmrundir/INPUT
 mkdir -p $atmrundir/tmp
 
 # Copy in input files and change mode. Some these will be overwritten at the end of the run.
 cp $inputdir/atm/* $atmrundir/
-cp $inputdir/mom4/* $ocnrundir/INPUT/
+cp $inputdir/mom5/* $ocnrundir/INPUT/
 cp $inputdir/cice/* $icerundir/INPUT/
 
 # Copy over oasis files
@@ -112,11 +112,9 @@ cp $expdir/cice_in.nml $icerundir/
 cp $expdir/input_ice.nml $icerundir/
 cp $expdir/namcouple $icerundir/
 
-oce_nx=8; oce_ny=5      # nproc_ocn = oce_nx * oce_ny
- 
 export ACCESSRUNCMD="--mca mpi_paffinity_alone 1 \
                      -wd $atmrundir -n $UM_NPES $expdir/um7.3x : \
-                     -wd $ocnrundir -n 40 $expdir/mom5xx : \
+                     -wd $ocnrundir -n 960 $expdir/mom5xx : \
                      -wd $icerundir -n 6 $expdir/cicexx"
 
 source /opt/Modules/3.2.6/init/ksh

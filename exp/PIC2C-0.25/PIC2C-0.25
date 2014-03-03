@@ -32,17 +32,17 @@
 ###############################################################################
 #PBS -P x77
 #PBS -q normal
-#PBS -l ncpus=144
-#PBS -l mem=144gb
+#PBS -l ncpus=1072
+#PBS -l mem=2000gb
 ####PBS -l walltime=1:30:00
-#PBS -l walltime=0:15:00
+#PBS -l walltime=5:00:00
 #PBS -M nchlshnnh@gmail.com
 set -x
 set -e
 
 export SPEED_TEST=false
 
-export RUNID=PIC2C.mom5
+export RUNID=PIC2C-0.25
 export PBS_O_HOST=raijin
 echo "Job was submitted from PBS_O_HOST $PBS_O_HOST"
 

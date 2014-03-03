@@ -2,8 +2,8 @@
     days_per_year  = 365
   , year_init      = 0001
   , istep0         = 0
-  , dt             = 3600
-  , npt            = 2160
+  , dt             = 450
+  , npt            = 5944
   , ndyn_dt        = 1
   , runtype        = 'initial'
   , ice_ic         = 'default'
@@ -37,8 +37,8 @@
 &grid_nml
     grid_format  = 'nc'
   , grid_type    = 'tripole'
-  , grid_file    = './INPUT/grid.nc'
-  , kmt_file     = './INPUT/kmt.nc'
+  , grid_file    = 'INPUT/grid.nc'
+  , kmt_file     = 'INPUT/kmt.nc'
   , kcatbound    = 0
 /
 
@@ -85,9 +85,9 @@
   , awtidr          = 0.00182
   , awtvdf          = 0.63282
   , awtidf          = 0.36218
-  , R_ice           = 0.
-  , R_pnd           = 0.
-  , R_snw           = 0.
+  , R_ice           = 0.0
+  , R_pnd           = 0.0
+  , R_snw           = 0.0
   , atmbndy         = 'default'
   , fyear_init      = 0001
   , ycycle          = 1
@@ -104,7 +104,7 @@
   , sinw            = 0.28
   , dragio          = 0.00536
   , chio            = 0.004
-  , iceruf	    = 0.0005
+  , iceruf	        = 0.0005
   , update_ocn_f    = .true.
   , oceanmixed_ice  = .false.
   , ocn_data_format = 'nc'

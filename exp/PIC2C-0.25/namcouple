@@ -74,7 +74,7 @@
  $NLOGPRT
 # Index of printing level in output file cplout: 0 = no printing
 #  1 = main routines and field names when treated, 2 = complete output
- 5
+ 20
  $END
 ###########################################################################
 # unused in mct  $CALTYPE
@@ -590,7 +590,7 @@ INSTANT
 #                      ---------------------
 # -- 01:
 isst_ia ocn_sst 1 10800 4 i2a.nc EXPORTED
-360 300 192 145 cice um1t LAG=+3600 SEQ=+1
+cice um1t LAG=+3600 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -750,7 +750,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 17:
 uvel_ia sunocean 47 10800 4 i2a.nc EXPORTED
-360 300 192 145 cice um1u LAG=+3600 SEQ=+1
+cice um1u LAG=+3600 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -760,7 +760,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 18:
 vvel_ia svnocean 48 10800 4 i2a.nc EXPORTED
-360 300 192 144 cice um1v LAG=+3600 SEQ=+1
+cice um1v LAG=+3600 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
