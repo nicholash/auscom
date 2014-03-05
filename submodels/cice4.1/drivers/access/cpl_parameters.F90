@@ -15,8 +15,8 @@ integer (kind=int_kind) :: xdim, ydim
 !integer(kind=int_kind), parameter :: nrecv = 50   ! maxium no of flds rcvd allowed
 integer(kind=int_kind) :: nsend_i2a, nsend_i2o
 integer(kind=int_kind) :: nrecv_a2i, nrecv_o2i 
-integer(kind=int_kind), parameter :: jpfldout = 33 ! actual number of fields sent
-integer(kind=int_kind), parameter :: jpfldin  = 31 ! actual umber of fields rcvd 
+integer(kind=int_kind), parameter :: jpfldout = 37 ! actual number of fields sent
+integer(kind=int_kind), parameter :: jpfldin  = 35 ! actual umber of fields rcvd 
 
 character(len=8), dimension(jpfldout) :: cl_writ ! Symb names fields sent
 character(len=8), dimension(jpfldin)  :: cl_read ! Symb names fields rcvd
@@ -77,7 +77,7 @@ integer(kind=int_kind) :: runtime = 86400      !the time length for this run seg
 real(kind=dbl_kind) :: ocn_ssuv_factor = 1.0  ! 0.0 -- turn off the ocn_current into UM.
 real(kind=dbl_kind) :: iostress_factor = 1.0  ! 0.0 -- turn off stresses into MOM4.
              
-namelist/coupling/       &
+namelist/coupling_nml/   &
          caltype,        &
          jobnum,         &
          inidate,        &
@@ -135,7 +135,7 @@ implicit none
 
 ! all processors read the namelist--
 open(unit=99,file="input_ice.nml",form="formatted",status="old")
-read (99, coupling)
+read (99, coupling_nml)
 close(unit=99)
 ! *** make sure dt_cpl_ai is multiple of dt_cpl_io, and dt_cpl_io if multiple of dt_ice ***
 num_cpl_ai = runtime/dt_cpl_ai
@@ -176,12 +176,12 @@ else
    nml_error =  1
 endif
 do while (nml_error > 0)
-   read(nu_nml, nml=coupling,iostat=nml_error)
+   read(nu_nml, nml=coupling_nml,iostat=nml_error)
    if (nml_error > 0) read(nu_nml,*)  ! for Nagware compiler
 end do
 if (nml_error == 0) close(nu_nml)
 
-write(6,coupling)
+write(6,coupling_nml)
 
 call release_fileunit(nu_nml)
 

@@ -145,6 +145,8 @@ if ( file_exist(fname) ) then
   call ice_read_nc(ncid, nrec, 'lwflx_i', um_lwflx,  dbug)
   call ice_read_nc(ncid, nrec, 'shflx_i', um_shflx,  dbug)
   call ice_read_nc(ncid, nrec, 'press_i', um_press,  dbug)
+  call ice_read_nc(ncid, nrec, 'co2_ai', um_co2,  dbug)
+  call ice_read_nc(ncid, nrec, 'wnd_ai', um_wnd,  dbug)
   if (my_task == master_task) call ice_close_nc(ncid)
 else
   if (my_task==0) then
@@ -314,6 +316,8 @@ if ( file_exist(fname) ) then
   call ice_read_nc(ncid_o2i, 1, 'sslx_i',   ocn_sslx,   dbug)
   call ice_read_nc(ncid_o2i, 1, 'ssly_i',   ocn_ssly,   dbug)
   call ice_read_nc(ncid_o2i, 1, 'pfmice_i', ocn_pfmice, dbug)
+  call ice_read_nc(ncid_o2i, 1, 'co2_oi',   ocn_co2, dbug)
+  call ice_read_nc(ncid_o2i, 1, 'co2fx_oi',  ocn_co2fx, dbug)
   if (my_task == master_task) then
     call ice_close_nc(ncid_o2i)
     write(il_out,*) '(get_restart_o2i) has read in 7 o2i fields.'
@@ -409,6 +413,8 @@ if ( file_exist(fname) ) then
     case ('aice_io');  io_aice  = vwork
     case ('melt_io');  io_melt  = vwork
     case ('form_io');  io_form  = vwork
+    case ('co2_i1');  io_co2  = vwork
+    case ('wnd_i1');  io_wnd  = vwork
     end select
   enddo
   if (my_task == master_task) then
@@ -565,11 +571,19 @@ do cat = 1, ncat
   fsurfn_f   (:,:,cat,:) = um_tmlt(:,:,cat,:) + um_bmlt(:,:,cat,:)
 enddo
 
+!!! 20130419: Martin Dix's investigation suggests that frain and fsnow should NOT be scaled by 
+!!!           aice here. This scaling would caused double-scaling with "fresh" calculation.. 
 !(14) snowfall
-fsnow = max(aice * um_snow,0.0)
-
+!!!fsnow = max(aice * um_snow,0.0)
+!fsnow = max(um_snow,0.0)            !no more scaling as per M.D.!
 !(15) rainfall
-frain = max(aice * um_rain,0.0)
+!!!frain = max(aice * um_rain,0.0)
+!frain = max(um_rain,0.0)            !no more scaling as per M.D.!
+!!! 20130420: I dug deeper and checked all the associated steps of "fresh" calculation, found
+!!!           the original weighting is CORRECT! so back to *aice:
+fsnow = max(aice * um_snow,0.0)
+frain = max(aice * um_rain,0.0)  
+!!!------------------------------------------------------------------------------------------
 
 ! Fields from MOM4 (SSU/V and sslx/y are on U points): 
 
@@ -634,6 +648,8 @@ do jf = nrecv_a2i + 1, jpfldin
   case('sslx_i'); vwork = ocn_sslx
   case('ssly_i'); vwork = ocn_ssly
   case('pfmice_i'); vwork = ocn_pfmice
+  case('co2_oi'); vwork = ocn_co2
+  case('co2fx_oi'); vwork = ocn_co2fx
   end select
 
   call gather_global(gwork, vwork, master_task, distrb_info)
@@ -797,6 +813,9 @@ ia_thikn(:,:,:,:) = mthikn(:,:,:,:)
 !(14-18) snow thickness
 ia_snown(:,:,:,:) = msnown(:,:,:,:)
 
+ia_co2 = mco2
+ia_co2fx = mco2fx
+
 return
 end subroutine get_i2a_fields
 
@@ -893,6 +912,9 @@ io_melt = max(0.0,mfresh(:,:,:))
 !(15) ice form fwflux
 io_form = min(0.0,mfresh(:,:,:))
 
+io_co2 = um_co2
+io_wnd = um_wnd
+
 return
 end subroutine get_i2o_fields
 
@@ -937,6 +959,8 @@ implicit none
 msst = 0.
 mssu = 0.
 mssv = 0.
+mco2 = 0.
+mco2fx = 0.
 
 return
 end subroutine initialize_mocn_fields_4_i2a
@@ -949,6 +973,8 @@ implicit none
 msst(:,:,:) = msst(:,:,:) + ocn_sst(:,:,:) * coef_cpl
 mssu(:,:,:) = mssu(:,:,:) + ocn_ssu(:,:,:) * coef_cpl
 mssv(:,:,:) = mssv(:,:,:) + ocn_ssv(:,:,:) * coef_cpl
+mco2(:,:,:) = mco2(:,:,:) + ocn_co2(:,:,:) * coef_cpl
+mco2fx(:,:,:) = mco2fx(:,:,:) + ocn_co2fx(:,:,:) * coef_cpl
 
 return
 end subroutine time_average_ocn_fields_4_i2a
@@ -961,10 +987,18 @@ implicit none
 maice(:,:,:)     = maice(:,:,:)     + aice(:,:,:)     * coef_io
 mstrocnxT(:,:,:) = mstrocnxT(:,:,:) + strocnxT(:,:,:) * coef_io
 mstrocnyT(:,:,:) = mstrocnyT(:,:,:) + strocnyT(:,:,:) * coef_io
-mfresh(:,:,:)    = mfresh(:,:,:)    + fresh_gbm(:,:,:) * coef_io
-mfsalt(:,:,:)    = mfsalt(:,:,:)    + fsalt_gbm(:,:,:) * coef_io
-mfhocn(:,:,:)    = mfhocn(:,:,:)    + fhocn_gbm(:,:,:) * coef_io
-mfswthru(:,:,:)  = mfswthru(:,:,:)  + fswthru_gbm(:,:,:)  * coef_io
+!20130420: possible bug due to missing term "flatn_f/Lsub" in the last update for fresh
+!          use scale_fluxes=.f. to avoid flux scaling by /aice
+!          meaning fluxes are all grid-box-mean by the end of ice_step. 
+!mfresh(:,:,:)    = mfresh(:,:,:)    + fresh_gbm(:,:,:) * coef_io
+!mfsalt(:,:,:)    = mfsalt(:,:,:)    + fsalt_gbm(:,:,:) * coef_io
+!mfhocn(:,:,:)    = mfhocn(:,:,:)    + fhocn_gbm(:,:,:) * coef_io
+!mfswthru(:,:,:)  = mfswthru(:,:,:)  + fswthru_gbm(:,:,:)  * coef_io
+mfresh(:,:,:)    = mfresh(:,:,:)    + fresh(:,:,:) * coef_io
+mfsalt(:,:,:)    = mfsalt(:,:,:)    + fsalt(:,:,:) * coef_io
+mfhocn(:,:,:)    = mfhocn(:,:,:)    + fhocn(:,:,:) * coef_io
+mfswthru(:,:,:)  = mfswthru(:,:,:)  + fswthru(:,:,:)  * coef_io
+!---------------------------------------------------------------------------------------
 msicemass(:,:,:) = msicemass(:,:,:) + sicemass(:,:,:) * coef_io
 
 return
@@ -1035,6 +1069,8 @@ do jf = 1, nsend_i2a
     case('icethk05'); vwork(:,:,:) = ia_thikn(:,:,5,:)
     case('uvel_ia');  vwork = ia_uvel 
     case('vvel_ia');  vwork = ia_vvel 
+    case('co2_i2');  vwork = ia_co2
+    case('co2fx_i2');  vwork = ia_co2fx
   end select
 
   call gather_global(gwork, vwork, master_task, distrb_info)
@@ -1100,6 +1136,8 @@ do jf = 1, nrecv_a2i
     case ('lwflx_i'); vwork = um_lwflx
     case ('shflx_i'); vwork = um_shflx
     case ('press_i'); vwork = um_press
+    case ('co2_ai'); vwork = um_co2
+    case ('wnd_ai'); vwork = um_wnd
   end select 
 
   call gather_global(gwork, vwork, master_task, distrb_info)
@@ -1171,6 +1209,10 @@ do jf = nsend_i2a + 1, jpfldout
       vwork = scale * io_form
     case('melt_io')
       vwork = scale * io_melt
+    case('co2_i1')
+      vwork = scale * io_co2
+    case('wnd_i1')
+      vwork = scale * io_wnd
   end select
 
   call gather_global(gwork, vwork, master_task, distrb_info)
@@ -1218,6 +1260,8 @@ do jf = nrecv_a2i + 1, jpfldin
     case ('sslx_i'); vwork = ocn_sslx
     case ('ssly_i'); vwork = ocn_ssly
     case ('pfmice_i'); vwork = ocn_pfmice
+    case ('co2_oi'); vwork = ocn_co2
+    case ('co2fx_oi'); vwork = ocn_co2fx
   end select
 
   call gather_global(gwork, vwork, master_task, distrb_info)

@@ -378,7 +378,7 @@
 
 !=======================================================================
 
-subroutine ice_step
+      subroutine ice_step
 
       use ice_restoring, only: restore_ice, ice_HaloRestore
 

@@ -56,8 +56,13 @@
          ! (Briegleb JGR 97 11475-11485  July 1992)
          emissivity= 0.95_dbl_kind    ,&! emissivity of snow and ice
          cp_ice    = 2106._dbl_kind   ,&! specific heat of fresh ice (J/kg/K)
+#ifdef AusCOM
+         cp_ocn    = 3989._dbl_kind   ,&! specific heat of ocn    (J/kg/K)
+                                        ! freshwater value needed for enthalpy
+#else
          cp_ocn    = 4218._dbl_kind   ,&! specific heat of ocn    (J/kg/K)
                                         ! freshwater value needed for enthalpy
+#endif
          depressT  = 0.054_dbl_kind   ,&! Tf:brine salinity ratio (C/ppt)
 #ifndef AusCOM
          dragio    = 0.00536_dbl_kind ,&! ice-ocn drag coefficient

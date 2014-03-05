@@ -2,12 +2,14 @@
 
 set echo on
 
-if ( $1 == '') then
+if ( $#argv != 2 ) then
   echo '*** Please issue the command like ***'
-  echo '     > ./comp_auscom_cice.sh <platform>' 
-  echo 'e.g. comp_auscom_cice.sh nci'
+  echo '     > ./comp_auscom_cice.sh <platform> <driver>' 
+  echo 'e.g. comp_auscom_cice.sh nci access'
+  exit
 else
   set platform = $1
+  set driver = $2
 endif
 
 # Set AusCOM home:
@@ -25,6 +27,7 @@ setenv CAM_ICE  no        # set to yes for CAM runs (single column)
 setenv SHRDIR   csm_share # location of CCSM shared code
 setenv NETCDF   yes       # set to no if netcdf library is unavailable
 setenv DITTO    no        # reproducible diagnostics
+setenv ACCESS   yes       # set to yes for ACCESS
 setenv AusCOM   yes       # set to yes for AusCOM
 setenv OASIS3_MCT yes	  # oasis3-mct version
 setenv CHAN     MPI1	  # MPI1 or MPI2 (always MPI1!)
@@ -85,9 +88,12 @@ if ($USE_ESMF == 'yes') then
   setenv DRVDIR esmf
 endif
                                                                                 
-if ($AusCOM == 'yes') then
+if ($driver == 'auscom') then
   setenv DRVDIR auscom
+else
+  setenv DRVDIR access
 endif
+
 echo DRVDIR: $DRVDIR
                                                                                 
 cd $OBJDIR

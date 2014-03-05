@@ -25,6 +25,8 @@ module cpl_arrays_setup
 ! (22) long wave radiation (net down)			um_lwflx
 ! (23) sensible heat flux				um_shflx
 ! (24) surface pressure					um_press
+! (25) co2                                             um_co2
+! (26) wind speed                                      um_wnd
 !
 ! B> ocn (MOM4) ==> ice (CICE) [* at T or U cell center *]
 !                          
@@ -35,6 +37,8 @@ module cpl_arrays_setup
 ! (5) sea surface gradient (zonal)     (m/m)   	 	ocn_sslx
 ! (6) sea surface gradient (meridional)(m/m)    	ocn_ssly
 ! (7) potential ice frm/mlt heatflux (W/m^2)    	ocn_pfmice
+! (8) co2 ()                                           ocn_co2
+! (9) co2 flux ()                                      ocn_co2fx
 !
 ! C> ice (CICE) ==> atm (UM) [* all from T to T, U or V cell center *]
 !                          
@@ -44,6 +48,8 @@ module cpl_arrays_setup
 ! (12 - 16) ice thickness	(m ?)			ia_thikn(,,1:5)
 ! (17) ice/ocn velocity 'zonal'				ia_uvel
 ! (18) ice/ocn velocity 'meridional'			ia_vvel
+! (19) co2                                             ia_co2
+! (20) co2 flux                                        ia_co2fx
 !
 ! D> ice (CICE) ==> ocn (MOM4) [* at T or U cell center *]
 !             
@@ -71,6 +77,8 @@ module cpl_arrays_setup
 !
 !(14) ice melt waterflux                                io_melt
 !(15) ice form waterflux                                io_form
+!(16) co2                                               io_co2
+!(17) wind speed                                        io_wnd
 !
 ! Therefore, currently we have 
 ! 
@@ -90,7 +98,7 @@ implicit none
 real(kind=dbl_kind), dimension(:,:,:), allocatable :: &   !from atm (UM)
     um_thflx, um_pswflx, um_runoff, um_wme, um_snow, um_rain, &
     um_evap,  um_lhflx,  um_taux,   um_tauy, &
-    um_swflx, um_lwflx,  um_shflx,  um_press
+    um_swflx, um_lwflx,  um_shflx,  um_press,um_co2, um_wnd
 real(kind=dbl_kind), dimension(:,:,:,:), allocatable :: &   
     um_tmlt, um_bmlt
 
@@ -99,7 +107,8 @@ real(kind=dbl_kind), dimension(:,:,:), allocatable :: &
     core_runoff
 
 real(kind=dbl_kind), dimension(:,:,:), allocatable :: &   !from ocn (MOM4)
-    ocn_sst, ocn_sss, ocn_ssu, ocn_ssv, ocn_sslx, ocn_ssly, ocn_pfmice  
+    ocn_sst, ocn_sss, ocn_ssu, ocn_ssv, ocn_sslx, ocn_ssly, ocn_pfmice, &
+    ocn_co2, ocn_co2fx  
 
 real(kind=dbl_kind), dimension(:,:), allocatable :: gwork
     !global domain work array, 4 coupling data passing and global data output. 
@@ -109,14 +118,14 @@ real(kind=dbl_kind), dimension(:,:,:), allocatable :: vwork
 ! Fields out:
 !============
 real(kind=dbl_kind),dimension(:,:,:), allocatable :: &     !to atm (timeaveraged)
-    ia_sst, ia_uvel, ia_vvel
+    ia_sst, ia_uvel, ia_vvel, ia_co2, ia_co2fx
 real(kind=dbl_kind), dimension(:,:,:,:), allocatable :: &
     ia_aicen, ia_snown, ia_thikn
 
 real(kind=dbl_kind),dimension(:,:,:), allocatable :: &     !to ocn (time averaged)
     io_strsu, io_strsv, io_rain,  io_snow,  io_stflx, io_htflx, io_swflx, &
     io_qflux, io_shflx, io_lwflx, io_runof, io_press, io_aice, &
-    io_melt, io_form
+    io_melt, io_form, io_co2, io_wnd
 
 ! Temporary arrays
 !==================
@@ -133,7 +142,7 @@ real(kind=dbl_kind),dimension(:,:,:), allocatable :: &
 
 ! 3. ocn fields averaged over IA cpl interval:
 real(kind=dbl_kind),dimension(:,:,:), allocatable :: &
-    msst, mssu, mssv
+    msst, mssu, mssv, mco2, mco2fx
 
 
 ! other stuff 
