@@ -59,8 +59,6 @@ if !(-d $OBJDIR) mkdir -p $OBJDIR
 ### Grid resolution
 setenv GRID tp1
 
-### For multi-Layer ice (standard) configuration
-set N_ILYR = 4
 
 # Recommendations:
 #   use processor_shape = slenderX1 or slenderX2 in ice_in
@@ -89,8 +87,12 @@ if ($USE_ESMF == 'yes') then
 endif
                                                                                 
 if ($driver == 'auscom') then
+  # For multi-Layer ice (standard) configuration
+  set N_ILYR = 4
   setenv DRVDIR auscom
 else
+  # For "Zero-Layer" ice configuration (ACCESS version)
+  set N_ILYR = 1
   setenv DRVDIR access
 endif
 

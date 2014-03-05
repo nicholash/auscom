@@ -32,10 +32,10 @@
 ###############################################################################
 #PBS -P x77
 #PBS -q normal
-#PBS -l ncpus=1072
+#PBS -l ncpus=1248
 #PBS -l mem=2000gb
 ####PBS -l walltime=1:30:00
-#PBS -l walltime=5:00:00
+#PBS -l walltime=1:00:00
 #PBS -M nchlshnnh@gmail.com
 set -x
 set -e

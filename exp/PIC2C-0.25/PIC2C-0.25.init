@@ -115,7 +115,7 @@ cp $expdir/namcouple $icerundir/
 export ACCESSRUNCMD="--mca mpi_paffinity_alone 1 \
                      -wd $atmrundir -n $UM_NPES $expdir/um7.3x : \
                      -wd $ocnrundir -n 960 $expdir/mom5xx : \
-                     -wd $icerundir -n 6 $expdir/cicexx"
+                     -wd $icerundir -n 192 $expdir/cicexx"
 
 source /opt/Modules/3.2.6/init/ksh
 module unload openmpi

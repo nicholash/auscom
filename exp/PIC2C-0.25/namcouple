@@ -369,7 +369,7 @@ INT=0
 ##########
 # Field 01 : ice-ocean interface stress (x-direction)
 ##########
-strsu_io u_flux 170 3600 1 i2o.nc IGNORED
+strsu_io u_flux 170 450 1 i2o.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -377,7 +377,7 @@ INSTANT
 ########## 
 # Field 02 : ice-ocean interface stress (y-direction)
 ##########
-strsv_io v_flux 175 3600 1 i2o.nc IGNORED
+strsv_io v_flux 175 450 1 i2o.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -385,7 +385,7 @@ INSTANT
 ########## 
 # Field 03 : freshwater flux -- rainfall (+ice melting?) 
 ##########
-rain_io lprec 27 3600 1 i2o.nc IGNORED
+rain_io lprec 27 450 1 i2o.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -393,7 +393,7 @@ INSTANT
 ##########
 # Field 04 : freshwater flux -- snowfall
 ##########
-snow_io fprec 28 3600 1 i2o.nc IGNORED
+snow_io fprec 28 450 1 i2o.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -401,7 +401,7 @@ INSTANT
 ########## 
 # Field 05 : salt flux   (no ref no for saltflux yet!)
 ##########
-stflx_io salt_flx 454 3600 1 i2o.nc IGNORED
+stflx_io salt_flx 454 450 1 i2o.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -409,7 +409,7 @@ INSTANT
 ########## 
 # Field 06 : next heat flux   (heatflux into ocean. '42' not right.)
 ##########
-htflx_io mh_flux 42 3600 1 i2o.nc IGNORED
+htflx_io mh_flux 42 450 1 i2o.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -417,7 +417,7 @@ INSTANT
 ########## 
 # Field 07 : swflux penetrating through ice into ocean 
 ##########
-swflx_io sw_flux 367 3600 1 i2o.nc IGNORED
+swflx_io sw_flux 367 450 1 i2o.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -425,7 +425,7 @@ INSTANT
 ##########
 # Field 08 : latent heat flux
 ##########
-qflux_io q_flux 452 3600 1 i2o.nc IGNORED
+qflux_io q_flux 452 450 1 i2o.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -433,7 +433,7 @@ INSTANT
 ##########
 # Field 09 : Sensible heat flux
 ##########
-shflx_io t_flux 362 3600 1 i2o.nc IGNORED
+shflx_io t_flux 362 450 1 i2o.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -441,7 +441,7 @@ INSTANT
 ##########
 # Field 10 : LW radiation flux down
 ##########
-lwflx_io lw_flux 366 3600 1 i2o.nc IGNORED
+lwflx_io lw_flux 366 450 1 i2o.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -449,7 +449,7 @@ INSTANT
 ##########
 # Field 11 : runoff
 ########## 
-runof_io runof 297 3600 1 i2o.nc IGNORED
+runof_io runof 297 450 1 i2o.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -457,7 +457,7 @@ INSTANT
 ##########
 # Field 12 : surface pressure
 ########## 
-press_io p 33 3600 1 i2o.nc IGNORED
+press_io p 33 450 1 i2o.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -465,7 +465,7 @@ INSTANT
 ##########
 # Field 13 : surface pressure
 ########## 
-aice_io aice 44 3600 1 i2o.nc IGNORED
+aice_io aice 44 450 1 i2o.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -473,7 +473,7 @@ INSTANT
 ##########
 # Field 14 : ice melting waterflux
 ##########
-melt_io wfimelt 36 3600 1 i2o.nc IGNORED
+melt_io wfimelt 36 450 1 i2o.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -481,7 +481,7 @@ INSTANT
 ##########
 # Field 15 : ice forming waterflux
 ##########
-form_io wfiform 36 3600 1 i2o.nc IGNORED
+form_io wfiform 36 450 1 i2o.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -489,7 +489,7 @@ INSTANT
 ##########
 # Field 16 : co2
 ########## 
-co2_i1 co2_io 44 3600 1 i2o.nc IGNORED
+co2_i1 co2_io 44 450 1 i2o.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -497,7 +497,7 @@ INSTANT
 ##########
 # Field 17 : 10m wind speed
 ########## 
-wnd_i1 wnd_io 44 3600 1 i2o.nc IGNORED
+wnd_i1 wnd_io 44 450 1 i2o.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -509,7 +509,7 @@ INSTANT
 ########## 
 # Field 01 : Sea surface temperature (Celsius in MOM4)
 ##########
-t_surf sst_i 1 3600 1 o2i.nc IGNORED
+t_surf sst_i 1 450 1 o2i.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #  
 LOCTRANS
@@ -517,7 +517,7 @@ INSTANT
 ########## 
 # Field 02 : Sea surface salinity (psu)
 ##########
-s_surf sss_i 312 3600 1 o2i.nc IGNORED
+s_surf sss_i 312 450 1 o2i.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #  
 LOCTRANS
@@ -525,7 +525,7 @@ INSTANT
 ##########
 # Field 03 :  'eastward' sea surface water velocity
 ########## 
-u_surf ssu_i 181 3600 1 o2i.nc IGNORED
+u_surf ssu_i 181 450 1 o2i.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -533,7 +533,7 @@ INSTANT
 ########## 
 # Field 04 : 'northward' sea surface water velocity
 ##########
-v_surf ssv_i 261 3600 1 o2i.nc IGNORED
+v_surf ssv_i 261 450 1 o2i.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -543,7 +543,7 @@ INSTANT
 #             ('441' is "upward_sea_ice_basal_heat_flux' 'W m-2')
 ##########
 #pfmice_oi pfmice_i 441 3600 1 o2i.nc IGNORED
-frazil pfmice_i 441 3600 1 o2i.nc IGNORED
+frazil pfmice_i 441 450 1 o2i.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -552,7 +552,7 @@ INSTANT
 # Field 06 :  sea surface slope _x_ (m/m)
 #             ( '203' is "height" ...)
 ##########
-dssldx sslx_i 203 3600 1 o2i.nc IGNORED
+dssldx sslx_i 203 450 1 o2i.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -561,7 +561,7 @@ INSTANT
 # Field 07 :  sea surface slope _y_ (m/m)
 #             ( '310' is "sea_surface_elevation")
 ########## 
-dssldy ssly_i 310 3600 1 o2i.nc IGNORED
+dssldy ssly_i 310 450 1 o2i.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -570,7 +570,7 @@ INSTANT
 # Field 08 :  co2 (??)
 #             ( co2 )
 ########## 
-co2_o co2_oi 310 3600 1 o2i.nc IGNORED
+co2_o co2_oi 310 450 1 o2i.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -579,7 +579,7 @@ INSTANT
 # Field 09 :  co2 flux (??)
 #             ( co2 flux )
 ########## 
-co2fx_o co2fx_oi 310 3600 1 o2i.nc IGNORED
+co2fx_o co2fx_oi 310 450 1 o2i.nc IGNORED
 cice cice LAG=0 SEQ=+1
 #
 LOCTRANS
@@ -590,7 +590,7 @@ INSTANT
 #                      ---------------------
 # -- 01:
 isst_ia ocn_sst 1 10800 4 i2a.nc EXPORTED
-cice um1t LAG=+3600 SEQ=+1
+cice um1t LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -600,7 +600,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 02:
 icecon01 ofrzn01 31 10800 4 i2a.nc EXPORTED
-cice um1t LAG=+3600 SEQ=+1
+cice um1t LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -610,7 +610,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 03:
 icecon02 ofrzn02 31 10800 4 i2a.nc EXPORTED
-cice um1t LAG=+3600 SEQ=+1
+cice um1t LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -620,7 +620,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 04:
 icecon03 ofrzn03 31 10800 4 i2a.nc EXPORTED
-cice um1t LAG=+3600 SEQ=+1
+cice um1t LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -630,7 +630,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 05:
 icecon04 ofrzn04 31 10800 4 i2a.nc EXPORTED
-cice um1t LAG=+3600 SEQ=+1
+cice um1t LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -640,7 +640,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 06:
 icecon05 ofrzn05 31 10800 4 i2a.nc EXPORTED
-cice um1t LAG=+3600 SEQ=+1
+cice um1t LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -650,7 +650,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 07:
 snwthk01 osnwtn01 373 10800 4 i2a.nc EXPORTED
-cice um1t LAG=+3600 SEQ=+1
+cice um1t LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -660,7 +660,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 08:
 snwthk02 osnwtn02 373 10800 4 i2a.nc EXPORTED
-cice um1t LAG=+3600 SEQ=+1
+cice um1t LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -670,7 +670,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 09:
 snwthk03 osnwtn03 373 10800 4 i2a.nc EXPORTED
-cice um1t LAG=+3600 SEQ=+1
+cice um1t LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -680,7 +680,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 10:
 snwthk04 osnwtn04 373 10800 4 i2a.nc EXPORTED
-cice um1t LAG=+3600 SEQ=+1
+cice um1t LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -690,7 +690,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 11:
 snwthk05 osnwtn05 373 10800 4 i2a.nc EXPORTED
-cice um1t LAG=+3600 SEQ=+1
+cice um1t LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -700,7 +700,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 12:
 icethk01 ohicn01 468 10800 4 i2a.nc EXPORTED
-cice um1t LAG=+3600 SEQ=+1
+cice um1t LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -710,7 +710,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 13:
 icethk02 ohicn02 468 10800 4 i2a.nc EXPORTED
-cice um1t LAG=+3600 SEQ=+1
+cice um1t LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -720,7 +720,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 14:
 icethk03 ohicn03 468 10800 4 i2a.nc EXPORTED
-cice um1t LAG=+3600 SEQ=+1
+cice um1t LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -730,7 +730,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 15:
 icethk04 ohicn04 468 10800 4 i2a.nc EXPORTED
-cice um1t LAG=+3600 SEQ=+1
+cice um1t LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -740,7 +740,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 16:
 icethk05 ohicn05 468 10800 4 i2a.nc EXPORTED
-cice um1t LAG=+3600 SEQ=+1
+cice um1t LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -750,7 +750,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 17:
 uvel_ia sunocean 47 10800 4 i2a.nc EXPORTED
-cice um1u LAG=+3600 SEQ=+1
+cice um1u LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -760,7 +760,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 18:
 vvel_ia svnocean 48 10800 4 i2a.nc EXPORTED
-cice um1v LAG=+3600 SEQ=+1
+cice um1v LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -770,7 +770,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 19:
 co2_i2 co2_ia 1 10800 4 i2a.nc EXPORTED
-cice um1t LAG=+3600 SEQ=+1
+cice um1t LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT
@@ -780,7 +780,7 @@ CONSERV LR SCALAR LATLON 10 FRACNNEI FIRST
 INT=0
 # -- 20:
 co2fx_i2 co2fx_ia 31 10800 4 i2a.nc EXPORTED
-cice um1t LAG=+3600 SEQ=+1
+cice um1t LAG=+450 SEQ=+1
 P 0 P 0
 #
 LOCTRANS CHECKIN SCRIPR CHECKOUT

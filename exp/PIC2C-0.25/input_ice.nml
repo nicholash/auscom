@@ -1,8 +1,8 @@
-&coupling
+&coupling_nml
+ init_date=00010101
  caltype=1
  jobnum=1
  inidate=00010101
- init_date=00010101
  runtime0=0
  runtime=7776000
  dt_cpl_ai=10800
