@@ -441,34 +441,24 @@
     select case (jf)
         case (1)
             swflx0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-            call debug_field_2d('swflx0', my_task, vwork2d)
         case (2)
             lwflx0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-            call debug_field_2d('lwflx0', my_task, vwork2d)
         case (3)
             rain0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-            call debug_field_2d('rain0', my_task, vwork2d)
         case (4)
             snow0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
-            call debug_field_2d('snow0', my_task, vwork2d)
         case (5)
             press0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-            call debug_field_2d('press0', my_task, vwork2d)
         case (6)
             runof0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-            call debug_field_2d('runof0', my_task, vwork2d)
         case (7)
             tair0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
-            call debug_field_2d('tair0', my_task, vwork2d)
         case (8)
             qair0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
-            call debug_field_2d('qair0', my_task, vwork2d)
         case (9)
             uwnd0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
-            call debug_field_2d('uwnd0', my_task, vwork2d)
         case (10)
             vwnd0(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1)  = vwork2d
-            call debug_field_2d('vwnd0', my_task, vwork2d)
         case default
             stop "Error: invalid case in subroutine from_atm()"
     end select
@@ -523,25 +513,18 @@
     select case (jf)
         case (n_a2i+1)
             ssto(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-            call debug_field_2d('ssto', my_task, vwork2d)
         case (n_a2i+2)
             ssso(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-            call debug_field_2d('ssso', my_task, vwork2d)
         case (n_a2i+3)
             ssuo(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-            call debug_field_2d('ssuo', my_task, vwork2d)
         case (n_a2i+4)
             ssvo(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-            call debug_field_2d('ssvo', my_task, vwork2d)
         case (n_a2i+5)
             sslx(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-            call debug_field_2d('sslx', my_task, vwork2d)
         case (n_a2i+6)
             ssly(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-            call debug_field_2d('ssly', my_task, vwork2d)
         case (n_a2i+7)
             pfmice(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
-            call debug_field_2d('pfmice', my_task, vwork2d)
         case default
             stop "Error: invalid case in subroutine from_ocn()"
     end select
@@ -639,7 +622,6 @@
     else
       call pack_global_dbl(gwork, vwork, master_task, distrb_info)
       vwork2d(l_ilo:l_ihi, l_jlo:l_jhi) = gwork(l_ilo:l_ihi, l_jlo:l_jhi)
-      call debug_field_2d(trim(field_name), my_task, vwork2d)
     end if
     if (my_task == 0 .or. ll_comparal) then   
 
@@ -679,7 +661,6 @@
       else
         call pack_global_dbl(gwork, isst, master_task, distrb_info)
         vwork2d(l_ilo:l_ihi, l_jlo:l_jhi) = gwork(l_ilo:l_ihi, l_jlo:l_jhi)
-        call debug_field_2d('isst', my_task, vwork2d)
       endif
     end if 
 

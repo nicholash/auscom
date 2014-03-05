@@ -81,8 +81,6 @@ module debug_field_mod
         integer :: start(3), data_size(3), idx
         logical :: found, dump
 
-        return 
-
         found = .false.
         dump = .false.
 
