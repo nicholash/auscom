@@ -15,6 +15,10 @@ import yaml
 from fnamelist import FortranNamelist, Namcouple
 from operator import xor
 
+"""
+Set off auscom and access runs. Getting very messy, move to payu. 
+"""
+
 run_script = """
 #!/bin/csh -f
 
@@ -24,6 +28,7 @@ run_script = """
 #PBS -l ncpus=<ncpus>
 #PBS -l mem=<mem>
 #PBS -l wd
+#PBS -N <exp_name>
 
 module load openmpi/1.6.5-mlx
 module load ipm
@@ -32,21 +37,23 @@ mpirun --mca mtl ^mxm --mca orte_base_help_aggregate 0 -wdir <atm_dir> -n <atm_n
 
 """
 
-configs = ['namcouple', 'input_atm.nml', 'data_4_matm.table', 'cice_in.nml', 'input_ice.nml', 'input_ice_gfdl.nml', 'input_ice_monin.nml', 'input.nml', 'diag_table', 'field_table', 'data_table']
-
-def prepare_newrun(exp_dir, input_dir):
+def prepare_newrun(exp_dir, model, input_dir):
     """
     Anything that needs to be done before the model starts.
     """
 
     # Delete and remake old INPUT and RESTART dirs, these get polluted. e.g. by oasis writing over the restart files.
-    for d, m in [('ATM_RUNDIR', 'matm'), ('ICE_RUNDIR', 'cice'), ('OCN_RUNDIR', 'mom5')]:
+    for d, m in [('ATM_RUNDIR', 'atm'), ('ICE_RUNDIR', 'ice'), ('OCN_RUNDIR', 'ocn')]:
 
         rundir = os.path.join(exp_dir, d)
         if os.path.exists(rundir):
             shutil.rmtree(rundir)
 
-        input = os.path.join(exp_dir, d, 'INPUT')
+        if model == 'access' and d == 'ATM_RUNDIR':
+            input = rundir
+        else:
+            input = os.path.join(exp_dir, d, 'INPUT')
+
         restart = os.path.join(exp_dir, d, 'RESTART')
         os.makedirs(input)
         os.makedirs(restart)
@@ -56,41 +63,54 @@ def prepare_newrun(exp_dir, input_dir):
             shutil.copy(f, input)
             os.chmod(os.path.join(input, os.path.basename(f)), 0664)
 
+        # Copy oasis files into input dir. 
+        for f in glob.glob('%s/*' % os.path.join(input_dir, 'oasis')):
+            if model == 'access':
+                shutil.copy(f, rundir)
+                os.chmod(os.path.join(rundir, os.path.basename(f)), 0664)
+            else:
+                shutil.copy(f, input)
+                os.chmod(os.path.join(input, os.path.basename(f)), 0664)
+
+        # For some reason cice needs o2i.nc in a special place. FIXME.
+        if model == 'access' and d == 'ICE_RUNDIR':
+            shutil.copy(os.path.join(rundir, 'o2i.nc'), os.path.join(restart, 'o2i.nc'))
+
         # Copy fresh config files into place. 
-        for f in configs:
-            shutil.copy(os.path.join(exp_dir, f), os.path.join(exp_dir, d))
+        for f in glob.glob('%s/config/*' % exp_dir):
+            shutil.copy(f, os.path.join(exp_dir, d))
+
+    shutil.copytree(os.path.join(exp_dir, 'atm_tmp_ctrl'), os.path.join(exp_dir, 'ATM_RUNDIR', 'tmp_ctrl'))
+    os.makedirs(os.path.join(exp_dir, 'ATM_RUNDIR', 'tmp'))
 
 
-def prepare_contrun(exp_dir, init_date=None):
+def prepare_contrun(exp_dir, model, cont_date):
     """
     Anything that needs to be done before a continuation run, apart from setting up the dates.
     
-    There are some things that the models should take care of. 
+    There are some things that the models should take care of themselves.
     """
+
+    cont_date = date_to_str(cont_date)
 
     ice_input = os.path.join(exp_dir, 'ICE_RUNDIR', 'INPUT')
     ice_restart = os.path.join(exp_dir, 'ICE_RUNDIR', 'RESTART')
     ocn_input = os.path.join(exp_dir, 'OCN_RUNDIR', 'INPUT')
     ocn_restart = os.path.join(exp_dir, 'OCN_RUNDIR', 'RESTART')
-    atm_input = os.path.join(exp_dir, 'ATM_RUNDIR', 'INPUT')
 
     # Copy over some CICE files. 
     shutil.copy(os.path.join(ice_restart, 'u_star.nc'), ice_input)
     shutil.copy(os.path.join(ice_restart, 'sicemass.nc'), ice_input)
+    try:
+        shutil.copy(os.path.join(ice_restart, 'mice.nc'), ice_input)
+    except IOError:
+        pass
 
     # Setup the CICE restart. 
     # Check that restart file for this start date exists. 
-    if init_date:
-        assert(os.path.exists(os.path.join(ice_restart, 'iced.%s' % (init_date))))
-        with open(os.path.join(ice_restart, 'ice.restart_file'), 'w') as f:
-            f.write('iced.%s' % init_date)
-
-    # Copy over new OASIS restart files. FIXME: I don't think this is necessary, needs checking. 
-    # E.g. The atm reads a2i and sends it to the ice, it is not read directly by the ice.
-    shutil.copy(os.path.join(ice_input, 'i2o.nc'), ocn_input)
-    shutil.copy(os.path.join(ocn_input, 'o2i.nc'), ice_input)
-    shutil.copy(os.path.join(atm_input, 'a2i.nc'), ice_input)
-    shutil.copy(os.path.join(ice_input, 'i2a.nc'), atm_input)
+    assert(os.path.exists(os.path.join(ice_restart, 'iced.%s' % (cont_date))))
+    with open(os.path.join(ice_restart, 'ice.restart_file'), 'w') as f:
+        f.write('iced.%s' % cont_date)
 
     # Copy over ocean restarts.
     for f in glob.glob('%s/*' % ocn_restart):
@@ -98,8 +118,20 @@ def prepare_contrun(exp_dir, init_date=None):
 
     # Copy fresh config files into place. FIXME: This is being done in newrun also.
     for d in ['ATM_RUNDIR', 'ICE_RUNDIR','OCN_RUNDIR']:
-        for f in configs:
-            shutil.copy(os.path.join(exp_dir, f), os.path.join(exp_dir, d))
+        for f in glob.glob('%s/config/*' % exp_dir):
+            shutil.copy(f, os.path.join(exp_dir, d))
+
+    if model == 'access':
+        # Copy over UM restart file. 
+        um_restart_src = os.path.join(exp_dir, 'ATM_RUNDIR', 'aiihca.da%s' % date_to_um_date(cont_date))
+        um_restart_dest = os.path.join(exp_dir, 'ATM_RUNDIR', 'PIC2C-0.25.astart')
+        assert(os.path.exists(um_restart))
+        shutil.copy(um_restart_src, um_restart_dest)
+
+        # Tell CABLE that this is a cont run.
+        nml = FortranNamelist(os.path.join(atm_rundir, 'cable.nml'))
+        nml.set_value('cable', 'cable_user%CABLE_RUNTIME_COUPLED', '.TRUE.')
+        nml.write()
 
 def ndays_between_dates(start_date, end_date):
     """
@@ -154,7 +186,7 @@ def add_months_to_date(date, num_months):
     return new_date
 
 
-def set_next_startdate(exp_dir, init_date, prev_start_date, runtime_per_submit, submit_num, newrun):
+def set_next_startdate(exp_dir, init_date, prev_start_date, runtime_per_submit, submit_num, newrun, model):
     """
     Tell the models when to start by modifying the input namelists.
 
@@ -177,19 +209,58 @@ def set_next_startdate(exp_dir, init_date, prev_start_date, runtime_per_submit, 
     days_this_run = ndays_between_dates(start_date, end_date)
 
     # init_date is the start date of the experiment. 
-    init_str = str(init_date.year).zfill(4) + str(init_date.month).zfill(2) + str(init_date.day).zfill(2)
-    run_str = str(start_date.year).zfill(4) + str(start_date.month).zfill(2) + str(start_date.day).zfill(2)
+    init_str = date_to_str(init_date)
+    run_str = date_to_str(start_date)
+
+    atm_rundir = os.path.join(exp_dir, 'ATM_RUNDIR')
 
     # Atmos.
-    atm_rundir = os.path.join(exp_dir, 'ATM_RUNDIR')
-    nml = FortranNamelist(os.path.join(atm_rundir, 'input_atm.nml'))
-    # The start of the experiment.
-    nml.set_value('coupling', 'init_date', init_str)
-    # The start of the run.
-    nml.set_value('coupling', 'inidate', run_str)
-    nml.set_value('coupling', 'truntime0', days_since_start*86400)
-    nml.set_value('coupling', 'runtime', days_this_run*86400)
-    nml.write()
+    if model == 'auscom': 
+        nml = FortranNamelist(os.path.join(atm_rundir, 'input_atm.nml'))
+        # The start of the experiment.
+        nml.set_value('coupling', 'init_date', init_str)
+        # The start of the run.
+        nml.set_value('coupling', 'inidate', run_str)
+        nml.set_value('coupling', 'truntime0', days_since_start*86400)
+        nml.set_value('coupling', 'runtime', days_this_run*86400)
+        nml.write()
+    else:
+        # Changes for the UM. 
+        nml = FortranNamelist(os.path.join(atm_rundir, 'tmp_ctrl', 'CNTLALL'))
+        # Run length
+        nml.set_value('NLSTCALL', 'RUN_TARGET_END', '0, 0, %s, 0, 0, 0' % days_this_run)
+        # Resubmit increement
+        nml.set_value('NLSTCALL', 'RUN_RESUBMIT_INC', '0, 0, %s, 0, 0, 0' % days_this_run)
+        # Start time
+        nml.set_value('NLSTCALL', 'MODEL_BASIS_TIME', '%s, %s, %s, 0, 0, 0' % (run_str[0:4], run_str[4:6], run_str[6:8]))
+        nml.set_value('NLSTCALL', 'ANCIL_REFTIME', '%s, %s, %s, 0, 0, 0' % (run_str[0:4], run_str[4:6], run_str[6:8]))
+        nml.write()
+
+        nml = FortranNamelist(os.path.join(atm_rundir, 'tmp_ctrl', 'SIZES'))
+        nml.set_value('STSHCOMP', 'RUN_TARGET_END', '0, 0, %s, 0, 0, 0' % days_this_run)
+        nml.write()
+
+        def next_three_dump_times(date):
+            """
+            Return the dump times (in timesteps) for the next three months.
+            """
+
+            assert(date.day == 1 and date.month <= 10)
+            _, days_1 = calendar.monthrange(date.year, date.month)
+            _, days_2 = calendar.monthrange(date.year, date.month + 1)
+            _, days_3 = calendar.monthrange(date.year, date.month + 2)
+
+            dump_1 = days_1*48
+            dump_2 = dump_1 + days_2*48
+            dump_3 = dump_2 + days_3*48
+
+            return (dump_1, dump_2, dump_3)
+
+        dump_1, dump_2, dump_3 = next_three_dump_times(start_date)
+
+        nml = FortranNamelist(os.path.join(atm_rundir, 'tmp_ctrl', 'CNTLGEN'))
+        nml.set_value('NLSTCGEN', 'DUMPTIMESim', '%s, %s, %s, %s' % (dump_1, dump_2 , dump_3, '0,'*157))
+        nml.write()
 
     # Ice
     ice_rundir = os.path.join(exp_dir, 'ICE_RUNDIR')
@@ -237,7 +308,45 @@ def clean_up():
     pass
 
 
-def run(exp_dir, config, run_direct):
+def make_run_script(exp_name, model, exp_dir, config):
+    """
+    Create either auscom or access script. 
+
+    HACK: for now just submit pre-existing access run script. 
+    """
+
+    qsub_script = None
+    
+    if model == 'auscom':
+        atm_dir = '%s/ATM_RUNDIR' % (exp_dir)
+        ice_dir = '%s/ICE_RUNDIR' % (exp_dir)
+        ocn_dir = '%s/OCN_RUNDIR' % (exp_dir)
+
+        # Write script out as a file.
+        script = run_script
+        for s in ['project', 'queue', 'walltime', 'ncpus', 'mem']:
+            if s in config:
+                script = script.replace('<' + s + '>', str(config[s]))
+
+        script = script.replace('<atm_dir>', atm_dir)
+        script = script.replace('<atm_ncpus>', str(config['atm']['ncpus']))
+        script = script.replace('<ice_dir>', ice_dir) 
+        script = script.replace('<ice_ncpus>', str(config['ice']['ncpus']))
+        script = script.replace('<ocn_dir>', ocn_dir)
+        script = script.replace('<ocn_ncpus>', str(config['ocean']['ncpus']))
+
+        script = script.replace('<exp_dir>' , exp_dir)
+        script = script.replace('<exp_name>' , exp_name[:15])
+
+        qsub_script = os.path.join(exp_dir, 'qsub_run.sh')
+        with open(qsub_script, 'w') as f:
+            f.write(script)
+    else:
+        qsub_script = os.path.join(exp_dir, 'run_access.sh')
+
+    return qsub_script
+
+def run(exp_name, model, exp_dir, config, run_direct):
     """
     Submit a job, wait for it to finish, check that it completed properly.
     """
@@ -246,41 +355,16 @@ def run(exp_dir, config, run_direct):
 
         while True:
             time.sleep(10)
+            qsub_out = ''
             try: 
-                qsub_out = subprocess.check_output(['qstat', run_id])
-            except subprocess.CalledProcessError:
-                break
+                qsub_out = subprocess.check_output(['qstat', run_id], stderr=subprocess.STDOUT)
+            except subprocess.CalledProcessError as err:
+                qsub_out = err.output
 
             if 'Job has finished' in qsub_out:
                 break
 
-    atm_dir = '%s/ATM_RUNDIR' % (exp_dir)
-    ice_dir = '%s/ICE_RUNDIR' % (exp_dir)
-    ocn_dir = '%s/OCN_RUNDIR' % (exp_dir)
-
-    try:
-        os.remove('qsub_run.sh')
-    except OSError:
-        pass
-
-    # Write script out as a file.
-    script = run_script
-    for s in ['project', 'queue', 'walltime', 'ncpus', 'mem']:
-        if s in config:
-            script = script.replace('<' + s + '>', str(config[s]))
-
-    script = script.replace('<atm_dir>', atm_dir)
-    script = script.replace('<atm_ncpus>', str(config['atm']['ncpus']))
-    script = script.replace('<ice_dir>', ice_dir) 
-    script = script.replace('<ice_ncpus>', str(config['ice']['ncpus']))
-    script = script.replace('<ocn_dir>', ocn_dir)
-    script = script.replace('<ocn_ncpus>', str(config['ocean']['ncpus']))
-
-    script = script.replace('<exp_dir>' , exp_dir)
-
-    qsub_script =  os.path.join(exp_dir, 'qsub_run.sh')
-    with open(qsub_script, 'w') as f:
-        f.write(script)
+    qsub_script = make_run_script(exp_name, model, exp_dir, config)
 
     # Submit the experiment
     if run_direct:
@@ -296,6 +380,7 @@ def run(exp_dir, config, run_direct):
         wait(run_id)
 
     # Read the output file and check that run suceeded.
+    ocn_dir = '%s/OCN_RUNDIR' % (exp_dir)
     output = os.path.join(ocn_dir, 'stdout.txt')
     s = ''
     with open(output, 'r') as f:
@@ -321,17 +406,36 @@ def archive(exp_dir, run_name):
         shutil.copytree(os.path.join(archive_dir, model_name, 'INPUT'), os.path.join(model_dir, 'INPUT'))
         shutil.copytree(os.path.join(archive_dir, model_name, 'RESTART'), os.path.join(model_dir, 'RESTART'))
 
+def date_to_str(date):
+    """Convert a time date object to a string like: yyyymmdd."""
+
+    return (str(date.year).zfill(4) + str(date.month).zfill(2) + str(date.day).zfill(2))
+
+def str_to_date(str):
+    """Convert string like: yyyymmdd to a time date object."""
+
+    return datetime.date(int(str[0:4]), int(str[4:6]), int(str[6:8]))
+
+def date_to_um_date(date):
+    """Convert a time date object to a um format date string which is yym[m]d[d]0
+    
+      The month and day have variable width.  
+    """
+
+    return (str(date.year).zfill(2) + str(date.month) + str(date.day) + str(0))
+
 def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("experiment", help="The experiment to run.")
-    parser.add_argument("--submits", dest="submits", default=1, type=int, help="The number of times to submit.")
-    parser.add_argument("--submit_runtime_months", dest="submit_runtime_months", default=12, type=int, help="The length of each submit in months, defaults to 12.")
-    parser.add_argument("--submit_runtime_days", dest="submit_runtime_days", default=0, type=int, help="The length of each submit in days, defaults to 0.")
-    parser.add_argument("--new_run", dest="new_run", action='store_true', default=False, help="Set this option to indicate a new run.")
-    parser.add_argument("--init_date", dest="init_date", default='00010101', type=str, help="The initial date of the entire run, this is a string of form yyyymmdd.")
-    parser.add_argument("--input_dir", dest="input_dir", default='/short/v45/auscom', type=str, help="Where input data is kept for each experiment.")
-    parser.add_argument("--run_direct", dest="run_direct", action='store_true', default=False, help="Run the model directly, don't use qsub.")
+    parser.add_argument("--submits", default=1, type=int, help="The number of times to submit.")
+    parser.add_argument("--submit_runtime_months", default=12, type=int, help="The length of each submit in months, defaults to 12.")
+    parser.add_argument("--submit_runtime_days", default=0, type=int, help="The length of each submit in days, defaults to 0.")
+    parser.add_argument("--new_run", action='store_true', default=False, help="Set this option to indicate a new run.")
+    parser.add_argument("--init_date", default='00010101', type=str, help="The initial date of the entire run, this is a string of form yyyymmdd.")
+    parser.add_argument("--input_dir", default='/short/v45/auscom', type=str, help="Where input data is kept for each experiment.")
+    parser.add_argument("--run_direct", action='store_true', default=False, help="Run the model directly, don't use qsub.")
+    parser.add_argument("--model", default='auscom', help="Which model to run. Should be either 'auscom' or 'access', defaults to 'auscom'")
 
     args = parser.parse_args()
 
@@ -346,7 +450,7 @@ def main():
         return 1
 
     # Strange, datetime.date doesn't have strptime()
-    init_date = datetime.date(int(args.init_date[0:4]), int(args.init_date[4:6]), int(args.init_date[6:8]))
+    init_date = str_to_date(args.init_date)
     script_path = os.path.dirname(os.path.realpath(__file__))
     exp_dir = os.path.abspath(os.path.join(script_path, '../exp/', args.experiment))
     input_dir = os.path.abspath(os.path.join(args.input_dir, args.experiment))
@@ -358,24 +462,24 @@ def main():
 
     if args.new_run:
         assert (os.path.exists(input_dir))
-        prepare_newrun(exp_dir, input_dir)
+        prepare_newrun(exp_dir, args.model, input_dir)
     else:
-        prepare_contrun(exp_dir, args.init_date)
+        prepare_contrun(exp_dir, args.model, init_date)
 
     start_date = None
     end_date = None
     for num_submits in range(args.submits): 
 
-        start_date, end_date = set_next_startdate(exp_dir, init_date, start_date, args.submit_runtime_months, num_submits + 1, args.new_run)
+        start_date, end_date = set_next_startdate(exp_dir, init_date, start_date, args.submit_runtime_months, num_submits + 1, args.new_run, args.model)
         args.new_run = False
 
-        (ret, err, run_id) = run(exp_dir, config, args.run_direct)
+        (ret, err, run_id) = run(args.experiment, args.model, exp_dir, config, args.run_direct)
         if not ret:
             print 'Run failed, see %s' % err
             return 1
             
         archive(exp_dir, '%s_to_%s' % (start_date, end_date))
-        prepare_contrun(exp_dir)
+        prepare_contrun(exp_dir, args.model, start_date)
 
     clean_up()
 
