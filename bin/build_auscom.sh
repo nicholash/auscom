@@ -1,11 +1,12 @@
 #!/bin/bash
 
-if [ $# != 1 ]; then 
-    echo "Usage: build_auscom.sh <platform>"
+if [ $# != 2 ]; then 
+    echo "Usage: build_auscom.sh <platform> <model>"
     exit 1
 fi
 
 platform=$1
+model=$2
 
 function check {
     "$@"
@@ -20,21 +21,21 @@ function check {
 #export DEBUG=yes
 
 BASEDIR=$(pwd)
-cd ../submodels/oasis3-mct/util/make_dir
-echo "include $HOME/auscom/submodels/oasis3-mct/util/make_dir/make.$platform" > make.inc
-source config.$platform
-check make -j 4 -f TopMakefileOasis3
-cd ${BASEDIR}
+#cd ../submodels/oasis3-mct/util/make_dir
+#echo "include $HOME/auscom/submodels/oasis3-mct/util/make_dir/make.$platform" > make.inc
+#source config.$platform
+#check make -j 4 -f TopMakefileOasis3
+#cd ${BASEDIR}
 
 cd ../submodels/cice4.1/compile
-check ./comp_auscom_cice.sh $platform
+check ./comp_auscom_cice.sh $platform $model
 cd ${BASEDIR}
 
-cd ../submodels/matm/compile
-check ./comp_auscom_matm.sh $platform
-cd ${BASEDIR}
+#cd ../submodels/matm/compile
+#check ./comp_auscom_matm.sh $platform
+#cd ${BASEDIR}
 
-cd ../submodels/mom/exp
-check ./MOM_compile.csh --platform $platform --type MOM_ACCESS
-cd ${BASEDIR}
-cp ../submodels/mom/exec/$platform/MOM_ACCESS/fms_MOM_ACCESS.x ./
+#cd ../submodels/mom/exp
+#check ./MOM_compile.csh --platform $platform --type MOM_ACCESS
+#cd ${BASEDIR}
+#cp ../submodels/mom/exec/$platform/MOM_ACCESS/fms_MOM_ACCESS.x ./
