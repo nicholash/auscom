@@ -79,14 +79,14 @@ mkdir -p $atmrundir/tmp
 
 # Copy in input files and change mode. Some these will be overwritten at the end of the run.
 cp $inputdir/atm/* $atmrundir/
-cp $inputdir/mom5/* $ocnrundir/INPUT/
-cp $inputdir/cice/* $icerundir/INPUT/
+cp $inputdir/ocn/* $ocnrundir/INPUT/
+cp $inputdir/ice/* $icerundir/INPUT/
 
 # Copy over oasis files
-cp $inputdir/oasis3-mct/* $atmrundir/
-cp $inputdir/oasis3-mct/* $ocnrundir/
-cp $inputdir/oasis3-mct/* $icerundir/
-cp $inputdir/oasis3-mct/o2i.nc $icerundir/RESTART/
+cp $inputdir/oasis/* $atmrundir/
+cp $inputdir/oasis/* $ocnrundir/
+cp $inputdir/oasis/* $icerundir/
+cp $inputdir/oasis/o2i.nc $icerundir/RESTART/
 
 chmod -R +w $atmrundir/*
 chmod -R +w $ocnrundir/*
@@ -96,21 +96,21 @@ chmod -R +w $icerundir/*
 export JOBDIR=$atmrundir/tmp_ctrl
 
 cp -r $expdir/atm_tmp_ctrl $atmrundir/tmp_ctrl
-cp $expdir/cable.nml $atmrundir/
-cp $expdir/input_atm.nml $atmrundir/
-cp $expdir/namcouple $atmrundir/
+cp $expdir/config/cable.nml $atmrundir/
+cp $expdir/config/input_atm.nml $atmrundir/
+cp $expdir/config/namcouple $atmrundir/
 
 # Copy over ocean config files. 
-cp $expdir/data_table $ocnrundir/
-cp $expdir/diag_table $ocnrundir/
-cp $expdir/field_table $ocnrundir/
-cp $expdir/input.nml $ocnrundir/
-cp $expdir/namcouple $ocnrundir/
+cp $expdir/config/data_table $ocnrundir/
+cp $expdir/config/diag_table $ocnrundir/
+cp $expdir/config/field_table $ocnrundir/
+cp $expdir/config/input.nml $ocnrundir/
+cp $expdir/config/namcouple $ocnrundir/
 
 # Copy over ice config files. 
-cp $expdir/cice_in.nml $icerundir/
-cp $expdir/input_ice.nml $icerundir/
-cp $expdir/namcouple $icerundir/
+cp $expdir/config/cice_in.nml $icerundir/
+cp $expdir/config/input_ice.nml $icerundir/
+cp $expdir/config/namcouple $icerundir/
 
 export ACCESSRUNCMD="--mca mpi_paffinity_alone 1 \
                      -wd $atmrundir -n $UM_NPES $expdir/um7.3x : \
