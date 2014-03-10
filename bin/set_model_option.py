@@ -12,11 +12,11 @@ Modify atmosphere, ice, ocean and coupler namelists files to set a configuration
 Relies on the the experiments directory being at ../exp
 """
 
-input_atm = "../exp/%s/input_atm.nml"
-namcouple = ["../exp/%s/namcouple"]
-input_ice = "../exp/%s/input_ice.nml"
-cice_in = "../exp/%s/cice_in.nml"
-input_ocn = "../exp/%s/input.nml"
+input_atm = "../exp/%s/config/input_atm.nml"
+namcouple = ["../exp/%s/config/namcouple"]
+input_ice = "../exp/%s/config/input_ice.nml"
+cice_in = "../exp/%s/config/cice_in.nml"
+input_ocn = "../exp/%s/config/input.nml"
 
 
 def set_runtime(experiment, runtime):

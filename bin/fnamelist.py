@@ -73,11 +73,12 @@ class FortranNamelist:
         """
         Return the value, start index and end index.
         """
-        regex = r"%s[ \t]*=[ \t]*(\S*),?[ \t]*$"
+
+        regex = r"%s[ \t]*=[ \t]*(.*?)(?=\s+,?\s*(?:\w+[ \t]*=)|(?:/))"
         m = re.search((r"&%s.*?" + regex) % (record, variable), self.str, re.MULTILINE | re.DOTALL)
         assert(m is not None)
 
-        return (m.group(1), m.start(1), m.end(1))
+        return (m.group(1), m.start(1), m.end(1) if m.group(1)[-1] != '\n' else m.end(1) - 1)
 
     def set_value(self, record, variable, value):
 
