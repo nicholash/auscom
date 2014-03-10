@@ -17,6 +17,7 @@
   use ice_distribution, only : distrb, nprocsX, nprocsY
   use ice_gather_scatter
   use ice_constants
+  use ice_boundary, only : ice_HaloUpdate
   use ice_domain       !, only : distrb_info
   use ice_grid,        only : u2tgrid_vector
   use ice_grid,        only : ANGLE, ANGLET 
@@ -768,10 +769,10 @@
       !call flush(il_out)
 
       if (ll_comparal) then 
-        call prism_get_proto (il_var_id_in(jf), isteps, vwork2d(l_ilo:l_ihi, l_jlo:l_jhi), ierror) !vwork(2:,2:,my_task+1), 
-        call mpi_gatherv(vwork2d(l_ilo:l_ihi, l_jlo:l_jhi),1,sendsubarray,gwork,counts,disps,resizedrecvsubarray, &
-                     0,MPI_COMM_ICE,ierror)
-        call broadcast_array(gwork, 0)
+        call prism_get_proto (il_var_id_in(jf), isteps, vwork2d(l_ilo:l_ihi, l_jlo:l_jhi), ierror)
+        !call mpi_gatherv(vwork2d(l_ilo:l_ihi, l_jlo:l_jhi),1,sendsubarray,gwork,counts,disps,resizedrecvsubarray, &
+        !             0,MPI_COMM_ICE,ierror)
+        !call broadcast_array(gwork, 0)
 !         gwork(l_ilo:l_ihi, l_jlo:l_jhi) = vwork2d(l_ilo:l_ihi, l_jlo:l_jhi)
       else
         call prism_get_proto (il_var_id_in(jf), isteps, gwork, ierror)
@@ -808,36 +809,64 @@
     !***Note following "select case" works only if cl_read(:) is defined at ALL ranks***!
     !-----------------------------------------------------------------------------------!
     select case (trim(cl_read(jf)))
-    case ('thflx_i');  um_thflx(:,:,:)  = vwork(:,:,:)
-    case ('pswflx_i'); um_pswflx(:,:,:) = vwork(:,:,:)
-    case ('runoff_i'); um_runoff(:,:,:) = vwork(:,:,:)
-    case ('wme_i');   um_wme(:,:,:) = vwork(:,:,:)
-!    case ('rain_i');  um_rain(:,:,:) = vwork(:,:,:)
-!    case ('snow_i');  um_snow(:,:,:) = vwork(:,:,:)
-!---20100825 -- just be cauious: -------------------------
-    case ('rain_i');  um_rain(:,:,:) = max(0.0,vwork(:,:,:))
-    case ('snow_i');  um_snow(:,:,:) = max(0.0,vwork(:,:,:))
-!---------------------------------------------------------   
-    case ('evap_i');  um_evap(:,:,:) = vwork(:,:,:)
-    case ('lhflx_i'); um_lhflx(:,:,:) = vwork(:,:,:)
-    case ('tmlt01_i'); um_tmlt(:,:,1,:) = vwork(:,:,:) 
-    case ('tmlt02_i'); um_tmlt(:,:,2,:) = vwork(:,:,:)
-    case ('tmlt03_i'); um_tmlt(:,:,3,:) = vwork(:,:,:)
-    case ('tmlt04_i'); um_tmlt(:,:,4,:) = vwork(:,:,:)
-    case ('tmlt05_i'); um_tmlt(:,:,5,:) = vwork(:,:,:)
-    case ('bmlt01_i'); um_bmlt(:,:,1,:) = vwork(:,:,:)
-    case ('bmlt02_i'); um_bmlt(:,:,2,:) = vwork(:,:,:)
-    case ('bmlt03_i'); um_bmlt(:,:,3,:) = vwork(:,:,:)
-    case ('bmlt04_i'); um_bmlt(:,:,4,:) = vwork(:,:,:)
-    case ('bmlt05_i'); um_bmlt(:,:,5,:) = vwork(:,:,:)
-    case ('taux_i');  um_taux(:,:,:)  = vwork(:,:,:)
-    case ('tauy_i');  um_tauy(:,:,:)  = vwork(:,:,:)
-    case ('swflx_i'); um_swflx(:,:,:) = vwork(:,:,:)
-    case ('lwflx_i'); um_lwflx(:,:,:) = vwork(:,:,:)
-    case ('shflx_i'); um_shflx(:,:,:) = vwork(:,:,:)
-    case ('press_i'); um_press(:,:,:) = vwork(:,:,:)
-    case ('co2_ai'); um_co2(:,:,:) = vwork(:,:,:)
-    case ('wnd_ai'); um_wnd(:,:,:) = vwork(:,:,:)
+        case ('thflx_i')
+            um_thflx(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('pswflx_i')
+            um_pswflx(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('runoff_i')
+            um_runoff(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('wme_i')
+            um_wme(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+    !    case ('rain_i');  um_rain(:,:,:) = vwork(:,:,:)
+    !    case ('snow_i');  um_snow(:,:,:) = vwork(:,:,:)
+    !---20100825 -- just be cauious: -------------------------
+        case ('rain_i')
+            um_rain(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = max(0.0, vwork2d)
+        case ('snow_i')
+            um_snow(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = max(0.0, vwork2d)
+    !---------------------------------------------------------   
+        case ('evap_i')
+            um_evap(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('lhflx_i')
+            um_lhflx(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('tmlt01_i')
+            um_tmlt(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost,1,1) = vwork2d
+        case ('tmlt02_i')
+            um_tmlt(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost,2,1) = vwork2d
+        case ('tmlt03_i')
+            um_tmlt(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost,3,1) = vwork2d
+        case ('tmlt04_i')
+            um_tmlt(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost,4,1) = vwork2d
+        case ('tmlt05_i')
+            um_tmlt(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost,5,1) = vwork2d
+        case ('bmlt01_i')
+            um_bmlt(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost,1,1) = vwork2d
+        case ('bmlt02_i')
+            um_bmlt(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost,2,1) = vwork2d
+        case ('bmlt03_i')
+            um_bmlt(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost,3,1) = vwork2d
+        case ('bmlt04_i')
+            um_bmlt(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost,4,1) = vwork2d
+        case ('bmlt05_i')
+            um_bmlt(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost,5,1) = vwork2d
+        case ('taux_i')
+            um_taux(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('tauy_i')
+            um_tauy(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('swflx_i')
+            um_swflx(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('lwflx_i')
+            um_lwflx(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('shflx_i')
+            um_shflx(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('press_i')
+            um_press(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('co2_ai')
+            um_co2(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('wnd_ai')
+            um_wnd(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case default
+            stop "Error: invalid case in subroutine from_ocn()"
     end select 
 
     if (my_task == 0 .or. ll_comparal) then
@@ -846,6 +875,25 @@
     endif
 
   enddo
+
+    call ice_HaloUpdate(um_thflx, halo_info, field_loc_center, field_type_scalar)
+    call ice_HaloUpdate(um_pswflx, halo_info, field_loc_center, field_type_scalar)
+    call ice_HaloUpdate(um_runoff, halo_info, field_loc_center, field_type_scalar)
+    call ice_HaloUpdate(um_wme, halo_info, field_loc_center, field_type_scalar)
+    call ice_HaloUpdate(um_rain, halo_info, field_loc_center, field_type_scalar)
+    call ice_HaloUpdate(um_snow, halo_info, field_loc_center, field_type_scalar)
+    call ice_HaloUpdate(um_evap, halo_info, field_loc_center, field_type_scalar)
+    call ice_HaloUpdate(um_lhflx, halo_info, field_loc_center, field_type_scalar)
+    call ice_HaloUpdate(um_tmlt, halo_info, field_loc_center, field_type_vector)
+    call ice_HaloUpdate(um_bmlt, halo_info, field_loc_center, field_type_vector)
+    call ice_HaloUpdate(um_taux, halo_info, field_loc_center, field_type_vector)
+    call ice_HaloUpdate(um_tauy, halo_info, field_loc_center, field_type_vector)
+    call ice_HaloUpdate(um_swflx, halo_info, field_loc_center, field_type_vector)
+    call ice_HaloUpdate(um_lwflx, halo_info, field_loc_center, field_type_vector)
+    call ice_HaloUpdate(um_shflx, halo_info, field_loc_center, field_type_vector)
+    call ice_HaloUpdate(um_press, halo_info, field_loc_center, field_type_vector)
+    call ice_HaloUpdate(um_co2, halo_info, field_loc_center, field_type_vector)
+    call ice_HaloUpdate(um_wnd, halo_info, field_loc_center, field_type_vector)
 
   IF (rotate_winds) THEN   !rotate_winds=.t. means oasis does not do the vector rotation.
 
@@ -928,9 +976,8 @@
       write(il_out,*) '*** receiving coupling fields No. ', jf, cl_read(jf)
       if(ll_comparal) then
         call prism_get_proto (il_var_id_in(jf), isteps, vwork2d(l_ilo:l_ihi, l_jlo:l_jhi), ierror)
-        call mpi_gatherv(vwork2d(l_ilo:l_ihi, l_jlo:l_jhi),1,sendsubarray,gwork,counts,disps,resizedrecvsubarray, &
-                     0,MPI_COMM_ICE,ierror)
-        call broadcast_array(gwork, 0)
+        !call mpi_gatherv(vwork2d(l_ilo:l_ihi, l_jlo:l_jhi),1,sendsubarray,gwork,counts,disps,resizedrecvsubarray, 0,MPI_COMM_ICE,ierror)
+        !call broadcast_array(gwork, 0)
 !         gwork(l_ilo:l_ihi, l_jlo:l_jhi) = vwork2d(l_ilo:l_ihi, l_jlo:l_jhi)
       else
         call prism_get_proto (il_var_id_in(jf), isteps, gwork, ierror)
@@ -965,18 +1012,39 @@
 
     !Q: 'field_type_scalar' all right for 'vector' (ssu/ssv, sslx/ssly))?! 
     select case (trim(cl_read(jf)))
-    case ('sst_i'); ocn_sst = vwork
-    case ('sss_i'); ocn_sss = vwork 
-    case ('ssu_i'); ocn_ssu = vwork
-    case ('ssv_i'); ocn_ssv = vwork
-    case ('sslx_i'); ocn_sslx = vwork
-    case ('ssly_i'); ocn_ssly = vwork
-    case ('pfmice_i'); ocn_pfmice = vwork
-    case ('co2_oi'); ocn_co2 = vwork
-    case ('co2fx_oi'); ocn_co2fx = vwork
+        case ('sst_i')
+            ocn_sst(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('sss_i')
+            ocn_sss(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('ssu_i')
+            ocn_ssu(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('ssv_i')
+            ocn_ssv(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('sslx_i')
+            ocn_sslx(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('ssly_i')
+            ocn_ssly(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('pfmice_i')
+            ocn_pfmice(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('co2_oi')
+            ocn_co2(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case ('co2fx_oi')
+            ocn_co2fx(1+nghost:nx_block-nghost,1+nghost:ny_block-nghost, 1) = vwork2d
+        case default
+            stop "Error: invalid case in subroutine from_ocn()"
     end select
 
   enddo
+
+  call ice_HaloUpdate(ocn_sst, halo_info, field_loc_center, field_type_scalar)
+  call ice_HaloUpdate(ocn_sss, halo_info, field_loc_center, field_type_scalar)
+  call ice_HaloUpdate(ocn_ssu, halo_info, field_loc_center, field_type_vector)
+  call ice_HaloUpdate(ocn_ssv, halo_info, field_loc_center, field_type_vector)
+  call ice_HaloUpdate(ocn_sslx, halo_info, field_loc_center, field_type_vector)
+  call ice_HaloUpdate(ocn_ssly, halo_info, field_loc_center, field_type_vector)
+  call ice_HaloUpdate(ocn_pfmice, halo_info, field_loc_center, field_type_scalar)
+  call ice_HaloUpdate(ocn_co2, halo_info, field_loc_center, field_type_scalar)
+  call ice_HaloUpdate(ocn_co2fx, halo_info, field_loc_center, field_type_scalar)
 
   !-------------------------------
   !if (chk_o2i_fields) then
