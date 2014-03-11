@@ -55,8 +55,10 @@ def prepare_newrun(exp_dir, model, input_dir):
             input = os.path.join(exp_dir, d, 'INPUT')
 
         restart = os.path.join(exp_dir, d, 'RESTART')
+        history = os.path.join(exp_dir, d, 'HISTORY')
         os.makedirs(input)
         os.makedirs(restart)
+        os.makedirs(history)
 
         # Copy over inputs and fix perms.
         for f in glob.glob('%s/*' % os.path.join(input_dir, m)):
@@ -125,7 +127,6 @@ def prepare_contrun(exp_dir, model, cont_date):
         # Copy over UM restart file. 
         um_restart_src = os.path.join(exp_dir, 'ATM_RUNDIR', 'aiihca.da%s' % date_to_um_date(cont_date))
         um_restart_dest = os.path.join(exp_dir, 'ATM_RUNDIR', 'PIC2C-0.25.astart')
-        assert(os.path.exists(um_restart))
         shutil.copy(um_restart_src, um_restart_dest)
 
         # Tell CABLE that this is a cont run.
@@ -184,6 +185,25 @@ def add_months_to_date(date, num_months):
         new_date = datetime.date(date.year + years, months + 1, 1)
 
     return new_date
+
+
+def date_to_str(date):
+    """Convert a time date object to a string like: yyyymmdd."""
+
+    return (str(date.year).zfill(4) + str(date.month).zfill(2) + str(date.day).zfill(2))
+
+def str_to_date(str):
+    """Convert string like: yyyymmdd to a time date object."""
+
+    return datetime.date(int(str[0:4]), int(str[4:6]), int(str[6:8]))
+
+def date_to_um_date(date):
+    """Convert a time date object to a um format date string which is yym[m]d[d]0
+    
+      The month and day have variable width.  
+    """
+
+    return (str(date.year).zfill(2) + str(date.month) + str(date.day) + str(0))
 
 
 def set_next_startdate(exp_dir, init_date, prev_start_date, runtime_per_submit, submit_num, newrun, model):
@@ -388,7 +408,7 @@ def run(exp_name, model, exp_dir, config, run_direct):
 
     return (('End of MATM' in s) and ('End of CICE' in s) and ('MOM4: --- completed ---' in s), output, run_id)
 
-def archive(exp_dir, run_name):
+def archive(exp_dir, model, run_name):
     """
     Do some data processing.
 
@@ -403,26 +423,15 @@ def archive(exp_dir, run_name):
         model_dir = os.path.join(exp_dir, model_name)
         shutil.move(model_dir, os.path.join(archive_dir, model_name))
         os.makedirs(model_dir)
-        shutil.copytree(os.path.join(archive_dir, model_name, 'INPUT'), os.path.join(model_dir, 'INPUT'))
-        shutil.copytree(os.path.join(archive_dir, model_name, 'RESTART'), os.path.join(model_dir, 'RESTART'))
+        os.makedirs(os.path.join(model_dir, 'HISTORY'))
 
-def date_to_str(date):
-    """Convert a time date object to a string like: yyyymmdd."""
+        if model == 'access' and 'model_name' == ATM_RUNDIR:
+            shutil.copytree(os.path.join(archive_dir, model_name), os.path.join(model_dir))
+        else:
+            shutil.copytree(os.path.join(archive_dir, model_name, 'INPUT'), os.path.join(model_dir, 'INPUT'))
+            shutil.copytree(os.path.join(archive_dir, model_name, 'RESTART'), os.path.join(model_dir, 'RESTART'))
 
-    return (str(date.year).zfill(4) + str(date.month).zfill(2) + str(date.day).zfill(2))
 
-def str_to_date(str):
-    """Convert string like: yyyymmdd to a time date object."""
-
-    return datetime.date(int(str[0:4]), int(str[4:6]), int(str[6:8]))
-
-def date_to_um_date(date):
-    """Convert a time date object to a um format date string which is yym[m]d[d]0
-    
-      The month and day have variable width.  
-    """
-
-    return (str(date.year).zfill(2) + str(date.month) + str(date.day) + str(0))
 
 def main():
 
