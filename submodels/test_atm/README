@@ -1,0 +1,2 @@
+
+test_atm will read in the core forcing and pass to test_ice. test_ice will receive fields, make some small change and pass to test_ocn. test_ocn will pass a fields back to test_ice. test_ice will pass fields back to test_atm.
