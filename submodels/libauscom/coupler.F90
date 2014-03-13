@@ -10,7 +10,8 @@ use mpi, only : mpi_init, mpi_comm_size, mpi_comm_rank, MPI_SUCCESS
 implicit none
 
 private
-public coupler_init, coupler_put, coupler_get, coupler_close, couple_field_type
+public coupler_init, coupler_put, coupler_get, coupler_close, couple_field_type, &
+       COUPLER_MAX_FIELDS, COUPLER_MAX_FIELD_NAME_LEN, COUPLER_OUT, COUPLER_IN
 
 ! Type declarations. 
 type couple_field_type
@@ -20,9 +21,10 @@ type couple_field_type
     real, dimension(:,:), allocatable :: field
 end type
 
+integer, parameter  COUPLER_MAX_FIELDS = 20, COUPLER_MAX_FIELD_NAME_LEN = 8
 integer, parameter :: BOX_PARTITION = 2, COUPLER_OUT = OASIS_OUT, COUPLER_IN = OASIS_IN
 
-integer :: model_id, part_id
+integer :: model_id, partition_id
 ! Global and local grid resolution 
 integer :: x_global_res, y_global_res, x_local_res, y_local_res
 integer :: coupler_initialised = .false.
@@ -64,24 +66,26 @@ subroutine coupler_add_field(field, field_name, direction)
 
 end subroutine coupler_add_field
 
-subroutine coupler_init(model_name, xglob, yglob, xloc, yloc) 
+subroutine coupler_init(model_name, xglob, yglob, x_subdomains, y_subdomains) 
 
     character(len=*), intent(in) :: model_name
-    integer, intent(in) :: xglob, yglob, xloc, yloc
+    integer, intent(in) :: xglob, yglob, x_subdomains, y_subdomains
 
     integer :: ierror, local_comm
     ! Total PEs, my pe, my pe block/cell coords.
-    integer :: npes, mype, xblock, yblock
-    integer :: part_desc(5)
+    integer :: npes, mype, x_local_res, y_local_res
+    integer, dimension(5) :: part_desc
 
     ! Save as module level variables.
     x_global_res = xglob
     y_global_res = xglob
-    x_local_res = xloc
-    y_local_res = yloc
 
-    call assert(mod(xglob, xloc) == 0, "Global domain is not evenly divisible by local domain.")
-    call assert(mod(yglob, yloc) == 0, "Global domain is not evenly divisible by local domain.")
+    call assert(mod(x_global_res, x_subdomains) == 0,
+                "Global domain is not evenly divisible subdomains in x direction.")
+    call assert(mod(y_global_res, x_subdomains) == 0,
+                "Global domain is not evenly divisible subdomains in y direction.")
+    x_local_res = x_global_res / x_subdomains
+    y_local_res = y_global_res / y_subdomains
 
     ! Initialise the fields arrays.
     call read_field_info(xloc, yloc, in_fields, out_fields)
@@ -98,24 +102,25 @@ subroutine coupler_init(model_name, xglob, yglob, xloc, yloc)
 
     call mpi_comm_size(local_comm, npes, ierror)
     call assert(ierror == MPI_SUCCESS, "mpi_comm_size() failed.")
+    call assert(npes == x_subdomains * y_subdomains, "npes and subdomains don't match.")
     call mpi_comm_rank(local_comm, mype, ierror)
     call assert(ierror == MPI_SUCCESS, "mpi_comm_rank() failed.")
 
     ! The block/cell coordinate of this pe.
-    xblock = mype / (xglob / xloc)
-    yblock = mype / (yglob / yloc)
+    xblock = mype / (x_global_res / x_local_res)
+    yblock = mype / (y_global_res / y_local_res)
 
     ! Define the partition that this proc is responsible for. We use a box 
     ! partition, each partition is a rectangular region of the global domain, 
     ! described by the offset of the upper left corner and the x and y extents.
     part_desc(1) = BOX_PARTITION
     ! Upper left corner global offset.
-    part_desc(2) = (xglob * yloc * yblock) + (xloc * xblock) 
-    part_desc(3) = xloc
-    part_desc(4) = yloc
-    part_desc(5) = xglob 
+    part_desc(2) = (x_global_res * y_local_res * y_block) + (x_local_res * xblock) 
+    part_desc(3) = x_local_res
+    part_desc(4) = y_local_res
+    part_desc(5) = x_global_res 
 
-    call oasis_def_partition(part_id, part_desc, ierror)
+    call oasis_def_partition(partition_id, part_desc, ierror)
     call assert(ierror == OASIS_OK, "oasis_def_partition() failed")
 
     coupler_initialised = .true.
@@ -176,6 +181,9 @@ subroutine coupler_destroy_field(field)
 end subroutine coupler_destroy_fields(fields)
 
 subroutine coupler_close()
+
+    call oasis_terminate()
+
 end subroutine
 
 end module 

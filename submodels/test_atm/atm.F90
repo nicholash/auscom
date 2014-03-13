@@ -1,7 +1,8 @@
 
 program atm
 
-use coupler, only : coupler_init, coupler_get, coupler_put, coupler_close, couple_field_type
+use coupler, only : coupler_init, coupler_get, coupler_put, coupler_close, couple_field_type, &
+                    COUPLER_MAX_FIELDS, COUPLER_MAX_FIELD_NAME_LEN
 use core2_loader , only : loader_init, loader_load, loader_close
 use test, only : run_tests
 use calendar, only : calendar_timediff, date_type, calendar_make_date
@@ -9,38 +10,37 @@ use error_handler, only : assert
 
 implicit none
 
-integer, parameter  MAX_COUPLING_FIELDS = 20, MAX_FIELD_NAME_LEN = 8
-
 ! Namelist parameters
-integer, dimension(3) :: exp_start_date, run_start_date, run_end_date
+integer, dimension(3) :: run_start_date, run_end_date
 integer :: dt = 1800
 integer, dimension(2) :: resolution
-character(len=MAX_FIELD_NAME_LEN), dimension(MAX_COUPLING_FIELDS) :: from_ice_field_names = '', to_ice_field_names = ''
+integer, dimension(2) :: subdomain_decomposition
+character(len=COUPLER_MAX_FIELD_NAME_LEN), dimension(COUPLER_MAX_FIELDS) :: from_ice_field_names = '', to_ice_field_names = ''
 
-namelist /atm_config/ exp_start_date, run_start_date, run_end_date, dt, resolution, &
+namelist /atm_config_nml/ run_start_date, run_end_date, dt, resolution, subdomain_decomposition &
                       from_ice_field_names, to_ice_field_names
 
     type(couple_field_type), dimension(:), allocatable :: from_ice_fields, to_ice_fields
     type(date_type) :: start_date, end_date
     integer :: step, nsteps
-    integer :: x_global_res, y_global_res, x_local_res, y_local_res
+    integer :: x_global_res, y_global_res, x_subdomains, y_subdomains
     integer :: runtime, curr_time
     integer :: tmp_unit, num_from_ice_fields, num_to_ice_fields, i
-
-    x_global_res = resolution(1)
-    y_global_res = resolution(2)
-    x_local_res = x_global_res
-    y_local_res = y_global_res
-    
-    ! Create date types.
-    call calendar_make_date(run_start_date, start_date)
-    call calendar_make_date(run_end_date, end_date)
 
     ! Read namelist which includes information about the start and end date,
     ! model resolution and names and direction of coupling fields. 
     open(newunit=tmp_unit, file='input_atm.nml')
-    read(tmp_unit, nml=coupler_nml)
+    read(tmp_unit, nml=atm_config_nml)
     close(tmp_unit)
+
+    x_global_res = resolution(1)
+    y_global_res = resolution(2)
+    x_subdomains = subdomain_decomposition(1)
+    y_subdomains = subdomain_decomposition(2)
+    
+    ! Create date types.
+    call calendar_make_date(run_start_date, start_date)
+    call calendar_make_date(run_end_date, end_date)
 
     ! Count the coupling fields
     num_from_ice_fields = 0
@@ -55,7 +55,7 @@ namelist /atm_config/ exp_start_date, run_start_date, run_end_date, dt, resoluti
     enddo
 
     ! Initialise the coupler. 
-    call coupler_init('atmxxx', xglob, yglob, xloc, yloc, fields)
+    call coupler_init('atmxxx', x_global_res, y_global_res, x_subdomains, y_subdomains)
 
     ! Create/add the coupling fields. 
     allocate(from_ice_fields(num_from_ice_fields))
@@ -104,7 +104,7 @@ namelist /atm_config/ exp_start_date, run_start_date, run_end_date, dt, resoluti
     deallocate(from_ice_fields)
     deallocate(to_ice_fields)
 
-    call coupler_close(in_fields, out_fields)
+    call coupler_close()
     call loader_close()
 
 end program
