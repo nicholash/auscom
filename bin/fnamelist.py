@@ -74,7 +74,8 @@ class FortranNamelist:
         Return the value, start index and end index.
         """
 
-        regex = r"%s[ \t]*=[ \t]*(.*?)(?=\s+,?\s*(?:\w+[ \t]*=)|(?:/))"
+        # The %% is to escape the format character '%'
+        regex = r"%s[ \t]*=[ \t]*(.*?)(?=\s+,?\s*(?:[%%\w]+[ \t]*=)|(?:/))"
         m = re.search((r"&%s.*?" + regex) % (record, variable), self.str, re.MULTILINE | re.DOTALL)
         assert(m is not None)
 
