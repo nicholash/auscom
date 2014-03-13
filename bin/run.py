@@ -85,6 +85,12 @@ def prepare_newrun(exp_dir, model, input_dir):
     shutil.copytree(os.path.join(exp_dir, 'atm_tmp_ctrl'), os.path.join(exp_dir, 'ATM_RUNDIR', 'tmp_ctrl'))
     os.makedirs(os.path.join(exp_dir, 'ATM_RUNDIR', 'tmp'))
 
+    if model == 'access':
+        # Tell CABLE that this is not a cont run.
+        nml = FortranNamelist(os.path.join(exp_dir, 'ATM_RUNDIR', 'cable.nml'))
+        nml.set_value('cable', 'cable_user%CABLE_RUNTIME_COUPLED', '.FALSE.')
+        nml.write()
+
 
 def prepare_contrun(exp_dir, model, cont_date):
     """
@@ -93,7 +99,7 @@ def prepare_contrun(exp_dir, model, cont_date):
     There are some things that the models should take care of themselves.
     """
 
-    cont_date = date_to_str(cont_date)
+    cont_date_str = date_to_str(cont_date)
 
     ice_input = os.path.join(exp_dir, 'ICE_RUNDIR', 'INPUT')
     ice_restart = os.path.join(exp_dir, 'ICE_RUNDIR', 'RESTART')
@@ -101,18 +107,17 @@ def prepare_contrun(exp_dir, model, cont_date):
     ocn_restart = os.path.join(exp_dir, 'OCN_RUNDIR', 'RESTART')
 
     # Copy over some CICE files. 
-    shutil.copy(os.path.join(ice_restart, 'u_star.nc'), ice_input)
-    shutil.copy(os.path.join(ice_restart, 'sicemass.nc'), ice_input)
-    try:
-        shutil.copy(os.path.join(ice_restart, 'mice.nc'), ice_input)
-    except IOError:
-        pass
+    if model == 'access':
+        shutil.copy(os.path.join(exp_dir, 'ICE_RUNDIR', 'mice.nc'), ice_input)
+    else:
+        shutil.copy(os.path.join(ice_restart, 'u_star.nc'), ice_input)
+        shutil.copy(os.path.join(ice_restart, 'sicemass.nc'), ice_input)
 
     # Setup the CICE restart. 
     # Check that restart file for this start date exists. 
-    assert(os.path.exists(os.path.join(ice_restart, 'iced.%s' % (cont_date))))
+    assert(os.path.exists(os.path.join(ice_restart, 'iced.%s' % (cont_date_str))))
     with open(os.path.join(ice_restart, 'ice.restart_file'), 'w') as f:
-        f.write('iced.%s' % cont_date)
+        f.write('iced.%s' % cont_date_str)
 
     # Copy over ocean restarts.
     for f in glob.glob('%s/*' % ocn_restart):
@@ -124,19 +129,24 @@ def prepare_contrun(exp_dir, model, cont_date):
             shutil.copy(f, os.path.join(exp_dir, d))
 
     if model == 'access':
+        # Copy over the oasis restarts. FIXME: should this be done for auscom model?
+        shutil.copy(os.path.join(ocn_input, 'o2i.nc'), ice_restart)
+
         # Copy over UM restart file. 
         um_restart_src = os.path.join(exp_dir, 'ATM_RUNDIR', 'aiihca.da%s' % date_to_um_date(cont_date))
         um_restart_dest = os.path.join(exp_dir, 'ATM_RUNDIR', 'PIC2C-0.25.astart')
         shutil.copy(um_restart_src, um_restart_dest)
 
         # Tell CABLE that this is a cont run.
-        nml = FortranNamelist(os.path.join(atm_rundir, 'cable.nml'))
+        nml = FortranNamelist(os.path.join(exp_dir, 'ATM_RUNDIR', 'cable.nml'))
         nml.set_value('cable', 'cable_user%CABLE_RUNTIME_COUPLED', '.TRUE.')
         nml.write()
 
-def ndays_between_dates(start_date, end_date):
+
+def ndays_between_dates(start_date, end_date, include_leap_days):
     """
-    Calculate the number of days between two dates according to a 365 calendar with no leap years.
+    Calculate the number of days between two dates according to a 365 calendar.
+    If include_leap_days == True then leap days are included.
 
     The dates should always have day 01.
     """
@@ -164,8 +174,11 @@ def ndays_between_dates(start_date, end_date):
 
     # Do the calculation using timedelta and then subtract the leap days added.
     td = end_date - start_date
-        
-    return (td.days - leap_days_between_dates(start_date, end_date))
+
+    if include_leap_days:
+        return (td.days)
+    else:
+        return (td.days - leap_days_between_dates(start_date, end_date))
 
 
 def add_months_to_date(date, num_months):
@@ -198,12 +211,23 @@ def str_to_date(str):
     return datetime.date(int(str[0:4]), int(str[4:6]), int(str[6:8]))
 
 def date_to_um_date(date):
-    """Convert a time date object to a um format date string which is yym[m]d[d]0
+    """Convert a time date object to a um format date string which is yymd0
     
-      The month and day have variable width.  
+        To accomodate two digit months and days the UM uses letters. e.g. 1st oct 
+        is writting 01a10. What does this say about the UM? 
     """
 
-    return (str(date.year).zfill(2) + str(date.month) + str(date.day) + str(0))
+    assert(date.month <= 12)
+
+    month = str(date.month)
+    if date.month == 10:
+        month = 'a'
+    elif date.month == 11:
+        month = 'b'
+    elif date.month == 12:
+        month = 'c'
+
+    return (str(date.year).zfill(2) + month + str(date.day) + str(0))
 
 
 def set_next_startdate(exp_dir, init_date, prev_start_date, runtime_per_submit, submit_num, newrun, model):
@@ -225,8 +249,8 @@ def set_next_startdate(exp_dir, init_date, prev_start_date, runtime_per_submit, 
     assert((prev_start_date is None) or prev_start_date.day == 1)
     assert(start_date.day == 1)
 
-    days_since_start = ndays_between_dates(init_date, start_date)
-    days_this_run = ndays_between_dates(start_date, end_date)
+    days_since_start = ndays_between_dates(init_date, start_date, model == 'access')
+    days_this_run = ndays_between_dates(start_date, end_date, model == 'access')
 
     # init_date is the start date of the experiment. 
     init_str = date_to_str(init_date)
@@ -406,7 +430,13 @@ def run(exp_name, model, exp_dir, config, run_direct):
     with open(output, 'r') as f:
         s = f.read()
 
-    return (('End of MATM' in s) and ('End of CICE' in s) and ('MOM4: --- completed ---' in s), output, run_id)
+    success = False
+    if model == 'access':
+        success = (('End of CICE' in s) and ('MOM4: --- completed ---' in s))
+    else:
+        success = (('End of MATM' in s) and ('End of CICE' in s) and ('MOM4: --- completed ---' in s))
+
+    return (success, output, run_id)
 
 def archive(exp_dir, model, run_name):
     """
@@ -421,13 +451,16 @@ def archive(exp_dir, model, run_name):
     # Move model dirs into archive, remake new ones, copy INPUT and RESTART back. 
     for model_name in ['ATM_RUNDIR', 'ICE_RUNDIR', 'OCN_RUNDIR']:
         model_dir = os.path.join(exp_dir, model_name)
-        shutil.move(model_dir, os.path.join(archive_dir, model_name))
-        os.makedirs(model_dir)
-        os.makedirs(os.path.join(model_dir, 'HISTORY'))
 
-        if model == 'access' and 'model_name' == ATM_RUNDIR:
-            shutil.copytree(os.path.join(archive_dir, model_name), os.path.join(model_dir))
+        if model == 'access':
+            if model_name == 'OCN_RUNDIR':
+                os.makedirs(os.path.join(archive_dir, model_name))
+                for f in glob.glob('%s/ocean*' % model_dir):
+                    shutil.move(f, os.path.join(archive_dir, model_name, os.path.basename(f)))
         else:
+            shutil.move(model_dir, os.path.join(archive_dir, model_name))
+            os.makedirs(model_dir)
+            os.makedirs(os.path.join(model_dir, 'HISTORY'))
             shutil.copytree(os.path.join(archive_dir, model_name, 'INPUT'), os.path.join(model_dir, 'INPUT'))
             shutil.copytree(os.path.join(archive_dir, model_name, 'RESTART'), os.path.join(model_dir, 'RESTART'))
 
@@ -444,6 +477,7 @@ def main():
     parser.add_argument("--init_date", default='00010101', type=str, help="The initial date of the entire run, this is a string of form yyyymmdd.")
     parser.add_argument("--input_dir", default='/short/v45/auscom', type=str, help="Where input data is kept for each experiment.")
     parser.add_argument("--run_direct", action='store_true', default=False, help="Run the model directly, don't use qsub.")
+    parser.add_argument("--skip_run", action='store_true', help="Don't actually run the model, just prepare, archive and resubmit. Used for testing purposes.")
     parser.add_argument("--model", default='auscom', help="Which model to run. Should be either 'auscom' or 'access', defaults to 'auscom'")
 
     args = parser.parse_args()
@@ -475,6 +509,8 @@ def main():
     else:
         prepare_contrun(exp_dir, args.model, init_date)
 
+    # FIXME: check that an archive directory for this date does not already exist. 
+
     start_date = None
     end_date = None
     for num_submits in range(args.submits): 
@@ -482,13 +518,14 @@ def main():
         start_date, end_date = set_next_startdate(exp_dir, init_date, start_date, args.submit_runtime_months, num_submits + 1, args.new_run, args.model)
         args.new_run = False
 
-        (ret, err, run_id) = run(args.experiment, args.model, exp_dir, config, args.run_direct)
-        if not ret:
-            print 'Run failed, see %s' % err
-            return 1
+        if not args.skip_run:
+            (ret, err, run_id) = run(args.experiment, args.model, exp_dir, config, args.run_direct)
+            if not ret:
+                print 'Run failed, see %s' % err
+                return 1
             
-        archive(exp_dir, '%s_to_%s' % (start_date, end_date))
-        prepare_contrun(exp_dir, args.model, start_date)
+        archive(exp_dir, args.model, '%s_to_%s' % (start_date, end_date))
+        prepare_contrun(exp_dir, args.model, end_date)
 
     clean_up()
 
