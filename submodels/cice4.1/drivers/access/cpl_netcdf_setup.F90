@@ -12,17 +12,22 @@ integer(kind=int_kind) :: pLonDimId, pLatDimId, timeDimId, pDepDimId
 contains 
 
 !=========================================================================
-subroutine ncheck(status) 
+subroutine ncheck(status, error_str) 
 
 implicit none
 
-integer(kind=int_kind), intent(in) :: status
+    integer(kind=int_kind), intent(in) :: status
+    character(len=*), intent(in), optional :: error_str
 
-if (status /= nf_noerr) then
-  write(*,'(/a)')   'error - from NetCDF library'
-  write(*,'(a/)')   trim(nf_strerror(status))
-  stop
-end if
+    if (status /= nf_noerr) then
+      write(*,'(/a)')   'error - from NetCDF library'
+      if (present(error_str)) then
+          write(*,'(a)')   error_str
+      endif
+      write(*,'(a/)')   trim(nf_strerror(status))
+      stop
+    end if
+
 end subroutine ncheck
 
 !============================================================================
@@ -50,13 +55,13 @@ integer(kind=int_kind) :: varid, ndim, ncid
 integer(kind=int_kind), dimension(:), allocatable :: count, start
 
 !Open file for read access
-call ncheck( nf_open(fname, nf_nowrite, ncid) )
+call ncheck( nf_open(fname, nf_nowrite, ncid), 'Opening: '//trim(fname)//' in read_nc()')
 
 !Get variable ID
-call ncheck(nf_inq_varid(ncid, vname, varid))
+call ncheck(nf_inq_varid(ncid, vname, varid), 'Inquiring: '//trim(vname)//' in read_nc()')
 
 !Get number of dimensions
-call ncheck(nf_inq_varndims(ncid, varid, ndim))
+call ncheck(nf_inq_varndims(ncid, varid, ndim), 'Inquiring dims: '//trim(vname)//' in read_nc()')
 
 !Allocate count and start
 allocate (count(ndim), start(ndim))
@@ -74,7 +79,7 @@ else  !* ndim = 4 *!
 endif
 
 !call ncheck(nf_get_vara_real(ncid, varid, start, count, vtmp))
-call ncheck(nf_get_vara_double(ncid, varid, start, count, vout))
+call ncheck(nf_get_vara_double(ncid, varid, start, count, vout), 'Reading: '//trim(vname)//' from '//trim(fname)//' in read_nc()')
 
 !Close file
 call ncheck( nf_close(ncid) )
@@ -104,13 +109,13 @@ integer(kind=int_kind), intent(out) :: ncid
 if (present(ilout)) write(ilout,*) 'creating a new netcdf file: ',ncfile
 
 !create a new NetCDF and define the grid:
-call ncheck(nf_create(trim(ncfile),nf_write,ncid))
+call ncheck(nf_create(trim(ncfile),nf_write,ncid), "Creating: "//trim(ncfile))
 
 !define the dimensions
-if (present(ll)) call ncheck(nf_def_dim(ncid,"time", nf_unlimited,  timeDimId))
-if (present(kk)) call ncheck(nf_def_dim(ncid,"nz", kk,  pDepDimId))
-call ncheck(nf_def_dim(ncid, "ny", jj,  pLatDimId))
-call ncheck(nf_def_dim(ncid, "nx", ii,  pLonDimId))
+if (present(ll)) call ncheck(nf_def_dim(ncid,"time", nf_unlimited,  timeDimId), 'Defining time in '//trim(ncfile)//' in create_ncfile()')
+if (present(kk)) call ncheck(nf_def_dim(ncid,"nz", kk,  pDepDimId), 'Defining nz in '//trim(ncfile)//' in create_ncfile()')
+call ncheck(nf_def_dim(ncid, "ny", jj,  pLatDimId), 'Defining ny in '//trim(ncfile)//' in create_ncfile()')
+call ncheck(nf_def_dim(ncid, "nx", ii,  pLonDimId), 'Defining nx in '//trim(ncfile)//' in create_ncfile()')
 
 !end of the definition phase
 call ncheck(nf_enddef(ncid))
@@ -143,7 +148,7 @@ integer(kind=int_kind), intent(out) :: ncid
 if (present(ilout)) write(ilout,*) 'opening a existing netcdf file: ',ncfile
 
 !create a new NetCDF and define the grid:
-call ncheck(nf_open(trim(ncfile),nf_write,ncid))
+call ncheck(nf_open(trim(ncfile),nf_write,ncid), 'Opening: '//trim(ncfile)//' in open_ncfile()')
 
 !close NetCDF file
 !call ncheck(nf_close(ncid))
@@ -152,40 +157,6 @@ write(*,'(2a)') 'ncfile opened: ',trim(ncfile)
 
 return
 end subroutine open_ncfile
-
-!===========================================================================
-subroutine create_nc(ncfile,ncid,ii,jj)
-!
-!not needed anymore 'cos its function is covered by 'create_ncfile'
-! 
-
-implicit none
-
-integer(kind=int_kind), intent(in) :: ii,jj
-character(len=*), intent(in) :: ncfile
-integer(kind=int_kind), intent(out) :: ncid
- 
-print *
-print *, 'creating a new netcdf file: ',ncfile
-
-!create a new NetCDF and define the grid:
-call ncheck(nf_create(trim(ncfile),nf_write,ncid))
-
-!define the dimensions
-call ncheck(nf_def_dim(ncid,"ny", jj,  pLatDimId))
-call ncheck(nf_def_dim(ncid,"nx", ii,  pLonDimId))
-!B: note the sizes of dimensions ('jj' and 'ii') can't be missing!
-
-!end of the definition phase
-call ncheck(nf_enddef(ncid))
- 
-!close NetCDF file
-!call ncheck(nf_close(ncid))
-!do NOT close it here!
-write(*,'(2a)') 'ncfile created: ',trim(ncfile)
-
-return
-end subroutine create_nc
 
 !===========================================================================
 subroutine write_nc_1Dtime(vin, nt, vname, ncid)
@@ -215,17 +186,17 @@ if (ncstatus/=nf_noerr) then
   adate(3) = idate - (idate/100)*100
   adate(4:6) = 0  !OK for 'whole-day' runs               
   call ncheck(nf_redef(ncid))
-  call ncheck(nf_def_var(ncid,trim(vname),nf_real, 1, timeDimId, varid))
+  call ncheck(nf_def_var(ncid,trim(vname),nf_real, 1, timeDimId, varid), 'Defining: '//trim(vname)//' in write_nc_1Dtime()')
   write(ctimeatt, &
       '("seconds since ",I4.4,"-",I2.2,"-",I2.2," ",I2.2,":",I2.2,":",I2.2)') adate(:)
   !ctimeatt="hours since 0000-01-01 00:00:00"
-  call ncheck(nf_put_att_text(ncid,varid,"units",len_trim(ctimeatt),trim(ctimeatt)))
+  call ncheck(nf_put_att_text(ncid,varid,"units",len_trim(ctimeatt),trim(ctimeatt)), 'Adding attribute units to '//trim(vname)//' in write_nc_1Dtime()')
   call ncheck(nf_enddef(ncid))
 end if
 
 !write values into the 1D array
 !call ncheck(nf_put_vara_real(ncid,varid,nt,1,vin))
-call ncheck(nf_put_vara_real(ncid,varid,nt,1,vtmp))
+call ncheck(nf_put_vara_real(ncid,varid,nt,1,vtmp), 'Writing values to '//trim(vname)//' in write_nc_1Dtime()')
 !B: must indicate the start point and number of the record, ie., nt and 1!  
 
 return
@@ -259,10 +230,10 @@ if (ncstatus/=nf_noerr) then
   call ncheck(nf_redef(ncid))
   if (prcn == 1) then
     call ncheck(nf_def_var(ncid,trim(vname),nf_real, 3, &
-            (/pLonDimId, pLatDimId, timeDimId/),varid))
+            (/pLonDimId, pLatDimId, timeDimId/),varid), 'Defining real '//trim(vname)//' in write_nc2D')
   else
     call ncheck(nf_def_var(ncid,trim(vname),nf_double, 3, &
-            (/pLonDimId, pLatDimId, timeDimId/),varid))
+            (/pLonDimId, pLatDimId, timeDimId/),varid), 'Defining double '//trim(vname)//' in write_nc2D')
   endif
   call ncheck(nf_enddef(ncid))
   if (present(ilout)) write(ilout,*) 'write_nc2D: defined new var ***', vname 
@@ -273,9 +244,9 @@ end if
 select case(prcn)
   case (1)
     vtmp = real(vin) !dbl precision to single precision
-    call ncheck(nf_put_vara_real(ncid,varid,(/1,1,istep/),(/nx,ny,1/),vtmp))
+    call ncheck(nf_put_vara_real(ncid,varid,(/1,1,istep/),(/nx,ny,1/),vtmp), 'Writing real values to'//trim(vname)//' in write_nc2D')
   case default    !case (2)
-    call ncheck(nf_put_vara_double(ncid,varid,(/1,1,istep/),(/nx,ny,1/),vin))
+    call ncheck(nf_put_vara_double(ncid,varid,(/1,1,istep/),(/nx,ny,1/),vin), 'Writing double values to'//trim(vname)//' in write_nc2D')
 end select
 
 return
@@ -315,52 +286,13 @@ end if
 select case(prcn)
   case (1)
     vtmp = real(vin) !dbl precision to single precision
-    !call ncheck(nf_put_vara_real(ncid,varid,(/1,1,istep/),(/nx,ny,1/),vtmp))
-    call ncheck(nf_put_vara_real(ncid,varid,(/1,1/),(/nx,ny/),vtmp))
+    call ncheck(nf_put_vara_real(ncid,varid,(/1,1/),(/nx,ny/),vtmp), 'Writing real values to'//trim(vname)//' in modify_nc2d')
   case default    !case (2)
-    !call ncheck(nf_put_vara_double(ncid,varid,(/1,1,istep/),(/nx,ny,1/),vin))
-    call ncheck(nf_put_vara_double(ncid,varid,(/1,1/),(/nx,ny/),vin))
+    call ncheck(nf_put_vara_double(ncid,varid,(/1,1/),(/nx,ny/),vin), 'Writing double values to'//trim(vname)//' in modify_nc2d')
 end select
 
 return
 end subroutine modify_nc2D
-
-!===========================================================================
-subroutine write_nc(vin, nx, ny, vname, ncid)
-!
-! *** its function is covered by write_nc2D and thus not used any more. ***
-!
-
-implicit none
-
-integer(kind=int_kind), intent(in) :: nx, ny, ncid
-integer(kind=int_kind) :: varid
-real(kind=dbl_kind), dimension(nx,ny), intent(in) :: vin
-character(len=*), intent(in) :: vname
-
-!switch to define mode
-call ncheck(nf_redef(ncid))
-
-!define (2D) variable to be written
-call ncheck(nf_def_var(ncid,trim(vname),nf_double, 2, &
-            (/pLonDimId, pLatDimId/),varid))
-!B: here '2' indicates the dimension of the to-be-written variable 'vname',
-!   and (/pLonDimId, pLatDimId/) the dimention.
-!   'nf_real' determines the output precision!
-
-!leave define mode
-call ncheck(nf_enddef(ncid))
-
-!get varId and write to array
-call ncheck(nf_inq_varid(ncid,trim(vname),varid))
-
-!write values into the 2D array
-call ncheck(nf_put_vara_double(ncid,varid,(/1,1/),(/nx,ny/),vin))
-!B: must indicate the start point and number of the record (ie. count as in
-!   routine read_nc above) (/1,1/) and (/nx,ny/) for the to-be-written vin!
-
-return
-end subroutine write_nc
 
 !===========================================================================
 
