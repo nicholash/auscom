@@ -448,22 +448,13 @@ def archive(exp_dir, model, run_name):
     archive_dir = os.path.join(exp_dir, 'archive', run_name)
     os.makedirs(archive_dir)
 
-    # Move model dirs into archive, remake new ones, copy INPUT and RESTART back. 
-    for model_name in ['ATM_RUNDIR', 'ICE_RUNDIR', 'OCN_RUNDIR']:
-        model_dir = os.path.join(exp_dir, model_name)
+    # Move ocean netcdf files into archive. 
+    src = os.path.join(exp_dir, 'OCN_RUNDIR')
+    dest = os.path.join(archive_dir, 'OCN_RUNDIR')
 
-        if model == 'access':
-            if model_name == 'OCN_RUNDIR':
-                os.makedirs(os.path.join(archive_dir, model_name))
-                for f in glob.glob('%s/ocean*' % model_dir):
-                    shutil.move(f, os.path.join(archive_dir, model_name, os.path.basename(f)))
-        else:
-            shutil.move(model_dir, os.path.join(archive_dir, model_name))
-            os.makedirs(model_dir)
-            os.makedirs(os.path.join(model_dir, 'HISTORY'))
-            shutil.copytree(os.path.join(archive_dir, model_name, 'INPUT'), os.path.join(model_dir, 'INPUT'))
-            shutil.copytree(os.path.join(archive_dir, model_name, 'RESTART'), os.path.join(model_dir, 'RESTART'))
-
+    os.makedirs(dest)
+    for f in glob.glob('%s/ocean*' % src):
+        shutil.move(f, os.path.join(dest, os.path.basename(f)))
 
 
 def main():
