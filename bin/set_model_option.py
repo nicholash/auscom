@@ -71,7 +71,7 @@ def set_ice_timestep(experiment, timestep):
     nml.set_value('setup_nml', 'npt', new_npt)
     nml.write()
 
-def set_coupling_timestep(experiment, timestep):
+def set_coupling_timestep(experiment, timestep, model):
 
     # Change timestep in the namcouple files.
     for n in namcouple:
@@ -79,9 +79,10 @@ def set_coupling_timestep(experiment, timestep):
         nc.set_ocean_timestep(timestep)
         nc.write()
 
-    nml = FortranNamelist(input_atm % (experiment))
-    nml.set_value('coupling', 'dt_atm', timestep)
-    nml.write()
+    if model == 'auscom': 
+        nml = FortranNamelist(input_atm % (experiment))
+        nml.set_value('coupling', 'dt_atm', timestep)
+        nml.write()
 
     nml = FortranNamelist(input_ocn % (experiment))
     nml.set_value('auscom_ice_nml', 'dt_cpl', timestep)
@@ -96,10 +97,11 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("experiment", help="The experiment on which to change the runtime.")
-    parser.add_argument("--runtime", dest="runtime", help="The runtime (in seconds).")
-    parser.add_argument("--ocean_timestep", dest="ocean_timestep", help="The ocean timestep (in seconds).")
-    parser.add_argument("--ice_timestep", dest="ice_timestep", help="The ice timestep (in seconds).")
-    parser.add_argument("--coupling_timestep", dest="coupling_timestep", help="The coupling timestep between ice and ocean (in seconds).")
+    parser.add_argument("--runtime", help="The runtime (in seconds).")
+    parser.add_argument("--ocean_timestep", help="The ocean timestep (in seconds).")
+    parser.add_argument("--ice_timestep", help="The ice timestep (in seconds).")
+    parser.add_argument("--coupling_timestep", help="The coupling timestep between ice and ocean (in seconds).")
+    parser.add_argument("--model", default="auscom", help="The model being used, either access or auscom.")
 
     args = parser.parse_args()
 
@@ -110,7 +112,7 @@ def main():
     if args.ice_timestep:
         set_ice_timestep(args.experiment, args.ice_timestep)
     if args.coupling_timestep:
-        set_coupling_timestep(args.experiment, args.coupling_timestep)
+        set_coupling_timestep(args.experiment, args.coupling_timestep, args.model)
 
 if __name__ == "__main__":
     sys.exit(main())
