@@ -11,8 +11,9 @@ class Namcouple:
     Presently only supports $RUNTIME
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename, model):
         self.filename = filename
+        self.model = model
         with open(filename, 'r') as f:
             self.str = f.read()
 
@@ -44,13 +45,20 @@ class Namcouple:
                 if none_updated:
                     break
 
-            if none_updated:
+            if not timestep_changed:
                 sys.stderr.write('WARNING: no timstep values were updated.\n')
 
-        substitute_timestep(r"nt62 cice LAG=\+(\d+) ")
-        substitute_timestep(r"cice nt62 LAG=\+(\d+) ")
-        substitute_timestep(r"\d+ (\d+) \d+ INPUT/i2o.nc EXPORTED")
-        substitute_timestep(r"\d+ (\d+) \d+ INPUT/o2i.nc EXPORTED")
+        if self.model == 'auscom':
+            substitute_timestep(r"nt62 cice LAG=\+(\d+) ")
+            substitute_timestep(r"cice nt62 LAG=\+(\d+) ")
+            substitute_timestep(r"\d+ (\d+) \d+ INPUT/i2o.nc EXPORTED")
+            substitute_timestep(r"\d+ (\d+) \d+ INPUT/o2i.nc EXPORTED")
+        else:
+            substitute_timestep(r"cice um1t LAG=\+(\d+) ")
+            substitute_timestep(r"cice um1u LAG=\+(\d+) ")
+            substitute_timestep(r"cice um1v LAG=\+(\d+) ")
+            substitute_timestep(r"\d+ (\d+) \d+ i2o.nc IGNORED")
+            substitute_timestep(r"\d+ (\d+) \d+ o2i.nc IGNORED")
 
     def write(self):
         with open(self.filename, 'w') as f:

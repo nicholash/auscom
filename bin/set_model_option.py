@@ -75,7 +75,7 @@ def set_coupling_timestep(experiment, timestep, model):
 
     # Change timestep in the namcouple files.
     for n in namcouple:
-        nc = Namcouple(n % (experiment))
+        nc = Namcouple(n % (experiment), model)
         nc.set_ocean_timestep(timestep)
         nc.write()
 

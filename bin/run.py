@@ -284,26 +284,29 @@ def set_next_startdate(exp_dir, init_date, prev_start_date, runtime_per_submit, 
         nml.set_value('STSHCOMP', 'RUN_TARGET_END', '0, 0, %s, 0, 0, 0' % days_this_run)
         nml.write()
 
-        def next_three_dump_times(date):
+        def dump_times_string(start_date, num_dumps):
             """
-            Return the dump times (in timesteps) for the next three months.
+            Create a string for the dump times.
+            
+            Presently we dump each month. 
             """
 
-            assert(date.day == 1 and date.month <= 10)
-            _, days_1 = calendar.monthrange(date.year, date.month)
-            _, days_2 = calendar.monthrange(date.year, date.month + 1)
-            _, days_3 = calendar.monthrange(date.year, date.month + 2)
+            assert(start_date.day == 1 and ((start_date.month + num_dumps - 1) <= 12))
 
-            dump_1 = days_1*48
-            dump_2 = dump_1 + days_2*48
-            dump_3 = dump_2 + days_3*48
+            str = ''
+            total_days = 0
+            for m in range(num_dumps):
 
-            return (dump_1, dump_2, dump_3)
+                _, days = calendar.monthrange(start_date.year, start_date.month + m)
+                total_days += days
+                str += '{0},'.format(total_days*48)
 
-        dump_1, dump_2, dump_3 = next_three_dump_times(start_date)
+            str += '0,' * (160 - num_dumps)
+
+            return str
 
         nml = FortranNamelist(os.path.join(atm_rundir, 'tmp_ctrl', 'CNTLGEN'))
-        nml.set_value('NLSTCGEN', 'DUMPTIMESim', '%s, %s, %s, %s' % (dump_1, dump_2 , dump_3, '0,'*157))
+        nml.set_value('NLSTCGEN', 'DUMPTIMESim', dump_times_string(start_date, runtime_per_submit))
         nml.write()
 
     # Ice
@@ -339,7 +342,7 @@ def set_next_startdate(exp_dir, init_date, prev_start_date, runtime_per_submit, 
 
     # Oasis namcouple
     for r in [atm_rundir, ice_rundir, ocn_rundir]:
-        nc = Namcouple(os.path.join(r, 'namcouple'))
+        nc = Namcouple(os.path.join(r, 'namcouple'), model)
         # FIXME: there is a bug in the models, an extra timestep is made at the end of a month. 
         # This then causes an assertion failure in oasis. For the time being just increase the 
         # oasis max by one day. 
